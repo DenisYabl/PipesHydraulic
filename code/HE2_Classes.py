@@ -1,3 +1,7 @@
+import json
+import os
+import pandas as pd
+
 def get_global_id():
     if 'ID' not in get_global_id.__dict__:
         get_global_id.ID = 0
@@ -47,6 +51,19 @@ class HE2_Schema_Persister():
     def __init__(self):
         pass
 
+    def build_tech_shema_from_file(self, filename):
+        name, ext = os.path.splitext(filename)
+        if ext[0:4] in ('.xls', '.xlsx'):
+            lines_colnames = ['line_name', 'node1_name', 'node2_name', 'pipe_num', 'L', 'D', 'Wall', 'Rough']
+            df_lines = pd.read_excel(filename, sheet_name=0, header=None, names=lines_colnames, skiprows=range(9))
+            print(df_lines)
+            pass
+        elif ext in ('.txt', '.json'):
+            f = open(filename, 'r', encoding='UTF-8')
+            ts_json = json.load(f)
+            rez = self.build_tech_shema_from_json(ts_json)
+            return rez
+
     def build_tech_shema_from_json(self, ts_json):
         pass
 
@@ -61,6 +78,14 @@ class HE2_Schema_Persister():
 
 
 if __name__ == '__main__':
-    hello_world = HE2_Object()
-    print(hello_world.ID)
+    import argparse
 
+    parser = argparse.ArgumentParser()
+    # def_fn = r'..\data\tech_schema.json'
+    def_fn = r'..\data\waterpipes.xlsx'
+    parser.add_argument("-f", "--filename", type=str, required=False, help="Techshema json file", default=def_fn)
+    args = parser.parse_args()
+    filename = args.filename
+    persist = HE2_Schema_Persister()
+    tech_schema = persist.build_tech_shema_from_file(filename)
+    print(tech_schema)
