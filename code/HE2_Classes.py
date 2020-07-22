@@ -108,6 +108,11 @@ class HE2_Schema_Persister():
     def dump_tech_schema_to_dataframes(self, tech_schema):
         pass
 
+class HE2_Computational_Task():
+
+    def __init__(self):
+        pass
+
 
 if __name__ == '__main__':
     import argparse
