@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from collections import Counter
 
+
 def get_global_id_for(entity_class):
     if 'ID' not in get_global_id_for.__dict__:
         get_global_id_for.ID = 0
@@ -24,6 +25,7 @@ class HE2_Object():
         self.outlets = [get_global_id_for('Outlet')]
         if outlets:
             self.outlets += outlets
+
 
 class HE2_Tech_Schema():
     def __init__(self):
@@ -49,11 +51,18 @@ class HE2_Tech_Schema():
         pass
 
 
+class HE2_Computational_Task():
+    def __init__(self, schema, fluids, boundaries):
+        self.schema = schema
+        self.fluids = fluids
+        self.boundaries = boundaries
+
+
 class HE2_Schema_Persister():
     def __init__(self):
         pass
 
-    def build_tech_shema_from_file(self, filename):
+    def build_task_from_file(self, filename):
         name, ext = os.path.splitext(filename)
         if ext[0:4] in ('.xls', '.xlsx'):
             pipes_colnames = ['line_name', 'node1_name', 'node2_name', 'pipe_num', 'L', 'D', 'Wall', 'Rough']
@@ -62,18 +71,18 @@ class HE2_Schema_Persister():
             df_nodes = pd.read_excel(filename, sheet_name=1, header=None, names=nodes_colnames, skiprows=range(3))
             print(df_pipes.head(20))
             print(df_nodes.head(20))
-            rez = self.build_tech_shema_from_dataframes(df_nodes, df_pipes)
+            rez = self.build_task_from_dataframes(df_nodes, df_pipes)
             return rez
         elif ext in ('.txt', '.json'):
             f = open(filename, 'r', encoding='UTF-8')
             ts_json = json.load(f)
-            rez = self.build_tech_shema_from_json(ts_json)
+            rez = self.build_task_from_json(ts_json)
             return rez
 
-    def build_tech_shema_from_json(self, ts_json):
+    def build_task_from_json(self, ts_json):
         pass
 
-    def build_tech_shema_from_dataframes(self, nodes_df, pipes_df):
+    def build_task_from_dataframes(self, nodes_df, pipes_df):
         schema =  HE2_Tech_Schema()
         obj_list = []
         for idx in nodes_df.index:
@@ -106,11 +115,6 @@ class HE2_Schema_Persister():
         pass
 
     def dump_tech_schema_to_dataframes(self, tech_schema):
-        pass
-
-class HE2_Computational_Task():
-
-    def __init__(self):
         pass
 
 
