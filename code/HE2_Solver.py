@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 import scipy.optimize as scop
 
+
 class HE2_Solver():
 
     def __init__(self):
