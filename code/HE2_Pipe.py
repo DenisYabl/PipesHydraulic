@@ -8,26 +8,33 @@ class HE2_Pipe():
     pass
 
 class HE2_WaterPipeSegment():
-    def __init__(self):
-        self.fluid = HE2_DummyWater()
-        self.inner_diam_m = None
-        self.roughness_m = None
-        self.L_m = None
-        self.delta_H_m = None
+    def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, slope_m=None):
+        if fluid is None:
+            fluid = HE2_DummyWater()
+        self.fluid = fluid
+        self.inner_diam_m = inner_diam_m
+        self.roughness_m = roughness_m
+        self.L_m = L_m
+        self.slope_m = slope_m
 
-    def decode_direction(self, unifloc_direction, flow_sign):
-#TODO Manage signs
-        return 1, 1, 1
+    def decode_direction(self, flow, unifloc_direction):
+        assert unifloc_direction == -1, 'not impl!'
+        grav_sign = -1
+        fric_sign = np.sign(flow)
+        t_sign = 1
+        return grav_sign, fric_sign, t_sign
 
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec):
         assert X_kgsec >= 0
+        if X_kgsec == 0:
+            return 0
         # Fluid.calc will be optimized at lower level. So we will call it every time
         self.fluid.calc(P_bar, T_C)
         Rho_kgm3 = self.fluid.rho_wat_kgm3
         mu_pasec = uc.cP2pasec(self.fluid.mu_wat_cp) # dynamic viscocity
         Q_m3sec = X_kgsec / Rho_kgm3
         D_m = self.inner_diam_m
-        Area_m2 = uc.pi*D_m**2
+        Area_m2 = uc.pi*D_m**2/4
         V_msec = Q_m3sec / Area_m2
         Re = Rho_kgm3 * V_msec * D_m / mu_pasec
         k_m = self.roughness_m
@@ -42,7 +49,7 @@ class HE2_WaterPipeSegment():
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec))
         dP_fric_Pa = P_fric_grad_Pam * self.L_m
         Rho_kgm3 = self.fluid.rho_wat_kgm3
-        dP_gravity_Pa = Rho_kgm3 * uc.g * self.delta_H_m
+        dP_gravity_Pa = Rho_kgm3 * uc.g * self.slope_m
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, unifloc_direction)
         P_drop_bar = uc.Pa2bar(grav_sign * dP_gravity_Pa + fric_sign * dP_fric_Pa)
         P_rez_bar = P_bar - P_drop_bar
