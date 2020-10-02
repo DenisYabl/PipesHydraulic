@@ -55,9 +55,9 @@ class TestWaterPipeSegment(unittest.TestCase):
     #     self.assertAlmostEqual(t, 20)
     #
     def test_5(self):
-        xs = [0.01, 0.1, 1, 10, 100]
-        ds = [0.05, 0.1, 0.25, 0.5]
-        rs = [0, 5e-6, 1e-5, 5e-5, 1e-4]
+        xs = [1, 0.01, 0.1, 10, 100]
+        ds = [0.1, 0.05, 0.25, 0.5]
+        rs = [1e-5, 0, 5e-6, 5e-5, 1e-4]
         conditions = product(xs, ds, rs)
         max_bias = 0
         for x, d, r in conditions:
@@ -86,6 +86,49 @@ class TestWaterPipeSegment(unittest.TestCase):
             if bias > max_bias:
                 max_bias = bias
         self.assertLess(max_bias, 0.1)
+
+    def test_6(self):
+        p0_bar = 50
+        t0_C = 20
+        pipe = HE2_WaterPipeSegment()
+        pipe.inner_diam_m = 0.05
+        pipe.roughness_m = 1e-5
+        pipe.L_m = 100
+
+        pipe.downhill_m = 0
+        x_kgs = 10
+        p_fwd_0, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        pipe.downhill_m = 10
+        x_kgs = 10
+        p_fwd_downhill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        pipe.downhill_m = -10
+        x_kgs = 10
+        p_fwd_uphill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        pipe.downhill_m = 0
+        x_kgs = -10
+        p_back_0, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        pipe.downhill_m = 10
+        x_kgs = -10
+        p_back_downhill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        pipe.downhill_m = -10
+        x_kgs = -10
+        p_back_uphill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        p10m_bar = uc. Pa2bar(9.81 * 10 * 1000)
+        self.assertAlmostEqual(p_fwd_downhill, p_fwd_0 + p10m_bar, 3)
+        self.assertAlmostEqual(p_fwd_uphill, p_fwd_0 - p10m_bar, 3)
+
+        self.assertAlmostEqual(p_back_downhill, p_back_0 + p10m_bar, 3)
+        self.assertAlmostEqual(p_back_uphill, p_back_0 - p10m_bar, 3)
+
+        self.assertAlmostEqual(p_back_0 + p_fwd_0, 2*p0_bar, 3)
+        self.assertAlmostEqual(p_back_downhill + p_fwd_uphill, 2*p0_bar, 3)
+        self.assertAlmostEqual(p_back_uphill + p_fwd_downhill, 2*p0_bar, 3)
 
 
 if __name__ == "__main__":
