@@ -8,14 +8,14 @@ class HE2_Pipe():
     pass
 
 class HE2_WaterPipeSegment():
-    def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, slope_m=None):
+    def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, downhill_m=None):
         if fluid is None:
             fluid = HE2_DummyWater()
         self.fluid = fluid
         self.inner_diam_m = inner_diam_m
         self.roughness_m = roughness_m
         self.L_m = L_m
-        self.slope_m = slope_m
+        self.downhill_m = downhill_m
 
     def decode_direction(self, flow, unifloc_direction):
         assert unifloc_direction == -1, 'not impl!'
@@ -52,7 +52,7 @@ class HE2_WaterPipeSegment():
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec))
         dP_fric_Pa = P_fric_grad_Pam * self.L_m
         Rho_kgm3 = self.fluid.rho_wat_kgm3
-        dP_gravity_Pa = Rho_kgm3 * uc.g * self.slope_m
+        dP_gravity_Pa = Rho_kgm3 * uc.g * self.downhill_m
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, unifloc_direction)
         P_drop_bar = uc.Pa2bar(grav_sign * dP_gravity_Pa + fric_sign * dP_fric_Pa)
         P_rez_bar = P_bar - P_drop_bar
