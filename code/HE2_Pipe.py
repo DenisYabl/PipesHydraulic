@@ -38,7 +38,10 @@ class HE2_WaterPipeSegment():
         V_msec = Q_m3sec / Area_m2
         Re = Rho_kgm3 * V_msec * D_m / mu_pasec
         k_m = self.roughness_m
-        lambda_fr = 0.11 * (k_m/D_m + 68.5/Re) ** 0.25
+        if Re < 2300:
+            lambda_fr = 68/ Re
+        else:
+            lambda_fr = 0.11 * (k_m/D_m + 68.5/Re) ** 0.25
         P_fric_grad_Pam = 0.5 * lambda_fr * V_msec**2 * Rho_kgm3 / D_m
         return P_fric_grad_Pam
 
