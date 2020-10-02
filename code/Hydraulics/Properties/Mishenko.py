@@ -168,7 +168,8 @@ class Mishenko:
                 shiftvelocity = 8 * wm / tubing["IntDiameter"]
                 A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
                 B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
-                CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
+                if VolumeWater < 1:
+                    CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
             else:
                 CurrentLiquidDensity = VolumeWater * PlastWaterDensity + (1 - VolumeWater) * SepOilDensity
                 mixture_type = "oil_water"
