@@ -5,9 +5,14 @@ import uniflocpy.uWell.uPipe as uPipe
 import uniflocpy.uTools.uconst as uc
 import Hydraulics.Methodics.Mukherjee_Brill as mb
 import Hydraulics.Properties.Mishenko as msch
+from HE2_Solver import HE2_Solver
+from HE2_Fluid import HE2_DummyWater
+import HE2_Vertices as vrtxs
 from itertools import product
+from functools import reduce
+import networkx as nx
 
-class TestWaterPipeSegment(unittest.TestCase):
+class TestWaterPipe(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -119,6 +124,35 @@ class TestWaterPipeSegment(unittest.TestCase):
         p2, t2 = pipeline.perform_calc(p0_bar, t0_C, x_kgs)
         self.assertEqual(p1, p2)
         self.assertEqual(t1, t2)
+
+class TestWaterNet(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_1(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 1000))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 1000))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.MultiDiGraph() # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        # for n in G.nodes:
+        #     print(G.nodes[n])
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([100], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+
+        # for u,v,k in G.edges:
+        #     print(G[u][v][k]['obj'])
+
+        solver = HE2_Solver(G)
+        solver.solve()
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()
