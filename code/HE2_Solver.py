@@ -1,22 +1,17 @@
 import numpy as np
 import networkx as nx
 import scipy.optimize as scop
+from HE2_SpecialEdges import HE2_DummyEdge
+import HE2_Vertices as vrtxs
 
 
 class HE2_Solver():
 
-    def __init__(self):
-        pass
+    def __init__(self, schema):
+        self.schema = schema
 
-    def solve(self, task):
-        self.schema = task.schema
-        self.fluids = task.fluids
-        self.graph = task.schema.graph
-        self.boundaries = task.boundaries
-        self.attach_fluids_to_inlets()
-        self.attach_boundaries_to_nodes()
+    def solve(self):
         self.add_root_to_graph()
-
         self.Q = self.build_Q_vec()
         self.span_tree, self.chordes = self.split_graph()
         self.tiers = self.build_tiers(self.span_tree)
@@ -49,15 +44,18 @@ class HE2_Solver():
         return None, None
 
     def add_root_to_graph(self):
-        pass
+        G = nx.MultiDiGraph(self.schema)
+        G.add_node('Root', obj=None)
+        for n in G.nodes:
+            obj = G.nodes[n]['obj']
+            if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
+                new_obj = vrtxs.HE2_ABC_GraphVertex()
+                G.nodes[n]['obj'] = new_obj
+                G.add_edge('Root', n, obj=HE2_DummyEdge(obj.value))
 
-    def attach_fluids_to_inlets(self):
-        pass
 
-    def attach_boundaries_to_nodes(self):
-        pass
 
-    def build_Q_vec(selfself):
+    def build_Q_vec(self):
         pass
 
     def evalute_tier_pressure_drop(self, edges, p, x, fluids):
