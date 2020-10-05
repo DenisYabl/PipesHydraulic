@@ -601,8 +601,15 @@ def cP2pasec(value):
 def grad2rad(value):
     """
     converts angle
-    :param value: angle in grad
+    :param value: angle in degrees
     :return: angle in rad
     """
     return value * pi / 180
 
+def rad2grad(value):
+    """
+    converts angle
+    :param value: angle in radians
+    :return: angle in degrees
+    """
+    return value * 180 / pi
