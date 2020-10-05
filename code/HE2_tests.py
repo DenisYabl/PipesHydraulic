@@ -1,5 +1,6 @@
 import unittest
 from HE2_Pipe import HE2_WaterPipeSegment
+from HE2_Pipe import HE2_WaterPipe
 import uniflocpy.uWell.uPipe as uPipe
 import uniflocpy.uTools.uconst as uc
 import Hydraulics.Methodics.Mukherjee_Brill as mb
@@ -10,50 +11,6 @@ class TestWaterPipeSegment(unittest.TestCase):
     def setUp(self):
         pass
 
-    # def test_1(self):
-    #     pipe = HE2_WaterPipeSegment()
-    #     pipe.inner_diam_m = 0.1
-    #     pipe.roughness_m = 1e-5
-    #     pipe.L_m = 100
-    #     pipe.slope_m = 0
-    #
-    #     p, t = pipe.perform_calc(50, 20, 100)
-    #     self.assertAlmostEqual(p, 49.99978631383106)
-    #     self.assertAlmostEqual(t, 20)
-    #
-    # def test_2(self):
-    #     pipe = HE2_WaterPipeSegment()
-    #     pipe.inner_diam_m = 0.1
-    #     pipe.roughness_m = 1e-5
-    #     pipe.L_m = 100
-    #     pipe.slope_m = 0
-    #
-    #     p, t = pipe.perform_calc(50, 20, -1)
-    #     self.assertAlmostEqual(p, 50.0002, 4)
-    #     self.assertAlmostEqual(t, 20)
-    #
-    # def test_3(self):
-    #     pipe = HE2_WaterPipeSegment()
-    #     pipe.inner_diam_m = 0.1
-    #     pipe.roughness_m = 1e-5
-    #     pipe.L_m = 100
-    #     pipe.slope_m = 10
-    #
-    #     p, t = pipe.perform_calc(50, 20, 0)
-    #     self.assertAlmostEqual(p, 50.98, 2)
-    #     self.assertAlmostEqual(t, 20)
-    #
-    # def test_4(self):
-    #     pipe = HE2_WaterPipeSegment()
-    #     pipe.inner_diam_m = 0.1
-    #     pipe.roughness_m = 1e-5
-    #     pipe.L_m = 100
-    #     pipe.slope_m = 10
-    #
-    #     p, t = pipe.perform_calc(-50, 20, 0)
-    #     self.assertAlmostEqual(p, -49.02, 2)
-    #     self.assertAlmostEqual(t, 20)
-    #
     def test_5(self):
         xs = [1, 0.01, 0.1, 10, 100]
         ds = [0.1, 0.05, 0.25, 0.5]
@@ -67,8 +24,6 @@ class TestWaterPipeSegment(unittest.TestCase):
             pipe = HE2_WaterPipeSegment()
             pipe.inner_diam_m = d
             pipe.roughness_m = r
-            # pipe.L_m = 100
-            # pipe.slope_m = 0
             p_grad = pipe.calc_P_friction_gradient_Pam(p0_bar, t0_C, x_kgs)
 
             Q_m3day = x_kgs * 86400 / pipe.fluid.rho_wat_kgm3
@@ -78,8 +33,6 @@ class TestWaterPipeSegment(unittest.TestCase):
             tubing = dict(IntDiameter=pipe.inner_diam_m, angle=90, Roughness=pipe.roughness_m)
             mishenko = msch.Mishenko.from_oil_params(oil_params, tubing)
             misch_grad = mb.calculate(mishenko, tubing)
-            # self.assertAlmostEqual(abs(misch_grad), p_grad, 1)
-            # print(x, d, r, p_grad, misch_grad)
             p_grad = abs(p_grad)
             misch_grad = abs(misch_grad)
             bias = 1 - min(p_grad, misch_grad)/max(p_grad, misch_grad)
@@ -95,27 +48,27 @@ class TestWaterPipeSegment(unittest.TestCase):
         pipe.roughness_m = 1e-5
         pipe.L_m = 100
 
-        pipe.downhill_m = 0
+        pipe.uphill_m = 0
         x_kgs = 10
         p_fwd_0, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
-        pipe.downhill_m = 10
+        pipe.uphill_m = -10
         x_kgs = 10
         p_fwd_downhill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
-        pipe.downhill_m = -10
+        pipe.uphill_m = 10
         x_kgs = 10
         p_fwd_uphill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
-        pipe.downhill_m = 0
+        pipe.uphill_m = 0
         x_kgs = -10
         p_back_0, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
-        pipe.downhill_m = 10
+        pipe.uphill_m = -10
         x_kgs = -10
         p_back_downhill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
-        pipe.downhill_m = -10
+        pipe.uphill_m = 10
         x_kgs = -10
         p_back_uphill, t = pipe.perform_calc(p0_bar, t0_C, x_kgs)
 
@@ -130,6 +83,42 @@ class TestWaterPipeSegment(unittest.TestCase):
         self.assertAlmostEqual(p_back_downhill + p_fwd_uphill, 2*p0_bar, 3)
         self.assertAlmostEqual(p_back_uphill + p_fwd_downhill, 2*p0_bar, 3)
 
+    def test_7(self):
+        data = dict(dxs=[], dys = [], diams = [], rghs = [])
+        pipeline = HE2_WaterPipe(**data)
+        p0_bar, t0_C, x_kgs  = 50, 20, 10
+        p, t = pipeline.perform_calc(p0_bar, t0_C, x_kgs)
+        self.assertEqual(p0_bar, p)
+        self.assertEqual(t0_C, t)
+
+    def test_8(self):
+        p0_bar, t0_C, x_kgs  = 50, 20, 10
+        pipe = HE2_WaterPipeSegment()
+        pipe.inner_diam_m = 0.05
+        pipe.roughness_m = 1e-5
+        pipe.set_pipe_geometry(dx=100, dy=10)
+        p1, t1 = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        data = dict(dxs=[pipe.dx_m], dys = [pipe.uphill_m], diams = [pipe.inner_diam_m], rghs = [pipe.roughness_m])
+        pipeline = HE2_WaterPipe(**data)
+        p2, t2 = pipeline.perform_calc(p0_bar, t0_C, x_kgs)
+        self.assertEqual(p1, p2)
+        self.assertEqual(t1, t2)
+
+
+    def test_9(self):
+        p0_bar, t0_C, x_kgs  = 50, 20, 10
+        pipe = HE2_WaterPipeSegment()
+        pipe.inner_diam_m = 0.05
+        pipe.roughness_m = 1e-5
+        pipe.set_pipe_geometry(dx=100, dy=10)
+        p1, t1 = pipe.perform_calc(p0_bar, t0_C, x_kgs)
+
+        data = dict(dxs=[pipe.dx_m/2]*2, dys = [pipe.uphill_m/2]*2, diams = [pipe.inner_diam_m]*2, rghs = [pipe.roughness_m]*2)
+        pipeline = HE2_WaterPipe(**data)
+        p2, t2 = pipeline.perform_calc(p0_bar, t0_C, x_kgs)
+        self.assertEqual(p1, p2)
+        self.assertEqual(t1, t2)
 
 if __name__ == "__main__":
     unittest.main()

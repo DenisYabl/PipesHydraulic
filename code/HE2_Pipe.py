@@ -1,25 +1,48 @@
 import HE2_ABC as abc
 from HE2_Fluid import HE2_DummyWater
+from functools import reduce
 import uniflocpy.uTools.uconst as uc
 import numpy as np
 
-
-class HE2_Pipe():
-    pass
-
-class HE2_WaterPipeSegment():
-    def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, downhill_m=None):
+class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
+    def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
         if fluid is None:
             fluid = HE2_DummyWater()
         self.fluid = fluid
         self.inner_diam_m = inner_diam_m
         self.roughness_m = roughness_m
-        self.L_m = L_m
-        self.downhill_m = downhill_m
+        self.L_m = None
+        self.uphill_m = None
+        self.angle_dgr = None
+        self.dx_m = None
+        self.set_pipe_geometry(L=L_m, dy=uphill_m)
+
+    def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
+        if dx is not None and dy is not None:
+            L = (dx*dx + dy*dy) ** 0.5
+        elif L is not None and angle is not None:
+            dy = L * np.sin(uc.grad2rad(angle))
+        elif L is not None and dx is not None:
+            assert False, 'Cannot define sign of dY'
+        elif L is not None and dy is not None:
+            pass
+        elif dx is not None and angle is not None:
+            assert dx > 0
+            dy = dx * np.tan(uc.grad2rad(angle))
+            L = (dx * dx + dy * dy) ** 0.5
+        elif dy is not None and angle is not None:
+            L = abs(dy / np.sin(uc.grad2rad(angle)))
+        else:
+            return
+
+        self.L_m = L
+        self.uphill_m = dy
+        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
+        self.dx_m = (L*L - dy*dy) ** 0.5
 
     def decode_direction(self, flow, unifloc_direction):
         assert unifloc_direction == -1, 'not impl!'
-        grav_sign = -1
+        grav_sign = 1
         fric_sign = np.sign(flow)
         t_sign = 1
         return grav_sign, fric_sign, t_sign
@@ -52,7 +75,7 @@ class HE2_WaterPipeSegment():
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec))
         dP_fric_Pa = P_fric_grad_Pam * self.L_m
         Rho_kgm3 = self.fluid.rho_wat_kgm3
-        dP_gravity_Pa = Rho_kgm3 * uc.g * self.downhill_m
+        dP_gravity_Pa = Rho_kgm3 * uc.g * self.uphill_m
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, unifloc_direction)
         P_drop_bar = uc.Pa2bar(grav_sign * dP_gravity_Pa + fric_sign * dP_fric_Pa)
         P_rez_bar = P_bar - P_drop_bar
@@ -60,3 +83,16 @@ class HE2_WaterPipeSegment():
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         return P_rez_bar, T_rez_C
 
+
+class HE2_WaterPipe(abc.HE2_ABC_Pipeline):
+    def __init__(self, dxs, dys, diams, rghs):
+        self.segments = []
+        for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
+            seg = HE2_WaterPipeSegment(None, diam, rgh)
+            seg.set_pipe_geometry(dx, dy)
+            self.segments += [seg]
+
+    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction=-1):
+        func = lambda pt, seg: seg.perform_calc(*pt, X_kgsec, unifloc_direction)
+        p, t = reduce(func, self.segments, (P_bar, T_C))
+        return p, t
