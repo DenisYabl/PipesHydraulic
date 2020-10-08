@@ -5,6 +5,7 @@ class HE2_Boundary_Vertex(HE2_ABC_GraphVertex):
     def __init__(self, kind, value):
         self.kind = kind
         self.value = value
+        self.is_source = False
 
 
 class HE2_Source_Vertex(HE2_Boundary_Vertex):
@@ -12,3 +13,4 @@ class HE2_Source_Vertex(HE2_Boundary_Vertex):
         super().__init__(kind, value)
         self.fluid = fluid
         self.T = T
+        self.is_source = True

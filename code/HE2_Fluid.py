@@ -6,6 +6,9 @@ class HE2_DummyWater(HE2_ABC_Fluid):
         self.rho_wat_kgm3 = 1000
         self.mu_wat_cp = 1
 
+    def calc(self, P_bar, T_C):
+        pass
+
 
 if __name__ == '__main__':
     fl = HE2_DummyWater()
