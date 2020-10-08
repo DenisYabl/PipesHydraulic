@@ -84,7 +84,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         return P_rez_bar, T_rez_C
 
 
-class HE2_WaterPipe(abc.HE2_ABC_Pipeline):
+class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
