@@ -21,7 +21,7 @@ class HE2_Solver():
         self.A_tree = self.buildTreeIncMatrix()
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q = self.build_Q_vec(self.graph)
-        x = np.matmul(self.A_inv, self.Q)
+        x = np.matmul(self.A_inv, self.Q).flatten()
         self.tree_x = dict(zip(self.a_tree_edgelist, x))
         self.evalute_pressures_by_tree()
 

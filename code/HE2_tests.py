@@ -129,10 +129,10 @@ class TestWaterNet(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_1(self):
+    def test_10(self):
         inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
-        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 1000))
-        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 1000))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
         juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
 
         G = nx.DiGraph() # Di = directed
@@ -142,9 +142,9 @@ class TestWaterNet(unittest.TestCase):
         # for n in G.nodes:
         #     print(G.nodes[n])
 
-        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([100], [10], [0.1], [1e-5]))
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
         G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
-        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
 
         # for u,v,k in G.edges:
         #     print(G[u][v][k]['obj'])
