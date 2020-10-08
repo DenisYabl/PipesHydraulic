@@ -26,6 +26,7 @@ class HE2_Solver():
 
         # self.tiers = self.build_tiers(self.span_tree)
         self.A_chordes = nx.incidence_matrix(self.chordes)
+        return
 
         def target(x_chordes):
             assert(len(x_chordes) == len(self.chordes))
@@ -122,7 +123,7 @@ class HE2_Solver():
             obj = self.graph[u][v][k]['obj']
             assert isinstance(obj, abc.HE2_ABC_GraphEdge)
             p_u, t_u = pt[u]
-            x = self.tree_x[(u,v,k)]
+            x = self.tree_x[(u,v)]
             p_v, t_v = obj.perform_calc(p_u, t_u, x)
             pt[v] = (p_v, t_v)
         self.pt = pt
