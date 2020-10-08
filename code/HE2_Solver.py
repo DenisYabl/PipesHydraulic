@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
 import scipy.optimize as scop
-from HE2_SpecialEdges import HE2_DummyEdge
+from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import networkx.algorithms.operators.binary as bool_ops
 import scipy.sparse
@@ -11,6 +11,7 @@ import HE2_ABC as abc
 Root = 'Root'
 class HE2_Solver():
     def __init__(self, schema):
+        #TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
 
@@ -50,7 +51,7 @@ class HE2_Solver():
         pass
 
     def split_graph(self, graph):
-        G = nx.MultiGraph(graph)
+        G = nx.Graph(graph)
 
         t_ = nx.minimum_spanning_tree(G)
         self.tree_travers = list(nx.algorithms.traversal.edgebfs.edge_bfs(t_, Root))
@@ -60,20 +61,20 @@ class HE2_Solver():
         ce_ = set(c_.edges())
 
         assert len(te_ & ce_) == 0
-        T = nx.MultiDiGraph([e for e in G.edges() if e in te_ or reversed(e) in te_])
-        C = nx.MultiDiGraph([e for e in G.edges() if e in ce_ or reversed(e) in ce_])
+        T = nx.DiGraph([e for e in G.edges() if e in te_ or reversed(e) in te_])
+        C = nx.DiGraph([e for e in G.edges() if e in ce_ or reversed(e) in ce_])
 
         return T, C
 
     def add_root_to_graph(self):
-        G = nx.MultiDiGraph(self.schema)
+        G = nx.DiGraph(self.schema)
         G.add_node(Root, obj=None)
         for n in G.nodes:
             obj = G.nodes[n]['obj']
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
                 new_obj = vrtxs.HE2_ABC_GraphVertex()
                 G.nodes[n]['obj'] = new_obj
-                G.add_edge(Root, n, obj=HE2_DummyEdge(obj.value))
+                G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
         return G
 
 
@@ -119,9 +120,10 @@ class HE2_Solver():
     def evalute_pressures_by_tree(self):
         pt = dict()
         pt[Root] = (0, 20) #TODO: get initial T from some source
-        for u,v,k in self.tree_travers:
-            obj = self.graph[u][v][k]['obj']
-            assert isinstance(obj, abc.HE2_ABC_GraphEdge)
+        for u,v in self.tree_travers:
+            obj = self.graph[u][v]['obj']
+            if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                assert False
             p_u, t_u = pt[u]
             x = self.tree_x[(u,v)]
             p_v, t_v = obj.perform_calc(p_u, t_u, x)

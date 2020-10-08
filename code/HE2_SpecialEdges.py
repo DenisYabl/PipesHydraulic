@@ -1,6 +1,6 @@
 import HE2_ABC as abc
 
-class HE2_DummyEdge(abc.HE2_ABC_GraphEdge):
+class HE2_MockEdge(abc.HE2_ABC_GraphEdge):
     def __init__(self, P):
         self.P = P
 

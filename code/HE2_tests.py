@@ -135,7 +135,7 @@ class TestWaterNet(unittest.TestCase):
         outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 1000))
         juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
 
-        G = nx.MultiDiGraph() # Di = directed
+        G = nx.DiGraph() # Di = directed
         for k, v in {**inlets, **outlets, **juncs}.items():
             G.add_node(k, obj=v)
 
