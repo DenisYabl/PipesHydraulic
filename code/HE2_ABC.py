@@ -1,11 +1,16 @@
 from abc import ABC
+from abc import abstractmethod
+
 
 class HE2_ABC_Fluid(ABC):
+    @abstractmethod
     def calc(self, P_bar, T_C):
         pass
 
 class HE2_ABC_GraphEdge(ABC):
-    pass
+    @abstractmethod
+    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction=-1):
+        pass
 
 class HE2_ABC_GraphVertex(ABC):
     pass
