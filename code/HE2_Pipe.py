@@ -87,12 +87,18 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
 class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []
+        self.internal_results = []
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_WaterPipeSegment(None, diam, rgh)
             seg.set_pipe_geometry(dx, dy)
             self.segments += [seg]
 
+    def calc_segment(self, pt, seg, X_kgsec, unifloc_direction=-1):
+        p, t =  seg.perform_calc(*pt, X_kgsec, unifloc_direction)
+        self.internal_results += [(p, t)]
+        return p, t
+
     def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction=-1):
-        func = lambda pt, seg: seg.perform_calc(*pt, X_kgsec, unifloc_direction)
+        func = lambda pt, seg: self.calc_segment(pt, seg, X_kgsec, unifloc_direction)
         p, t = reduce(func, self.segments, (P_bar, T_C))
         return p, t
