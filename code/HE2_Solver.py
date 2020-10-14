@@ -9,6 +9,7 @@ import HE2_ABC as abc
 
 
 Root = 'Root'
+
 class HE2_Solver():
     def __init__(self, schema):
         #TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
@@ -18,16 +19,18 @@ class HE2_Solver():
     def solve(self):
         self.graph = self.add_root_to_graph()
         self.span_tree, self.chordes = self.split_graph(self.graph)
+        self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree = self.buildTreeIncMatrix()
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q = self.build_Q_vec(self.graph)
         x = np.matmul(self.A_inv, self.Q).flatten()
         self.tree_x = dict(zip(self.a_tree_edgelist, x))
-        self.evalute_pressures_by_tree()
-
-        # self.tiers = self.build_tiers(self.span_tree)
-        self.A_chordes = nx.incidence_matrix(self.chordes)
+        self.pt_on_tree =  self.evalute_pressures_by_tree()
+        self.attach_results_to_schema()
         return
+
+        self.tiers = self.build_tiers(self.span_tree)
+        self.A_chordes = nx.incidence_matrix(self.chordes)
 
         def target(x_chordes):
             assert(len(x_chordes) == len(self.chordes))
@@ -50,23 +53,41 @@ class HE2_Solver():
     def build_tiers(self, tree):
         pass
 
+    def build_tree_travers(self, di_tree, root):
+        di_edges = set(di_tree.edges())
+        undirected_tree = nx.Graph(di_tree)
+        tree_travers = []
+        for u, v in nx.algorithms.traversal.edgebfs.edge_bfs(undirected_tree, root):
+            if (u, v) in di_edges:
+                tree_travers += [(u, v, 1)]
+            else:
+                assert (v, u) in di_edges
+                tree_travers += [(u, v, -1)] # Sic! (u, v), not (v, u)
+        return tree_travers
+
+
     def split_graph(self, graph):
         G = nx.Graph(graph)
 
         t_ = nx.minimum_spanning_tree(G)
-        self.tree_travers = list(nx.algorithms.traversal.edgebfs.edge_bfs(t_, Root))
         te_ = set(t_.edges())
 
-        c_ = bool_ops.difference(G, t_)
-        ce_ = set(c_.edges())
+        tl, cl = [], []
+        for u, v in self.graph.edges():
+            if (u, v) in te_ or (v, u) in te_:
+                tl += [(u, v)]
+            else:
+                cl += [(u, v)]
 
-        assert len(te_ & ce_) == 0
-        T = nx.DiGraph([e for e in G.edges() if e in te_ or reversed(e) in te_])
-        C = nx.DiGraph([e for e in G.edges() if e in ce_ or reversed(e) in ce_])
+        T = nx.DiGraph(tl)
+        C = nx.DiGraph(cl)
+        assert len(T.edges()) + len(C.edges()) == len(self.graph.edges())
 
         return T, C
 
     def add_root_to_graph(self):
+        self.mock_nodes = [Root]
+        self.mock_edges = []
         G = nx.DiGraph(self.schema)
         G.add_node(Root, obj=None)
         for n in G.nodes:
@@ -75,6 +96,7 @@ class HE2_Solver():
                 new_obj = vrtxs.HE2_ABC_GraphVertex()
                 G.nodes[n]['obj'] = new_obj
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
+                self.mock_edges += [(Root, n)]
         return G
 
 
@@ -90,19 +112,6 @@ class HE2_Solver():
         return rez
 
     def buildTreeIncMatrix(self):
-        # G = self.span_tree
-        # for n in G.nodes:
-        #     print(n)
-        # for idx in G.edges:
-        #     print(idx)
-        #
-        # print('-'*80)
-        # G = self.graph
-        # for n in G.nodes:
-        #     print(n)
-        # for idx in G.edges:
-        #     print(idx)
-
         nodelist = list(self.graph.nodes)
         assert nodelist[-1] == Root
         te_ = set(self.span_tree.edges())
@@ -120,19 +129,45 @@ class HE2_Solver():
     def evalute_pressures_by_tree(self):
         pt = dict()
         pt[Root] = (0, 20) #TODO: get initial T from some source
-        for u,v in self.tree_travers:
+        # for u, v, direction in self.tree_travers:
+        #     print(u, v, direction)
+        #
+        # print('-'*80)
+        # for u,v in self.span_tree.edges:
+        #     print(u, v)
+        #
+        # print('-'*80)
+        # for u,v in self.graph.edges:
+        #     print(u, v)
+
+        for u, v, direction in self.tree_travers:
             obj = self.graph[u][v]['obj']
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
             p_u, t_u = pt[u]
             x = self.tree_x[(u,v)]
-            p_v, t_v = obj.perform_calc(p_u, t_u, x)
+            if direction == 1:
+                p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
+            else:
+                p_v, t_v = obj.perform_calc_backward(p_u, t_u, x)
             pt[v] = (p_v, t_v)
-        self.pt = pt
+        return pt
 
+    def attach_results_to_schema(self):
+        for u, pt in self.pt_on_tree.items():
+            if u in self.mock_nodes:
+                continue
+            obj = self.schema.nodes[u]['obj']
+            obj.result = dict(P_bar=pt[0], T_C=pt[1])
+        for u,v in self.schema.edges:
+            obj = self.schema[u][v]['obj']
+            x = None
+            if (u,v) in self.tree_x:
+                x = self.tree_x[(u, v)]
+            # elif (u, v) in self.chord_x:
+            #     x = self.chord_x[(u, v)]
+
+            obj.result = dict(x=x)
 
     def evalute_tier_pressure_drop(self, edges, p, x, fluids):
-        pass
-
-    def restore_fluids(self, Q, x):
         pass

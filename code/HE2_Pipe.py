@@ -5,6 +5,12 @@ import uniflocpy.uTools.uconst as uc
 import numpy as np
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
+    '''
+    Чтобы не запутаться в будущем.
+    PipeSegment не должен быть ребром графа и не обязан поддерживать интерфейс HE2_ABC_GraphEdge
+    Но поскольку сгемент трубы все равно является трубой, только лишь простой, то есть потребность считать ее в обе стороны.
+    Поэтому она умеет считать в обе стороны, но интерфейс для этого отличается, здесь используется calc_direction in [-1,+1]
+    '''
     def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
         if fluid is None:
             fluid = HE2_DummyWater()
@@ -40,11 +46,24 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
         self.dx_m = (L*L - dy*dy) ** 0.5
 
-    def decode_direction(self, flow, unifloc_direction):
-        assert unifloc_direction == -1, 'not impl!'
-        grav_sign = 1
-        fric_sign = np.sign(flow)
-        t_sign = 1
+    def decode_direction(self, flow, calc_direction, unifloc_direction):
+        '''
+        :param unifloc_direction - направление расчета и потока относительно  координат.
+            11 расчет и поток по координате
+            10 расчет по координате, поток против
+            00 расчет и поток против координаты
+            00 расчет против координаты, поток по координате
+            unifloc_direction перекрывает переданные flow, calc_direction
+        '''
+        flow_direction = np.sign(flow)
+        if unifloc_direction in [0, 1, 10, 11]:
+            calc_direction = 1 if unifloc_direction >= 10 else -1
+            flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+
+        assert calc_direction in [-1, 1]
+        grav_sign = calc_direction
+        fric_sign = flow_direction * calc_direction
+        t_sign = calc_direction
         return grav_sign, fric_sign, t_sign
 
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec):
@@ -71,12 +90,12 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
         return 0
 
-    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction=-1):
+    def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec))
         dP_fric_Pa = P_fric_grad_Pam * self.L_m
         Rho_kgm3 = self.fluid.rho_wat_kgm3
         dP_gravity_Pa = Rho_kgm3 * uc.g * self.uphill_m
-        grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, unifloc_direction)
+        grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         P_drop_bar = uc.Pa2bar(grav_sign * dP_gravity_Pa + fric_sign * dP_fric_Pa)
         P_rez_bar = P_bar - P_drop_bar
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
@@ -87,18 +106,33 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
 class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []
-        self.internal_results = []
+        self.intermediate_results = []
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_WaterPipeSegment(None, diam, rgh)
             seg.set_pipe_geometry(dx, dy)
             self.segments += [seg]
 
-    def calc_segment(self, pt, seg, X_kgsec, unifloc_direction=-1):
-        p, t =  seg.perform_calc(*pt, X_kgsec, unifloc_direction)
-        self.internal_results += [(p, t)]
+
+    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction):
+        assert unifloc_direction in [0, 1, 10, 11]
+        calc_direction = 1 if unifloc_direction >= 10 else -1
+        flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+        if calc_direction == 1:
+            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec))
+        else:
+            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
+
+    def perform_calc_forward(self, P_bar, T_C, X_kgsec):
+        p, t = P_bar, T_C
+        for seg in self.segments:
+            p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
+            self.intermediate_results += [(p, t)]
         return p, t
 
-    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction=-1):
-        func = lambda pt, seg: self.calc_segment(pt, seg, X_kgsec, unifloc_direction)
-        p, t = reduce(func, self.segments, (P_bar, T_C))
+    def perform_calc_backward(self, P_bar, T_C, X_kgsec):
+        p, t = P_bar, T_C
+        for seg in self.segments[::-1]:
+            p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
+            self.intermediate_results += [(p, t)]
         return p, t
+
