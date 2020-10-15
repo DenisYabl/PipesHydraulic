@@ -163,6 +163,39 @@ class TestWaterPipe(unittest.TestCase):
                 self.assertAlmostEqual(t0_C, t2)
 
 
+    def test_12(self):
+        gr = 98066 * 10**-5
+        fr = 6648 * 10**-5
+        p0_bar, t0_C  = 50, 20
+        pipe_up = HE2_WaterPipeSegment()
+        pipe_up.inner_diam_m = 0.05
+        pipe_up.roughness_m = 1e-5
+        pipe_up.set_pipe_geometry(dx=100, dy=10)
+
+        p, t = pipe_up.calc_segment_pressure_drop(p0_bar, t0_C, 1, 1)
+        self.assertAlmostEqual(p, p0_bar - gr - fr, 4)
+        p, t = pipe_up.calc_segment_pressure_drop(p0_bar, t0_C, -1, 1)
+        self.assertAlmostEqual(p, p0_bar - gr + fr, 4)
+        p, t = pipe_up.calc_segment_pressure_drop(p0_bar, t0_C, 1, -1)
+        self.assertAlmostEqual(p, p0_bar + gr + fr, 4)
+        p, t = pipe_up.calc_segment_pressure_drop(p0_bar, t0_C, -1, -1)
+        self.assertAlmostEqual(p, p0_bar + gr - fr, 4)
+
+        pipe_down = HE2_WaterPipeSegment()
+        pipe_down.inner_diam_m = 0.05
+        pipe_down.roughness_m = 1e-5
+        pipe_down.set_pipe_geometry(dx=100, dy=-10)
+
+        p, t = pipe_down.calc_segment_pressure_drop(p0_bar, t0_C, 1, 1)
+        self.assertAlmostEqual(p, p0_bar + gr - fr, 4)
+        p, t = pipe_down.calc_segment_pressure_drop(p0_bar, t0_C, -1, 1)
+        self.assertAlmostEqual(p, p0_bar + gr + fr, 4)
+        p, t = pipe_down.calc_segment_pressure_drop(p0_bar, t0_C, 1, -1)
+        self.assertAlmostEqual(p, p0_bar - gr + fr, 4)
+        p, t = pipe_down.calc_segment_pressure_drop(p0_bar, t0_C, -1, -1)
+        self.assertAlmostEqual(p, p0_bar - gr - fr, 4)
+
+
 class TestWaterNet(unittest.TestCase):
     def setUp(self):
         pass
@@ -219,7 +252,6 @@ class TestWaterNet(unittest.TestCase):
 
 
     def test_11(self):
-        return
         inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
         outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
         outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
@@ -229,9 +261,9 @@ class TestWaterNet(unittest.TestCase):
         for k, v in {**inlets, **outlets, **juncs}.items():
             G.add_node(k, obj=v)
 
-        G.add_edge('junc_0', 'KNS_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
-        G.add_edge('well_0', 'junc_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
-        G.add_edge('well_1', 'junc_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'KNS_0', obj=HE2_WaterPipe([300], [-10], [0.1], [1e-5]))
+        G.add_edge('well_0', 'junc_0', obj=HE2_WaterPipe([200], [-10], [0.1], [1e-5]))
+        G.add_edge('well_1', 'junc_0', obj=HE2_WaterPipe([200], [-10], [0.1], [1e-5]))
 
         solver = HE2_Solver(G)
         solver.solve()
@@ -249,6 +281,9 @@ class TestWaterNet(unittest.TestCase):
         G2.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
         G2.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
 
+        solver = HE2_Solver(G2)
+        solver.solve()
+
         for n in G.nodes:
             res1 = G.nodes[n]['obj'].result
             res2 = G2.nodes[n]['obj'].result
@@ -257,13 +292,13 @@ class TestWaterNet(unittest.TestCase):
 
         for u,v in G.edges:
             res1 = G[u][v]['obj'].result
-            res2 = G[v][u]['obj'].result
+            res2 = G2[v][u]['obj'].result
             self.assertAlmostEqual(res1['x'], -res2['x'])
 
 
 
 if __name__ == "__main__":
     # pipe_test = TestWaterPipe()
-    # pipe_test.test_9()
+    # pipe_test.test_12()
 
     unittest.main()
