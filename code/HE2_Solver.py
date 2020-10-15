@@ -19,6 +19,8 @@ class HE2_Solver():
     def solve(self):
         self.graph = self.add_root_to_graph()
         self.span_tree, self.chordes = self.split_graph(self.graph)
+        # span_tree and chordes is a DiGraphs, which edges match with self.graph edges
+
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree = self.buildTreeIncMatrix()
         self.A_inv = np.linalg.inv(self.A_tree)
@@ -62,7 +64,7 @@ class HE2_Solver():
                 tree_travers += [(u, v, 1)]
             else:
                 assert (v, u) in di_edges
-                tree_travers += [(u, v, -1)] # Sic! (u, v), not (v, u)
+                tree_travers += [(v, u, -1)]
         return tree_travers
 
 
@@ -144,13 +146,18 @@ class HE2_Solver():
             obj = self.graph[u][v]['obj']
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
-            p_u, t_u = pt[u]
+            known, unknown = u, v
+            if v in pt:
+                known, unknown = v, u
+
+            assert not (unknown in pt)
+            p_kn, t_kn = pt[known]
             x = self.tree_x[(u,v)]
-            if direction == 1:
-                p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
+            if u == known:
+                p_unk, t_unk = obj.perform_calc_forward(p_kn, t_kn, x)
             else:
-                p_v, t_v = obj.perform_calc_backward(p_u, t_u, x)
-            pt[v] = (p_v, t_v)
+                p_unk, t_unk = obj.perform_calc_backward(p_kn, t_kn, x)
+            pt[unknown] = (p_unk, t_unk)
         return pt
 
     def attach_results_to_schema(self):
