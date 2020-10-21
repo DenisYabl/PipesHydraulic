@@ -18,39 +18,36 @@ class HE2_Solver():
 
     def solve(self):
         self.graph = self.add_root_to_graph()
+        self.N = len(self.graph)-1
         self.span_tree, self.chordes = self.split_graph(self.graph)
-        # span_tree and chordes is a DiGraphs, which edges match with self.graph edges
-
+        self.C = len(self.chordes.edges())
+        # span_tree and chordes are DiGraphs, which edges match with self.graph edges
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
-        self.A_tree = self.buildTreeIncMatrix()
+        self.A_tree, self.A_chordes = self.buildIncMatrices()
         self.A_inv = np.linalg.inv(self.A_tree)
-        self.Q = self.build_Q_vec(self.graph)
-        x = np.matmul(self.A_inv, self.Q).flatten()
-        self.tree_x = dict(zip(self.a_tree_edgelist, x))
-        self.pt_on_tree =  self.evalute_pressures_by_tree()
-        self.attach_results_to_schema()
-        return
-
-        self.tiers = self.build_tiers(self.span_tree)
-        self.A_chordes = nx.incidence_matrix(self.chordes)
+        self.Q_static = self.build_static_Q_vec(self.graph)
 
         def target(x_chordes):
-            assert(len(x_chordes) == len(self.chordes))
-            Q_iter = self.Q - self.A_chordes * x_chordes
-            x_tree = self.A_inv * Q_iter
-            x = np.concatenate(x_tree, x_chordes)
-            fluids = self.restore_fluids(Q_iter, x)
-            p = np.zeros(self.graph.nodes_count)
-            p[0] = self.boundaries.root_P
-            for tier in self.tiers:
-                p = self.evalute_tier_pressure_drop(tier, p, x, fluids)
-            p_ = self.evalute_tier_pressure_drop(self.chordes, p, x, fluids)
-            residual = np.sum(np.square(p_ - p))
-            return residual
+            Q = self.Q_static
+            if self.C:
+                Q_dynamic = np.matmul(self.A_chordes, x_chordes).flatten()
+                Q = Q - Q_dynamic
+            x = np.matmul(self.A_inv, Q).flatten()
+            self.tree_x = dict(zip(self.a_tree_edgelist, x))
+            self.pt_on_tree =  self.evalute_pressures_by_tree()
+            pt_residual_vec = self.evalute_chordes_pressure_residual(self.chordes, x_chordes, self.pt_on_tree)
+            rez = np.linalg.norm(pt_residual_vec)
+            return rez
 
-        x0 = np.zeros(len(self.chordes))
-        op_result = scop.minimize(target, x0, method='Nelder-Mead')
-        return op_result
+        if self.C:
+            x0 = np.zeros(self.C)
+            op_result = scop.minimize(target, x0, method='Nelder-Mead')
+            print(op_result)
+        else:
+            target(None)
+
+        self.attach_results_to_schema()
+        return
 
     def build_tiers(self, tree):
         pass
@@ -102,7 +99,7 @@ class HE2_Solver():
         return G
 
 
-    def build_Q_vec(self, G):
+    def build_static_Q_vec(self, G):
         n = len(G.nodes)
         q_vec = np.zeros(n-1)
         for i, node in enumerate(G.nodes):
@@ -113,34 +110,29 @@ class HE2_Solver():
         rez = q_vec.reshape((n-1, 1))
         return rez
 
-    def buildTreeIncMatrix(self):
+    def buildIncMatrices(self):
         nodelist = list(self.graph.nodes)
         assert nodelist[-1] == Root
         te_ = set(self.span_tree.edges())
-        edgelist =[]
+        tree_edgelist, chordes_edgelist = [], []
         for e in self.graph.edges():
             er = tuple(reversed(e))
             if e in te_ or er in te_:
-                edgelist += [e]
+                tree_edgelist += [e]
+            else:
+                chordes_edgelist += [e]
 
-        A_full = -1 * nx.incidence_matrix(self.span_tree, nodelist=nodelist, edgelist=edgelist, oriented=True).toarray()
+        A_full = -1 * nx.incidence_matrix(self.span_tree, nodelist=nodelist, edgelist=tree_edgelist, oriented=True).toarray()
         A_truncated = A_full[:-1]
-        self.a_tree_edgelist = edgelist
-        return A_truncated
+        self.a_tree_edgelist = tree_edgelist
+
+        A_chordes_full = -1 * nx.incidence_matrix(self.chordes, nodelist=nodelist, edgelist=chordes_edgelist, oriented=True).toarray()
+        A_chordes_truncated = A_chordes_full[:-1]
+        return A_truncated, A_chordes_truncated
 
     def evalute_pressures_by_tree(self):
         pt = dict()
         pt[Root] = (0, 20) #TODO: get initial T from some source
-        # for u, v, direction in self.tree_travers:
-        #     print(u, v, direction)
-        #
-        # print('-'*80)
-        # for u,v in self.span_tree.edges:
-        #     print(u, v)
-        #
-        # print('-'*80)
-        # for u,v in self.graph.edges:
-        #     print(u, v)
 
         for u, v, direction in self.tree_travers:
             obj = self.graph[u][v]['obj']
@@ -160,6 +152,23 @@ class HE2_Solver():
             pt[unknown] = (p_unk, t_unk)
         return pt
 
+    def evalute_chordes_pressure_residual(self, chordes, chordes_x, tree_pressure):
+        if (chordes is None) or (len(chordes)==0):
+            return 0
+        pt_u, pt_v = [], []
+        for x, (u, v) in zip(chordes_x, chordes.edges()):
+            obj = self.graph[u][v]['obj']
+            p_u, t_u = tree_pressure[u]
+            if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                assert False
+            p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
+            pt_v += [(p_v, t_v)]
+            pt_u += [(p_u, t_u)]
+        pt_v_vec = np.array(pt_v)
+        pt_u_vec = np.array(pt_u)
+        pt_residual_vec = pt_v_vec - pt_u_vec
+        return pt_residual_vec
+
     def attach_results_to_schema(self):
         for u, pt in self.pt_on_tree.items():
             if u in self.mock_nodes:
@@ -169,10 +178,10 @@ class HE2_Solver():
         for u,v in self.schema.edges:
             obj = self.schema[u][v]['obj']
             x = None
-            if (u,v) in self.tree_x:
+            if (u, v) in self.tree_x:
                 x = self.tree_x[(u, v)]
-            # elif (u, v) in self.chord_x:
-            #     x = self.chord_x[(u, v)]
+            elif (u, v) in self.chord_x:
+                x = self.chord_x[(u, v)]
 
             obj.result = dict(x=x)
 

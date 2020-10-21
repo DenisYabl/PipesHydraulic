@@ -295,10 +295,31 @@ class TestWaterNet(unittest.TestCase):
             res2 = G2[v][u]['obj'].result
             self.assertAlmostEqual(res1['x'], -res2['x'])
 
+    def test_12(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+        juncs.update(junc_1=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph() # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('junc_0', 'KNS_0', obj=HE2_WaterPipe([300], [-10], [0.1], [1e-5]))
+        G.add_edge('junc_1', 'KNS_0', obj=HE2_WaterPipe([300], [-10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'junc_1', obj=HE2_WaterPipe([300], [0], [0.1], [1e-5]))
+        G.add_edge('well_0', 'junc_0', obj=HE2_WaterPipe([200], [-10], [0.1], [1e-5]))
+        G.add_edge('well_1', 'junc_1', obj=HE2_WaterPipe([200], [-10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+
 
 
 if __name__ == "__main__":
-    # pipe_test = TestWaterPipe()
+    # pipe_test = TestWaterNet()
     # pipe_test.test_12()
 
     unittest.main()
