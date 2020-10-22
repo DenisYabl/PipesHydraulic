@@ -42,7 +42,9 @@ class HE2_Solver():
         if self.C:
             x0 = np.zeros(self.C)
             op_result = scop.minimize(target, x0, method='Nelder-Mead')
-            print(op_result)
+            self.chord_x = dict(zip(self.chordes.edges(), op_result.x))
+            # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когду они будут сохраняться
+            # А пока может быть так что давления от одной итерации, а потоки от другой
         else:
             target(None)
 
