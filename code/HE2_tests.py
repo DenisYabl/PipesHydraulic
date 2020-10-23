@@ -321,6 +321,7 @@ class TestWaterNet(unittest.TestCase):
         G = gen.generate_random_net_v0(randseed=42)
         solver = HE2_Solver(G)
         solver.solve()
+        solver.check_solution()
 
 
 

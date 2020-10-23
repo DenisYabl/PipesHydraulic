@@ -189,3 +189,18 @@ class HE2_Solver():
 
     def evalute_tier_pressure_drop(self, edges, p, x, fluids):
         pass
+
+    def check_solution(self):
+        G = self.schema
+        for (u, v) in G.edges():
+            edge_obj = G[u][v]['obj']
+            u_obj = G.nodes[u]['obj']
+            v_obj = G.nodes[v]['obj']
+            x = edge_obj.result['x']
+            p_u = u_obj.result['P_bar']
+            t_u = u_obj.result['T_C']
+            p_v = v_obj.result['P_bar']
+            t_v = v_obj.result['T_C']
+            p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
+            np.testing.assert_almost_equal(p, p_v)
+            np.testing.assert_almost_equal(t, t_v)
