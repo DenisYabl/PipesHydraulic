@@ -44,10 +44,17 @@ def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L
 
     nodes = {**p_nodes, **sources, **sinks, **juncs}
     mapping = dict(zip(range(len(nodes)), nodes.keys()))
-    RG = nx.generators.random_graphs.gnm_random_graph(N, E, directed=True, seed=randseed)
-    while nx.algorithms.components.number_connected_components(nx.Graph(RG)) != 1:
-        RG = nx.generators.random_graphs.gnm_random_graph(N, E, directed=True)
-    G = nx.relabel.relabel_nodes(RG, mapping)
+    UDRG = nx.generators.random_graphs.gnm_random_graph(N, E, directed=False, seed=randseed)
+    while nx.algorithms.components.number_connected_components(nx.Graph(UDRG)) != 1:
+        UDRG = nx.generators.random_graphs.gnm_random_graph(N, E, directed=False)
+    edgelist = []
+    for u, v in UDRG.edges:
+        if np.random.randint(0, 2):
+            edgelist += [(u, v)]
+        else:
+            edgelist += [(v, u)]
+    DRG = nx.DiGraph(edgelist)
+    G = nx.relabel.relabel_nodes(DRG, mapping)
     nx.set_node_attributes(G, name='obj', values=nodes)
 
     pipes = dict()
