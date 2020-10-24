@@ -12,7 +12,8 @@ from itertools import product
 from functools import reduce
 import networkx as nx
 import numpy as np
-import HE2_net_generator as gen
+import HE2_tools as tools
+
 
 class TestWaterPipe(unittest.TestCase):
     def setUp(self):
@@ -318,16 +319,16 @@ class TestWaterNet(unittest.TestCase):
         solver.solve()
 
     def test_13(self):
-        G = gen.generate_random_net_v0(randseed=42)
+        G, n_dict = tools.generate_random_net_v0(randseed=42, N=6, E=8, SNK=1, SRC=2, SEGS=2)
+        shifts = dict(zip(G.nodes, [(0, -0.05), (0, -0.05), (0.125, 0), (0.15, 0.025), (0, 0.05), (0, 0.05)]))
         solver = HE2_Solver(G)
-        solver.solve()
-        solver.check_solution()
-
-
+        op_res = solver.solve()
+        tools.draw_solution(G, shifts, **n_dict)
+        # solver.check_solution()
 
 
 if __name__ == "__main__":
-    # pipe_test = TestWaterNet()
-    # pipe_test.test_12()
+    pipe_test = TestWaterNet()
+    pipe_test.test_13()
 
-    unittest.main()
+    # unittest.main()
