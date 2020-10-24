@@ -107,11 +107,14 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []
         self.intermediate_results = []
+        self._printstr = ';  '.join([np.array2string(vec, precision=2) for vec in [dxs, dys, diams, rghs]])
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_WaterPipeSegment(None, diam, rgh)
             seg.set_pipe_geometry(dx, dy)
             self.segments += [seg]
 
+    def __str__(self):
+        return self._printstr
 
     def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction):
         assert unifloc_direction in [0, 1, 10, 11]
