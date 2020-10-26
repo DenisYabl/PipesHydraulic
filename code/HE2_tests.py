@@ -320,11 +320,11 @@ class TestWaterNet(unittest.TestCase):
 
     def test_13(self):
         G, n_dict = tools.generate_random_net_v0(randseed=42, N=6, E=8, SNK=1, SRC=2, SEGS=2)
-        shifts = dict(zip(G.nodes, [(0, -0.05), (0, -0.05), (0.125, 0), (0.15, 0.025), (0, 0.05), (0, 0.05)]))
         solver = HE2_Solver(G)
-        op_res = solver.solve()
+        solver.solve()
+        shifts = dict(zip(G.nodes, [(0, -0.05), (0, -0.05), (0.125, 0), (0.15, 0.025), (0, 0.05), (0, 0.05)]))
         tools.draw_solution(G, shifts, **n_dict)
-        # solver.check_solution()
+        solver.check_solution()
 
 
 if __name__ == "__main__":

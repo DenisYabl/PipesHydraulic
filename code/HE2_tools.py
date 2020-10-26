@@ -58,6 +58,9 @@ def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L
     G = nx.relabel.relabel_nodes(DRG, mapping)
     nx.set_node_attributes(G, name='obj', values=nodes)
 
+    # for n in G.nodes():
+    #     print(n)
+
     pipes = dict()
     for u, v in G.edges():
         segs = np.random.randint(SEGS) + 1
@@ -65,7 +68,7 @@ def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L
         Hs = np.random.uniform(-H, H, segs)
         Ds = np.random.uniform(1e-5, D, segs)
         Rs = np.random.uniform(0, RGH, segs)
-        print(u, v, Ls, Hs, Ds, Rs)
+        # print(u, v, Ls, Hs, Ds, Rs)
         pipe = HE2_WaterPipe(Ls, Hs, Ds, Rs)
         pipes[(u, v)] = pipe
     nx.set_edge_attributes(G, name='obj', values=pipes)
