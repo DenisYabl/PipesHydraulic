@@ -107,7 +107,7 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []
         self.intermediate_results = []
-        self._printstr = ';\n '.join([np.array2string(vec, precision=2) for vec in [dxs, dys, diams, rghs]])
+        self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_WaterPipeSegment(None, diam, rgh)
             seg.set_pipe_geometry(dx, dy)
