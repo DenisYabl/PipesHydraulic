@@ -15,9 +15,10 @@ class HE2_Solver():
         #TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
+        self.op_result = None
+
 
     def solve(self):
-        op_result = None
         self.graph = self.add_root_to_graph()
         self.N = len(self.graph)-1
         self.span_tree, self.chordes = self.split_graph(self.graph)
@@ -31,11 +32,11 @@ class HE2_Solver():
         def target(x_chordes):
             Q = self.Q_static
             if self.C:
-                Q_dynamic = np.matmul(self.A_chordes, x_chordes).flatten()
+                Q_dynamic = np.matmul(self.A_chordes, x_chordes)
                 Q = Q - Q_dynamic
-            x = np.matmul(self.A_inv, Q).flatten()
+            x = np.matmul(self.A_inv, Q)
             self.tree_x = dict(zip(self.a_tree_edgelist, x))
-            self.pt_on_tree =  self.evalute_pressures_by_tree()
+            self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual(self.chordes, x_chordes, self.pt_on_tree)
             rez = np.linalg.norm(pt_residual_vec)
             return rez
@@ -48,17 +49,17 @@ class HE2_Solver():
             # Powell сходится, 350 nfev при tol 1e-6, 550 при tol 1e-3
             # 'trust-constr' сходится, default tol, 540 nfev
 
-            op_result = scop.minimize(target, x0, method='Powell')
-            print(op_result)
-            target(op_result.x)
-            self.chord_x = dict(zip(self.chordes.edges(), op_result.x))
+            self.op_result = scop.minimize(target, x0, method='Powell')
+            print(self.op_result)
+            target(self.op_result.x)
+            self.chord_x = dict(zip(self.chordes.edges(), self.op_result.x))
             # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когду они будут сохраняться
             # А пока может быть так что давления от одной итерации, а потоки от другой
         else:
             target(None)
 
         self.attach_results_to_schema()
-        return op_result
+        return
 
     def build_tiers(self, tree):
         pass
@@ -118,8 +119,7 @@ class HE2_Solver():
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex):
                 assert obj.kind == 'Q'
                 q_vec[i] = obj.value if obj.is_source else -obj.value
-        rez = q_vec.reshape((n-1, 1))
-        return rez
+        return q_vec
 
     def buildIncMatrices(self):
         nodelist = list(self.graph.nodes)
@@ -166,18 +166,18 @@ class HE2_Solver():
     def evalute_chordes_pressure_residual(self, chordes, chordes_x, tree_pressure):
         if (chordes is None) or (len(chordes)==0):
             return 0
-        pt_u, pt_v = [], []
+        pt_v1, pt_v2 = [], []
         for x, (u, v) in zip(chordes_x, chordes.edges()):
             obj = self.graph[u][v]['obj']
             p_u, t_u = tree_pressure[u]
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
-            pt_v += [(p_v, t_v)]
-            pt_u += [(p_u, t_u)]
-        pt_v_vec = np.array(pt_v)
-        pt_u_vec = np.array(pt_u)
-        pt_residual_vec = pt_v_vec - pt_u_vec
+            pt_v1 += [(p_v, t_v)]
+            pt_v2 += [tree_pressure[v]]
+        pt_v1_vec = np.array(pt_v1)
+        pt_v2_vec = np.array(pt_v2)
+        pt_residual_vec = pt_v1_vec - pt_v2_vec
         return pt_residual_vec
 
     def attach_results_to_schema(self):
