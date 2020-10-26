@@ -44,13 +44,18 @@ class HE2_Solver():
         if self.C:
             x0 = np.zeros(self.C)
             # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
-            # 'Nelder-Mead', 'CG', L-BFGS-B, TNC, COBYLA, SLSQP - плохо сходятся, fun > 2
-            # 'BFGS' при низком tol плохо сходится, при тол < 1e-5 - норм, но долго, nfev 472
-            # Powell сходится, 350 nfev при tol 1e-6, 550 при tol 1e-3
-            # 'trust-constr' сходится, default tol, 540 nfev
+            # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
+            # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
+            # L-BFGS-B,       13/50
+            # Powell          14/50
+            # CG              15/50
+            # trust-constr    15/50
+            # Nelder-Mead     25/50
+            # TNC             bullshit
+            # COBYLA          bullshit
 
-            self.op_result = scop.minimize(target, x0, method='Powell')
-            print(self.op_result)
+            self.op_result = scop.minimize(target, x0, method='SLSQP')
+            # print(self.op_result)
             target(self.op_result.x)
             self.chord_x = dict(zip(self.chordes.edges(), self.op_result.x))
             # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когду они будут сохраняться
@@ -200,6 +205,7 @@ class HE2_Solver():
         pass
 
     def check_solution(self):
+        residual = 0
         G = self.schema
         for (u, v) in G.edges():
             edge_obj = G[u][v]['obj']
@@ -210,7 +216,9 @@ class HE2_Solver():
             t_u = u_obj.result['T_C']
             p_v = v_obj.result['P_bar']
             t_v = v_obj.result['T_C']
-            print(u, v, f'{x:.2f}', f'{p_u:.2f}', f'{p_v:.2f}', edge_obj)
+            # print(u, v, f'{x:.2f}', f'{p_u:.2f}', f'{p_v:.2f}', edge_obj)
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
-            np.testing.assert_almost_equal(p, p_v)
-            np.testing.assert_almost_equal(t, t_v)
+            residual += abs(p - p_v)
+            # np.testing.assert_almost_equal(p, p_v, 3)
+            # np.testing.assert_almost_equal(t, t_v, 3)
+        return residual
