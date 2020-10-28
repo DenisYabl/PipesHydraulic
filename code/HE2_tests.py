@@ -324,30 +324,63 @@ class TestWaterNet(unittest.TestCase):
         solver.solve()
         shifts = dict(zip(G.nodes, [(0, -0.05), (0, -0.05), (0.125, 0), (0.15, 0.025), (0, 0.05), (0, 0.05)]))
         # tools.draw_solution(G, shifts, **n_dict)
-        solver.check_solution()
+        tools.check_solution(G)
+
+    def handle_error(self, G, rs, msg, n_dict, op_result=None):
+        print('-' * 80)
+        print(f'{msg} Randseed=={rs}')
+        if op_result:
+            print(op_result)
+        tools.draw_solution(G, None, **n_dict)
 
     def test_14(self):
         errs = []
+        cant_solve = []
         for rs in range(50):
             G, n_dict = tools.generate_random_net_v0(randseed=rs, N=6, E=8, SNK=1, SRC=2, SEGS=2)
             solver = HE2_Solver(G)
             solver.solve()
             op_result = solver.op_result
-            resd = solver.check_solution()
-            # np.testing.assert_almost_equal(op_result.fun, resd, 5)
-            if resd > 1e-3:
-                # print('-'*80)
-                # print(rs)
-                # print(op_result)
-                # tools.draw_solution(G, None, **n_dict)
-                errs += [rs]
-        print('-' * 80)
-        print(errs)
+            if op_result.fun > 1e-3:
+                self.handle_error(G, rs, 'Cant solve.', n_dict, op_result)
+                cant_solve += [rs]
+                continue
 
+            resd1 = solver.evaluate_1stCL_residual()
+            if resd1 > 1e-3:
+                self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}', n_dict)
+                errs += [rs]
+                continue
+
+            resd2 = solver.evaluate_2ndCL_residual()
+            if resd1 > 1e-3:
+                self.handle_error(rs, f'2ndCL residual is {resd2: .2f}', n_dict)
+                errs += [rs]
+                continue
+
+        print('-' * 80)
+        print('errs', errs)
+        print('cant_solve', cant_solve)
+
+    # def test_15(self):
+    #     methods = ['SLSQP','BFGS','L-BFGS-B','Powell','CG','trust-constr','Nelder-Mead','TNC','COBYLA']
+    #     for m1, m2 in product(methods, methods):
+    #         errs = []
+    #         for rs in [23, 34]:
+    #             G, n_dict = tools.generate_random_net_v0(randseed=rs, N=6, E=8, SNK=1, SRC=2, SEGS=2)
+    #             solver = HE2_Solver(G)
+    #             solver.solve_2methods(m1, m2)
+    #             op_result = solver.op_result
+    #             resd1 = solver.check_solution()
+    #             if resd > 1e-3:
+    #                 errs += [rs]
+    #         print('-' * 80)
+    #         print(m1, m2)
+    #         print(len(errs), errs)
 
 
 if __name__ == "__main__":
     # pipe_test = TestWaterNet()
-    # pipe_test.test_13()
+    # pipe_test.test_14()
 
     unittest.main()
