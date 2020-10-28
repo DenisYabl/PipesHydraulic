@@ -22,7 +22,12 @@ class HE2_Solver():
         self.graph = self.add_root_to_graph()
         self.N = len(self.graph)-1
         self.span_tree, self.chordes = self.split_graph(self.graph)
-        self.C = len(self.chordes.edges())
+        self.edge_list = self.span_tree + self.chordes
+        self.node_list = list(self.graph.nodes())
+        assert self.node_list[-1] == Root
+        self.N = len(self.node_list)-1
+        self.M = len(self.edge_list)-1
+        self.C = len(self.chordes)
         # span_tree and chordes are DiGraphs, which edges match with self.graph edges
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree, self.A_chordes = self.buildIncMatrices()
@@ -34,10 +39,15 @@ class HE2_Solver():
             if self.C:
                 Q_dynamic = np.matmul(self.A_chordes, x_chordes)
                 Q = Q - Q_dynamic
-            x = np.matmul(self.A_inv, Q)
-            self.tree_x = dict(zip(self.a_tree_edgelist, x))
+            x_tree = np.matmul(self.A_inv, Q)
+            self.edges_x = dict(zip(self.span_tree, x_tree))
+            if self.C:
+                self.edges_x.update(dict(zip(self.chordes, x_chordes)))
+
+            self.perform_self_test_for_1stCL()
+
             self.pt_on_tree = self.evalute_pressures_by_tree()
-            pt_residual_vec = self.evalute_chordes_pressure_residual(self.chordes, x_chordes, self.pt_on_tree)
+            pt_residual_vec = self.evalute_chordes_pressure_residual()
             rez = np.linalg.norm(pt_residual_vec)
             return rez
 
@@ -56,8 +66,8 @@ class HE2_Solver():
 
             self.op_result = scop.minimize(target, x0, method='SLSQP')
             # print(self.op_result)
-            target(self.op_result.x)
-            self.chord_x = dict(zip(self.chordes.edges(), self.op_result.x))
+            _x = self.op_result.x
+            target(_x)
             # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когду они будут сохраняться
             # А пока может быть так что давления от одной итерации, а потоки от другой
         else:
@@ -66,11 +76,14 @@ class HE2_Solver():
         self.attach_results_to_schema()
         return
 
-    def build_tiers(self, tree):
-        pass
+    def perform_self_test_for_1stCL(self):
+        resd_1stCL = self.evaluate_1stCL_residual()
+        x_sum = sum(map(abs, self.edges_x.values()))
+        if abs(resd_1stCL) > 1e-7 * x_sum:
+            assert False
 
     def build_tree_travers(self, di_tree, root):
-        di_edges = set(di_tree.edges())
+        di_edges = set(di_tree)
         undirected_tree = nx.Graph(di_tree)
         tree_travers = []
         for u, v in nx.algorithms.traversal.edgebfs.edge_bfs(undirected_tree, root):
@@ -95,11 +108,7 @@ class HE2_Solver():
             else:
                 cl += [(u, v)]
 
-        T = nx.DiGraph(tl)
-        C = nx.DiGraph(cl)
-        assert len(T.edges()) + len(C.edges()) == len(self.graph.edges())
-
-        return T, C
+        return tl, cl
 
     def add_root_to_graph(self):
         self.mock_nodes = [Root]
@@ -117,8 +126,7 @@ class HE2_Solver():
 
 
     def build_static_Q_vec(self, G):
-        n = len(G.nodes)
-        q_vec = np.zeros(n-1)
+        q_vec = np.zeros(self.N)
         for i, node in enumerate(G.nodes):
             obj = G.nodes[node]['obj']
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex):
@@ -127,20 +135,13 @@ class HE2_Solver():
         return q_vec
 
     def buildIncMatrices(self):
-        nodelist = list(self.graph.nodes)
+        nodelist = self.node_list
         assert nodelist[-1] == Root
-        te_ = set(self.span_tree.edges())
-        tree_edgelist, chordes_edgelist = [], []
-        for e in self.graph.edges():
-            er = tuple(reversed(e))
-            if e in te_ or er in te_:
-                tree_edgelist += [e]
-            else:
-                chordes_edgelist += [e]
+        tree_edgelist = self.span_tree
+        chordes_edgelist = self.chordes
 
         A_full = -1 * nx.incidence_matrix(self.span_tree, nodelist=nodelist, edgelist=tree_edgelist, oriented=True).toarray()
         A_truncated = A_full[:-1]
-        self.a_tree_edgelist = tree_edgelist
 
         A_chordes_full = -1 * nx.incidence_matrix(self.chordes, nodelist=nodelist, edgelist=chordes_edgelist, oriented=True).toarray()
         A_chordes_truncated = A_chordes_full[:-1]
@@ -160,7 +161,7 @@ class HE2_Solver():
 
             assert not (unknown in pt)
             p_kn, t_kn = pt[known]
-            x = self.tree_x[(u,v)]
+            x = self.edges_x[(u,v)]
             if u == known:
                 p_unk, t_unk = obj.perform_calc_forward(p_kn, t_kn, x)
             else:
@@ -168,18 +169,19 @@ class HE2_Solver():
             pt[unknown] = (p_unk, t_unk)
         return pt
 
-    def evalute_chordes_pressure_residual(self, chordes, chordes_x, tree_pressure):
-        if (chordes is None) or (len(chordes)==0):
+    def evalute_chordes_pressure_residual(self):
+        if self.C == 0:
             return 0
         pt_v1, pt_v2 = [], []
-        for x, (u, v) in zip(chordes_x, chordes.edges()):
+        for (u, v) in self.chordes:
+            x = self.edges_x[(u, v)]
             obj = self.graph[u][v]['obj']
-            p_u, t_u = tree_pressure[u]
+            p_u, t_u = self.pt_on_tree[u]
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
             pt_v1 += [(p_v, t_v)]
-            pt_v2 += [tree_pressure[v]]
+            pt_v2 += [self.pt_on_tree[v]]
         pt_v1_vec = np.array(pt_v1)
         pt_v2_vec = np.array(pt_v2)
         pt_residual_vec = pt_v1_vec - pt_v2_vec
@@ -193,32 +195,53 @@ class HE2_Solver():
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
         for u,v in self.schema.edges:
             obj = self.schema[u][v]['obj']
-            x = None
-            if (u, v) in self.tree_x:
-                x = self.tree_x[(u, v)]
-            elif (u, v) in self.chord_x:
-                x = self.chord_x[(u, v)]
-
+            x = self.edges_x[(u, v)]
             obj.result = dict(x=x)
 
     def evalute_tier_pressure_drop(self, edges, p, x, fluids):
         pass
 
-    def check_solution(self):
+    def evaluate_1stCL_residual(self):
         residual = 0
-        G = self.schema
+        G = self.graph
+        nodes = set(G.nodes())
+        nodes -= {Root}
+        Q_net_balance = 0
+        for n in list(nodes) + [Root]:
+            if n != Root:
+                Q = 0
+                obj = G.nodes[n]['obj']
+                if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
+                    continue
+
+                if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'Q':
+                    Q = obj.value if obj.is_source else -obj.value
+
+                Q_net_balance += Q
+            else:
+                Q = -Q_net_balance
+
+            X_sum = 0
+            for u, v in G.in_edges(n):
+                X_sum -= self.edges_x[(u, v)]
+            for u, v in G.out_edges(n):
+                X_sum += self.edges_x[(u, v)]
+            residual += abs(Q - X_sum)
+
+        return residual
+
+    def evaluate_2ndCL_residual(self):
+        residual = 0
+        G = self.graph
         for (u, v) in G.edges():
             edge_obj = G[u][v]['obj']
             u_obj = G.nodes[u]['obj']
             v_obj = G.nodes[v]['obj']
-            x = edge_obj.result['x']
-            p_u = u_obj.result['P_bar']
-            t_u = u_obj.result['T_C']
-            p_v = v_obj.result['P_bar']
-            t_v = v_obj.result['T_C']
-            # print(u, v, f'{x:.2f}', f'{p_u:.2f}', f'{p_v:.2f}', edge_obj)
+            x = self.edges_x[(u, v)]
+            p_u, t_u = self.pt_on_tree[u]
+            p_v, t_v = self.pt_on_tree[v]
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
             residual += abs(p - p_v)
-            # np.testing.assert_almost_equal(p, p_v, 3)
-            # np.testing.assert_almost_equal(t, t_v, 3)
         return residual
+
+
