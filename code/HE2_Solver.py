@@ -3,34 +3,42 @@ import networkx as nx
 import scipy.optimize as scop
 from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
-import networkx.algorithms.operators.binary as bool_ops
-import scipy.sparse
 import HE2_ABC as abc
-
 
 Root = 'Root'
 
+
 class HE2_Solver():
     def __init__(self, schema):
-        #TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
+        # TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
         self.op_result = None
-
+        self.C = None
+        self.span_tree = None
+        self.chordes = None
+        self.edge_list = []
+        self.node_list = []
+        self.A_tree = None
+        self.A_chordes = None
+        self.A_inv = None
+        self.Q_static = None
+        self.edges_x = None
+        self.pt_on_tree = None
+        self.tree_travers = None
+        self.mock_nodes = []
+        self.mock_edges = []
 
     def solve(self):
         self.graph = self.add_root_to_graph()
-        self.N = len(self.graph)-1
         self.span_tree, self.chordes = self.split_graph(self.graph)
         self.edge_list = self.span_tree + self.chordes
         self.node_list = list(self.graph.nodes())
         assert self.node_list[-1] == Root
-        self.N = len(self.node_list)-1
-        self.M = len(self.edge_list)-1
         self.C = len(self.chordes)
         # span_tree and chordes are DiGraphs, which edges match with self.graph edges
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
-        self.A_tree, self.A_chordes = self.buildIncMatrices()
+        self.A_tree, self.A_chordes = self.build_incidence_matrices()
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q_static = self.build_static_Q_vec(self.graph)
 
@@ -68,8 +76,7 @@ class HE2_Solver():
             # print(self.op_result)
             _x = self.op_result.x
             target(_x)
-            # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когду они будут сохраняться
-            # А пока может быть так что давления от одной итерации, а потоки от другой
+            # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когда они будут
         else:
             target(None)
 
@@ -93,7 +100,6 @@ class HE2_Solver():
                 assert (v, u) in di_edges
                 tree_travers += [(v, u, -1)]
         return tree_travers
-
 
     def split_graph(self, graph):
         G = nx.Graph(graph)
@@ -124,9 +130,8 @@ class HE2_Solver():
                 self.mock_edges += [(Root, n)]
         return G
 
-
     def build_static_Q_vec(self, G):
-        q_vec = np.zeros(self.N)
+        q_vec = np.zeros(len(self.node_list)-1)
         for i, node in enumerate(G.nodes):
             obj = G.nodes[node]['obj']
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex):
@@ -134,22 +139,24 @@ class HE2_Solver():
                 q_vec[i] = obj.value if obj.is_source else -obj.value
         return q_vec
 
-    def buildIncMatrices(self):
+    def build_incidence_matrices(self):
         nodelist = self.node_list
         assert nodelist[-1] == Root
         tree_edgelist = self.span_tree
         chordes_edgelist = self.chordes
 
-        A_full = -1 * nx.incidence_matrix(self.span_tree, nodelist=nodelist, edgelist=tree_edgelist, oriented=True).toarray()
+        A_full = nx.incidence_matrix(self.span_tree, nodelist=nodelist, edgelist=tree_edgelist, oriented=True)
+        A_full = -1 * A_full.toarray()
         A_truncated = A_full[:-1]
 
-        A_chordes_full = -1 * nx.incidence_matrix(self.chordes, nodelist=nodelist, edgelist=chordes_edgelist, oriented=True).toarray()
+        A_chordes_full = nx.incidence_matrix(self.chordes, nodelist=nodelist, edgelist=chordes_edgelist, oriented=True)
+        A_chordes_full = -1 * A_chordes_full.toarray()
         A_chordes_truncated = A_chordes_full[:-1]
         return A_truncated, A_chordes_truncated
 
     def evalute_pressures_by_tree(self):
         pt = dict()
-        pt[Root] = (0, 20) #TODO: get initial T from some source
+        pt[Root] = (0, 20)  # TODO: get initial T from some source
 
         for u, v, direction in self.tree_travers:
             obj = self.graph[u][v]['obj']
@@ -161,7 +168,7 @@ class HE2_Solver():
 
             assert not (unknown in pt)
             p_kn, t_kn = pt[known]
-            x = self.edges_x[(u,v)]
+            x = self.edges_x[(u, v)]
             if u == known:
                 p_unk, t_unk = obj.perform_calc_forward(p_kn, t_kn, x)
             else:
@@ -176,9 +183,9 @@ class HE2_Solver():
         for (u, v) in self.chordes:
             x = self.edges_x[(u, v)]
             obj = self.graph[u][v]['obj']
-            p_u, t_u = self.pt_on_tree[u]
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
+            p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
             pt_v1 += [(p_v, t_v)]
             pt_v2 += [self.pt_on_tree[v]]
@@ -193,13 +200,10 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
-        for u,v in self.schema.edges:
+        for u, v in self.schema.edges:
             obj = self.schema[u][v]['obj']
             x = self.edges_x[(u, v)]
             obj.result = dict(x=x)
-
-    def evalute_tier_pressure_drop(self, edges, p, x, fluids):
-        pass
 
     def evaluate_1stCL_residual(self):
         residual = 0
@@ -235,13 +239,9 @@ class HE2_Solver():
         G = self.graph
         for (u, v) in G.edges():
             edge_obj = G[u][v]['obj']
-            u_obj = G.nodes[u]['obj']
-            v_obj = G.nodes[v]['obj']
             x = self.edges_x[(u, v)]
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = self.pt_on_tree[v]
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
             residual += abs(p - p_v)
         return residual
-
-
