@@ -82,7 +82,7 @@ def HE2_draw_node_labels(G, g_nodes, nodelist, keys, **kwargs):
         obj = G.nodes[n]['obj']
         for k in keys:
             if k in obj.__dict__:
-                sss += [f'{obj.k:.2f}']
+                sss += [f'{obj.__dict__[k]:.2f}']
             elif 'result' in obj.__dict__ and k in obj.result:
                 sss += [f'{obj.result[k]:.2f}']
         lbls.update({n: '\n'.join(sss)})
@@ -105,3 +105,55 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9)
     nx.draw_networkx_edges(G, pos=pos, width=2, ax=ax, edge_color='black')
     plt.show()
+
+
+def evaluate_1stCL_residual(G):
+    Q_dict = {}
+    X_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
+    p_nodes = []
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
+            p_nodes += [n]
+            continue
+
+        Q_dict[n] = 0
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'Q':
+            Q_dict[n] = obj.value if obj.is_source else -obj.value
+
+    for u, v in G.edges:
+        x = G[u][v]['obj'].result['x']
+        X_sum_dict[u] -= x
+        X_sum_dict[v] += x
+
+    residual = 0
+    for n in Q_dict:
+        residual += abs(Q_dict[n] + X_sum_dict[n])
+
+    Q_net_balance = sum(Q_dict.values())
+    p_x_sum = 0
+    for n in p_nodes:
+        p_x_sum += X_sum_dict[n]
+    residual += abs(p_x_sum - Q_net_balance)
+
+    return residual
+
+def evaluate_2ndCL_residual(G):
+    residual = 0
+    for (u, v) in G.edges():
+        u_obj = G.nodes[u]['obj']
+        v_obj = G.nodes[v]['obj']
+        edge_obj = G[u][v]['obj']
+        x = edge_obj.result['x']
+        p_u = u_obj.result['P_bar']
+        t_u = u_obj.result['T_C']
+        p_v = v_obj.result['P_bar']
+        t_v = v_obj.result['T_C']
+        p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
+        residual += abs(p - p_v)
+    return residual
+
+def check_solution(G):
+    res1 = evaluate_1stCL_residual(G)
+    res2 = evaluate_2ndCL_residual(G)
+    return res1 + res2
