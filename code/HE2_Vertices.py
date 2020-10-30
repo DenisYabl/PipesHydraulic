@@ -10,8 +10,12 @@ class HE2_Boundary_Vertex(HE2_ABC_GraphVertex):
         '''
         self.kind = kind
         self.value = value
+        self.P, self.Q = None, None
         if kind == 'Q':
             self.value = abs(value)
+            self.Q = self.value
+        else:
+            self.P = self.value
 
         self.is_source = False
 
