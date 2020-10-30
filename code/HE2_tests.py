@@ -346,6 +346,10 @@ class TestWaterNet(unittest.TestCase):
                 cant_solve += [rs]
                 continue
 
+            resd = tools.check_solution(G)
+            if resd > 1e-3:
+                print(resd)
+
             resd1 = solver.evaluate_1stCL_residual()
             if resd1 > 1e-3:
                 self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}', n_dict)
