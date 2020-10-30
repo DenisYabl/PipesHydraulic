@@ -10,11 +10,10 @@ Root = 'Root'
 
 class HE2_Solver():
     def __init__(self, schema):
-        # TODO have to implement take MultiDiGraph and convert it to equal DiGraph with some added mock edges
+        # TODO have to implement: take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
         self.op_result = None
-        self.C = None
         self.span_tree = None
         self.chordes = None
         self.edge_list = []
@@ -35,22 +34,20 @@ class HE2_Solver():
         self.edge_list = self.span_tree + self.chordes
         self.node_list = list(self.graph.nodes())
         assert self.node_list[-1] == Root
-        self.C = len(self.chordes)
-        # span_tree and chordes are DiGraphs, which edges match with self.graph edges
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree, self.A_chordes = self.build_incidence_matrices()
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q_static = self.build_static_Q_vec(self.graph)
 
         def target(x_chordes):
+            # Q = np.ndarray(shape=(len(self.node_list)-1, 1), buffer=self.Q_static)
             Q = self.Q_static
-            if self.C:
-                Q_dynamic = np.matmul(self.A_chordes, x_chordes)
-                Q = Q - Q_dynamic
+            x = x_chordes.reshape((len(x_chordes), 1))
+            Q_dynamic = np.matmul(self.A_chordes, x)
+            Q = Q - Q_dynamic
             x_tree = np.matmul(self.A_inv, Q)
-            self.edges_x = dict(zip(self.span_tree, x_tree))
-            if self.C:
-                self.edges_x.update(dict(zip(self.chordes, x_chordes)))
+            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+            self.edges_x.update(dict(zip(self.chordes, x_chordes)))
 
             self.perform_self_test_for_1stCL()
 
@@ -59,27 +56,21 @@ class HE2_Solver():
             rez = np.linalg.norm(pt_residual_vec)
             return rez
 
-        if self.C:
-            x0 = np.zeros(self.C)
-            # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
-            # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
-            # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
-            # L-BFGS-B,       13/50
-            # Powell          14/50
-            # CG              15/50
-            # trust-constr    15/50
-            # Nelder-Mead     25/50
-            # TNC             bullshit
-            # COBYLA          bullshit
-
+        x0 = np.zeros((len(self.chordes), 1))
+        # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
+        # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
+        # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
+        # L-BFGS-B,       13/50
+        # Powell          14/50
+        # CG              15/50
+        # trust-constr    15/50
+        # Nelder-Mead     25/50
+        # TNC             bullshit
+        # COBYLA          bullshit
+        if self.chordes:
             self.op_result = scop.minimize(target, x0, method='SLSQP')
-            # print(self.op_result)
-            _x = self.op_result.x
-            target(_x)
-            # TODO Вот здесь надо забирать давления по ключу op_result.x из промежуточных результатов, когда они будут
-        else:
-            target(None)
-
+            x0 = self.op_result.x
+        target(x0)
         self.attach_results_to_schema()
         return
 
@@ -131,7 +122,7 @@ class HE2_Solver():
         return G
 
     def build_static_Q_vec(self, G):
-        q_vec = np.zeros(len(self.node_list)-1)
+        q_vec = np.zeros((len(self.node_list)-1, 1))
         for i, node in enumerate(G.nodes):
             obj = G.nodes[node]['obj']
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex):
@@ -141,7 +132,6 @@ class HE2_Solver():
 
     def build_incidence_matrices(self):
         nodelist = self.node_list
-        assert nodelist[-1] == Root
         tree_edgelist = self.span_tree
         chordes_edgelist = self.chordes
 
@@ -177,8 +167,8 @@ class HE2_Solver():
         return pt
 
     def evalute_chordes_pressure_residual(self):
-        if self.C == 0:
-            return 0
+        # if self.C == 0:
+        #     return 0
         pt_v1, pt_v2 = [], []
         for (u, v) in self.chordes:
             x = self.edges_x[(u, v)]
