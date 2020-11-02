@@ -13,6 +13,8 @@ from functools import reduce
 import networkx as nx
 import numpy as np
 import HE2_tools as tools
+import pandas as pd
+import HE2_schema_maker as maker
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -382,9 +384,31 @@ class TestWaterNet(unittest.TestCase):
     #         print(m1, m2)
     #         print(len(errs), errs)
 
+    def test_16(self):
+        df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
+        df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
+        G = maker.make_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+
+        solver = HE2_Solver(G)
+        solver.solve()
+        op_result = solver.op_result
+        if op_result.fun > 1e-3:
+            self.handle_error(G, None, 'Cant solve.', None, op_result)
+
+        resd = tools.check_solution(G)
+        if resd > 1e-3:
+            print(resd)
+
+        resd1 = solver.evaluate_1stCL_residual()
+        if resd1 > 1e-3:
+            self.handle_error(G, None, f'1stCL residual is {resd1: .2f}', None)
+
+        resd2 = solver.evaluate_2ndCL_residual()
+        if resd1 > 1e-3:
+            self.handle_error(None, f'2ndCL residual is {resd2: .2f}', None)
 
 if __name__ == "__main__":
-    # pipe_test = TestWaterNet()
-    # pipe_test.test_14()
+    pipe_test = TestWaterNet()
+    pipe_test.test_16()
 
-    unittest.main()
+    # unittest.main()
