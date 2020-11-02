@@ -119,6 +119,8 @@ class HE2_Solver():
                 G.nodes[n]['obj'] = new_obj
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
                 self.mock_edges += [(Root, n)]
+        if len(self.mock_edges) < 1:
+            assert False, 'There must be a node with constrained pressure'
         return G
 
     def build_static_Q_vec(self, G):
