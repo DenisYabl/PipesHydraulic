@@ -348,19 +348,9 @@ class TestWaterNet(unittest.TestCase):
                 cant_solve += [rs]
                 continue
 
-            resd = tools.check_solution(G)
-            if resd > 1e-3:
-                print(resd)
-
-            resd1 = solver.evaluate_1stCL_residual()
-            if resd1 > 1e-3:
-                self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}', n_dict)
-                errs += [rs]
-                continue
-
-            resd2 = solver.evaluate_2ndCL_residual()
-            if resd1 > 1e-3:
-                self.handle_error(rs, f'2ndCL residual is {resd2: .2f}', n_dict)
+            resd1, resd2 = tools.check_solution(G)
+            if resd1 + resd2 > 1e-3:
+                self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}', n_dict)
                 errs += [rs]
                 continue
 
@@ -395,20 +385,26 @@ class TestWaterNet(unittest.TestCase):
         if op_result.fun > 1e-3:
             self.handle_error(G, None, 'Cant solve.', None, op_result)
 
-        resd = tools.check_solution(G)
-        if resd > 1e-3:
-            print(resd)
+        resd1, resd2 = tools.check_solution(G)
+        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
-        resd1 = solver.evaluate_1stCL_residual()
-        if resd1 > 1e-3:
-            self.handle_error(G, None, f'1stCL residual is {resd1: .2f}', None)
 
-        resd2 = solver.evaluate_2ndCL_residual()
-        if resd1 > 1e-3:
-            self.handle_error(None, f'2ndCL residual is {resd2: .2f}', None)
+    def test_17(self):
+        df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
+        df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
+        G = maker.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+
+        solver = HE2_Solver(G)
+        solver.solve()
+        op_result = solver.op_result
+        assert op_result.fun < 1e-3, 'Cant solve'
+
+        resd1, resd2 = tools.check_solution(G)
+        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
+
 
 if __name__ == "__main__":
-    pipe_test = TestWaterNet()
-    pipe_test.test_16()
+    # pipe_test = TestWaterNet()
+    # pipe_test.test_17()
 
-    # unittest.main()
+    unittest.main()

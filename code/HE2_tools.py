@@ -107,7 +107,8 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     plt.show()
 
 
-def evaluate_1stCL_residual(G):
+def evaluate_1stCL_residual(graph):
+    G = nx.MultiDiGraph(graph)
     Q_dict = {}
     X_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
     p_nodes = []
@@ -121,8 +122,8 @@ def evaluate_1stCL_residual(G):
         if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'Q':
             Q_dict[n] = obj.value if obj.is_source else -obj.value
 
-    for u, v in G.edges:
-        x = G[u][v]['obj'].result['x']
+    for u, v, k in G.edges:
+        x = G[u][v][k]['obj'].result['x']
         X_sum_dict[u] -= x
         X_sum_dict[v] += x
 
@@ -138,12 +139,13 @@ def evaluate_1stCL_residual(G):
 
     return residual
 
-def evaluate_2ndCL_residual(G):
+def evaluate_2ndCL_residual(graph):
+    G = nx.MultiDiGraph(graph)
     residual = 0
-    for (u, v) in G.edges():
+    for (u, v, k) in G.edges:
         u_obj = G.nodes[u]['obj']
         v_obj = G.nodes[v]['obj']
-        edge_obj = G[u][v]['obj']
+        edge_obj = G[u][v][k]['obj']
         x = edge_obj.result['x']
         p_u = u_obj.result['P_bar']
         t_u = u_obj.result['T_C']
@@ -156,4 +158,4 @@ def evaluate_2ndCL_residual(G):
 def check_solution(G):
     res1 = evaluate_1stCL_residual(G)
     res2 = evaluate_2ndCL_residual(G)
-    return res1 + res2
+    return res1, res2

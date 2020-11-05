@@ -1,6 +1,7 @@
 import numpy as np
 import networkx as nx
 import scipy.optimize as scop
+
 from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import HE2_ABC as abc
@@ -27,9 +28,12 @@ class HE2_Solver():
         self.tree_travers = None
         self.mock_nodes = []
         self.mock_edges = []
+        self.result_edges_mapping = dict()
+
 
     def solve(self):
-        self.graph = self.add_root_to_graph()
+        self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
+        self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
         self.edge_list = self.span_tree + self.chordes
         self.node_list = list(self.graph.nodes())
@@ -107,10 +111,33 @@ class HE2_Solver():
 
         return tl, cl
 
-    def add_root_to_graph(self):
-        self.mock_nodes = [Root]
-        self.mock_edges = []
-        G = nx.DiGraph(self.schema)
+    def transform_multi_di_graph_to_equal_di_graph(self, src_graph):
+        if type(src_graph) == nx.DiGraph:
+            return src_graph
+        elif isinstance(src_graph, nx.MultiDiGraph):
+            rez = nx.DiGraph()
+            rez.add_nodes_from(src_graph.nodes(data=True))
+            for u, v, k in src_graph.edges:
+                e = src_graph[u][v][k]
+                if k==0:
+                    rez.add_edge(u, v, k=k, **e)
+                    self.result_edges_mapping[(u, v, k)] = (u, v)
+                else:
+                    mn = f'mock_node{len(self.mock_nodes)}'
+                    self.mock_nodes += [mn]
+                    rez.add_node(mn, obj=vrtxs.HE2_ABC_GraphVertex())
+                    me = f'mock_edge{len(self.mock_edges)}'
+                    self.mock_edges += [me]
+                    rez.add_edge(u, mn, k=k, **e)
+                    rez.add_edge(mn, v, obj=HE2_MockEdge())
+                    self.result_edges_mapping[(u, v, k)] = (u, mn)
+            return rez
+        else:
+            assert False, 'Schema should be a DiGraph or MultiDiGraph!'
+
+    def add_root_to_graph(self, graph):
+        self.mock_nodes += [Root]
+        G = nx.DiGraph(graph)
         G.add_node(Root, obj=None)
         for n in G.nodes:
             obj = G.nodes[n]['obj']
@@ -192,10 +219,18 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
-        for u, v in self.schema.edges:
-            obj = self.schema[u][v]['obj']
-            x = self.edges_x[(u, v)]
-            obj.result = dict(x=x)
+        if type(self.schema) == nx.DiGraph:
+            for u, v in self.schema.edges:
+                obj = self.schema[u][v]['obj']
+                x = self.edges_x[(u, v)]
+                obj.result = dict(x=x)
+        elif isinstance(self.schema, nx.MultiDiGraph):
+            for u, v, k in self.schema.edges:
+                obj = self.schema[u][v][k]['obj']
+                _u, _v = self.result_edges_mapping[(u, v, k)]
+                x = self.edges_x[(_u, _v)]
+                obj.result = dict(x=x)
+
 
     def evaluate_1stCL_residual(self):
         residual = 0
