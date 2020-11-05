@@ -1,8 +1,9 @@
 import HE2_ABC as abc
-from HE2_Fluid import HE2_DummyWater
+from HE2_Fluid import HE2_DummyWater, HE2_OilWater
 from functools import reduce
 import uniflocpy.uTools.uconst as uc
 import numpy as np
+import Hydraulics.Methodics.Mukherjee_Brill as mb
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
@@ -110,6 +111,131 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_WaterPipeSegment(None, diam, rgh)
+            seg.set_pipe_geometry(dx, dy)
+            self.segments += [seg]
+
+    def __str__(self):
+        return self._printstr
+
+    def perform_calc(self, P_bar, T_C, X_kgsec, unifloc_direction):
+        assert unifloc_direction in [0, 1, 10, 11]
+        calc_direction = 1 if unifloc_direction >= 10 else -1
+        flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+        if calc_direction == 1:
+            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec))
+        else:
+            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
+
+    def perform_calc_forward(self, P_bar, T_C, X_kgsec):
+        p, t = P_bar, T_C
+        for seg in self.segments:
+            p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
+            self.intermediate_results += [(p, t)]
+        return p, t
+
+    def perform_calc_backward(self, P_bar, T_C, X_kgsec):
+        p, t = P_bar, T_C
+        for seg in self.segments[::-1]:
+            p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
+            self.intermediate_results += [(p, t)]
+        return p, t
+
+
+
+class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
+    '''
+    Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
+    '''
+    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
+        self.fluid = fluid
+        self.inner_diam_m = inner_diam_m
+        self.roughness_m = roughness_m
+        self.L_m = None
+        self.uphill_m = None
+        self.angle_dgr = 90
+        self.dx_m = None
+        self.set_pipe_geometry(L=L_m, dy=uphill_m)
+
+    def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
+        if dx is not None and dy is not None:
+            L = (dx*dx + dy*dy) ** 0.5
+        elif L is not None and angle is not None:
+            dy = L * np.sin(uc.grad2rad(angle))
+        elif L is not None and dx is not None:
+            assert False, 'Cannot define sign of dY'
+        elif L is not None and dy is not None:
+            pass
+        elif dx is not None and angle is not None:
+            assert dx > 0
+            dy = dx * np.tan(uc.grad2rad(angle))
+            L = (dx * dx + dy * dy) ** 0.5
+        elif dy is not None and angle is not None:
+            L = abs(dy / np.sin(uc.grad2rad(angle)))
+        else:
+            return
+
+        self.L_m = L
+        self.uphill_m = dy
+        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
+        self.dx_m = (L*L - dy*dy) ** 0.5
+
+    def decode_direction(self, flow, calc_direction, unifloc_direction):
+        '''
+        :param unifloc_direction - направление расчета и потока относительно  координат.
+            11 расчет и поток по координате
+            10 расчет по координате, поток против
+            00 расчет и поток против координаты
+            01 расчет против координаты, поток по координате
+            unifloc_direction перекрывает переданные flow, calc_direction
+            grav_sign не нужен, поскольку он учитывается в Mukherjee_Brill
+        '''
+        flow_direction = np.sign(flow)
+        if unifloc_direction in [0, 1, 10, 11]:
+            calc_direction = 1 if unifloc_direction >= 10 else -1
+            flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+
+        assert calc_direction in [-1, 1]
+        fric_sign = flow_direction * calc_direction
+        t_sign = calc_direction
+        return fric_sign, t_sign
+
+    def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign):
+        #Уточнить про X_kgsec
+        assert X_kgsec >= 0
+        if X_kgsec == 0:
+            return 0
+        # Fluid.calc will be optimized at lower level. So we will call it every time
+        current_mishenko = self.fluid.calc(P_bar, T_C, X_kgsec / self.fluid.CurrentLiquidDensity, self.inner_diam_m)
+        #Определяем угол в зависимости от fric_sign
+        angle = self.angle_dgr if fric_sign > 0 else 180 - self.angle_dgr
+        P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":self.angle_dgr, "Roughness":self.roughness_m})
+        return fric_sign * P_fric_grad_Pam
+
+    def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
+        return 0
+
+    def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        #Определяем направления расчета
+        fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
+        #Считаем локальный градиент давления по M_B
+        P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign)
+        #Считаем потери давления на сегменте
+        dP_full_Pa = P_fric_grad_Pam * self.L_m
+        #Считаем полные потери давления по сегменту
+        P_drop_bar = uc.Pa2bar(fric_sign * dP_full_Pa)
+        P_rez_bar = P_bar - P_drop_bar
+        T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
+        T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
+        return P_rez_bar, T_rez_C
+
+
+class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
+    def __init__(self, dxs, dys, diams, rghs):
+        self.segments = []
+        self.intermediate_results = []
+        self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
+        for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
+            seg = HE2_OilPipeSegment(None, diam, rgh)
             seg.set_pipe_geometry(dx, dy)
             self.segments += [seg]
 

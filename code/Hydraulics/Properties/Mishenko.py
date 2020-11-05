@@ -53,6 +53,12 @@ class Mishenko:
 Плотность жидкой фазы в текущих условиях self.CurrentLiquidDensity = {self.CurrentLiquidDensity}
 Объемная доля газа в смеси self.VolumeGas = {self.VolumeGas}""")
 
+
+
+
+
+
+
     @staticmethod
     def from_oil_params(oil_params, tubing):
         SaturationPressure = oil_params["OilSaturationP"] * 101325 * 1e-6

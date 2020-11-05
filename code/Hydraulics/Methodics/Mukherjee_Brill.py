@@ -16,7 +16,6 @@ def calculate (mishenko, tubing):
     wm = mishenko.Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
     g = 9.81
     if (mishenko.VolumeWater == 1):
-        mu = mishenko.CurrentWaterViscosity
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity / mishenko.CurrentWaterViscosity
         lambda_ = 64 / Re if Re < 2300 else 0.11 * (68 / Re + tubing["Roughness"] / tubing["IntDiameter"]) ** 0.25
         return lambda_ * mishenko.CurrentLiquidDensity * (wm ** 2) * 0.5 / tubing["IntDiameter"] + mishenko.CurrentLiquidDensity * mishenko.g * math.sin(math.radians(angle))
