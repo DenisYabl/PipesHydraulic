@@ -333,7 +333,7 @@ class TestWaterNet(unittest.TestCase):
         print(f'{msg} Randseed=={rs}')
         if op_result:
             print(op_result)
-        tools.draw_solution(G, None, **n_dict)
+        # tools.draw_solution(G, None, **n_dict)
 
     def test_14(self):
         errs = []
@@ -402,9 +402,24 @@ class TestWaterNet(unittest.TestCase):
         resd1, resd2 = tools.check_solution(G)
         assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
+    def test_18(self):
+        for rs in range(50):
+            G, n_dict = tools.generate_random_net_v1(randseed=rs, P_CNT=2)
+
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+            resd1, resd2 = tools.check_solution(G)
+            print(f'Randseed is {rs}, fun is {op_result.fun: .2f}, 1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}', n_dict['p_nodes'])
+        # tools.draw_solution(G, None, **n_dict)
+        # assert op_result.fun < 1e-3, 'Cant solve'
+        #
+        # resd1, resd2 = tools.check_solution(G)
+        # assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
+
 
 if __name__ == "__main__":
     # pipe_test = TestWaterNet()
-    # pipe_test.test_17()
+    # pipe_test.test_18()
 
     unittest.main()

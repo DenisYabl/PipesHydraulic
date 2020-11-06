@@ -75,6 +75,87 @@ def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L
 
     return G, dict(p_nodes=p_nodes, juncs=juncs, sources=sources, sinks=sinks)
 
+
+def generate_random_net_v1(N=15, E=20, SRC=3, SNK=3, P_CNT=1, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=1,
+                           randseed=None):
+    '''
+    :param N: total nodes count
+    :param E: total edges count, cannot be less than N-1
+    :param SRC: sources count
+    :param SNK: sinks count
+    :param P_CNT: count of nodes with fixed pressure
+    :param Q: maximum boundary flow on source (not sink!)  node
+    :param P: maximum boundary pressure on one of source/sink node
+    :param D: maximum pipe segment inner diameter on graph edge
+    :param H: maximum pipe segment slope
+    :param L: maximum pipe segment length
+    :param SEGS: maximum pipe segments count
+    :return: MultiDiGraph
+    This method produce water pipelines network with some pressure constrained node, with constant temperature
+    and with some sources/sinks. Result will be a non-tree, linked multigraph with objects attached to nodes and edges
+    '''
+    np.random.seed(randseed)
+    E = max(E, N - 1)
+    B = SRC + SNK
+    J = N - B
+    juncs = {f'junc_{i}': vrtxs.HE2_ABC_GraphVertex() for i in range(J)}
+
+    kinds = ['P']*P_CNT + ['Q']*(B-P_CNT)
+    srcs = [True] * SRC + [False] * SNK
+    np.random.shuffle(kinds)
+    total_q = np.random.uniform(Q * B)
+    src_q = np.random.uniform(0, 1, SRC)
+    src_q = total_q * src_q / sum(src_q)
+    snk_q = np.random.uniform(0, 1, SNK)
+    snk_q = total_q * snk_q / sum(snk_q)
+    qs = list(src_q) + list(snk_q)
+
+    p_nodes, sources, sinks = dict(), dict(), dict()
+    for kind, src, q in zip(kinds, srcs, qs):
+        if src and kind == 'P':
+            node = vrtxs.HE2_Source_Vertex(kind, np.random.randint(-P, P), 'water', 20)
+            name = f'p_node_{len(p_nodes)}'
+            p_nodes[name] = node
+        elif src and kind == 'Q':
+            node = vrtxs.HE2_Source_Vertex(kind, q, 'water', 20)
+            name = f'src_{len(sources)}'
+            sources[name] = node
+        elif not src and kind == 'P':
+            node = vrtxs.HE2_Boundary_Vertex(kind, np.random.randint(-P, P))
+            name = f'p_node_{len(p_nodes)}'
+            p_nodes[name] = node
+        elif not src and kind == 'Q':
+            node = vrtxs.HE2_Boundary_Vertex(kind, q)
+            name = f'snk_{len(sinks)}'
+            sinks[name] = node
+
+    nodes = {**p_nodes, **sources, **sinks, **juncs}
+    assert len(nodes) == N
+    mapping = dict(zip(range(N), nodes.keys()))
+    RT = nx.generators.trees.random_tree(N, seed=randseed)
+    edgelist = [tuple(np.random.choice([u, v], 2, replace=False)) for u, v in RT.edges]
+    edgelist += [tuple(np.random.choice(range(N), 2, replace=False)) for i in range(E-(N-1))]
+
+    MDRG = nx.MultiDiGraph(edgelist)
+    G = nx.relabel.relabel_nodes(MDRG, mapping)
+    nx.set_node_attributes(G, name='obj', values=nodes)
+
+    pipes = dict()
+    for u, v, k in G.edges:
+        segs = np.random.randint(SEGS) + 1
+        Ls = np.random.uniform(1e-5, L, segs)
+        Hs = np.random.uniform(-H, H, segs)
+        Ds = np.random.uniform(1e-5, D, segs)
+        Rs = np.random.uniform(0, RGH, segs)
+        # print(u, v, Ls, Hs, Ds, Rs)
+        pipe = HE2_WaterPipe(Ls, Hs, Ds, Rs)
+        pipes[(u, v, k)] = pipe
+    nx.set_edge_attributes(G, name='obj', values=pipes)
+
+    assert nx.algorithms.components.number_connected_components(nx.Graph(G)) == 1
+
+    return G, dict(p_nodes=p_nodes, juncs=juncs, sources=sources, sinks=sinks)
+
 def HE2_draw_node_labels(G, g_nodes, nodelist, keys, **kwargs):
     lbls = dict()
     for n in list(set(nodelist) & g_nodes):
@@ -93,7 +174,8 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     #TODO Не однообразно формирую лейблы для узлов и для дуг, тоже просит рефакторинга
     fig = plt.figure(constrained_layout=True, figsize=(12, 8))
     ax = fig.add_subplot(1, 1, 1)
-    pos = nx.drawing.layout.planar_layout(G)
+    # pos = nx.drawing.layout.planar_layout(G)
+    pos = nx.drawing.layout.kamada_kawai_layout(G)
     g_nodes = set(G.nodes)
     params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
     label_pos = {k:(pos[k][0] + shifts[k][0], pos[k][1] + shifts[k][1]) for k in pos} if shifts is not None else pos
@@ -101,7 +183,10 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
         nx.draw_networkx_nodes(G, nodelist=list(set(nodelist) & g_nodes), node_size=node_size, node_color=node_color, ax=ax, pos=pos)
         HE2_draw_node_labels(G, g_nodes, list(set(nodelist) & g_nodes), keys=['P_bar']+ks, ax=ax, pos=label_pos)
 
-    edge_labels = {(u,v): str(G[u][v]['obj'])+f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
+    if type(G) == nx.MultiDiGraph:
+        edge_labels = {(u,v): str(G[u][v][k]['obj'])+f"\n{G[u][v][k]['obj'].result['x']:.2f}" for u, v, k in G.edges}
+    else:
+        edge_labels = {(u, v): str(G[u][v]['obj']) + f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges}
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9)
     nx.draw_networkx_edges(G, pos=pos, width=2, ax=ax, edge_color='black')
     plt.show()

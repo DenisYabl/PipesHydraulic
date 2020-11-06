@@ -40,6 +40,7 @@ class HE2_Solver():
         assert self.node_list[-1] == Root
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree, self.A_chordes = self.build_incidence_matrices()
+        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q_static = self.build_static_Q_vec(self.graph)
 
@@ -103,37 +104,59 @@ class HE2_Solver():
         te_ = set(t_.edges())
 
         tl, cl = [], []
-        for u, v in self.graph.edges():
-            if (u, v) in te_ or (v, u) in te_:
-                tl += [(u, v)]
+        for e in self.graph.edges():
+            e_ = (e[1], e[0])
+            if e in te_ or e_ in te_:
+                tl += [e]
             else:
-                cl += [(u, v)]
+                cl += [e]
 
+        assert len(tl) == len(G.nodes)-1
+        assert len(tl) + len(cl) == len(G.edges)
         return tl, cl
 
-    def transform_multi_di_graph_to_equal_di_graph(self, src_graph):
-        if type(src_graph) == nx.DiGraph:
-            return src_graph
-        elif isinstance(src_graph, nx.MultiDiGraph):
-            rez = nx.DiGraph()
-            rez.add_nodes_from(src_graph.nodes(data=True))
-            for u, v, k in src_graph.edges:
-                e = src_graph[u][v][k]
-                if k==0:
-                    rez.add_edge(u, v, k=k, **e)
-                    self.result_edges_mapping[(u, v, k)] = (u, v)
-                else:
-                    mn = f'mock_node{len(self.mock_nodes)}'
-                    self.mock_nodes += [mn]
-                    rez.add_node(mn, obj=vrtxs.HE2_ABC_GraphVertex())
-                    me = f'mock_edge{len(self.mock_edges)}'
-                    self.mock_edges += [me]
-                    rez.add_edge(u, mn, k=k, **e)
-                    rez.add_edge(mn, v, obj=HE2_MockEdge())
-                    self.result_edges_mapping[(u, v, k)] = (u, mn)
-            return rez
-        else:
-            assert False, 'Schema should be a DiGraph or MultiDiGraph!'
+    def transform_multi_di_graph_to_equal_di_graph(self, zzzz):
+        MDG = nx.MultiDiGraph(zzzz, data=True)
+        if type(zzzz) == nx.DiGraph:
+            for u, v in zzzz.edges:
+                assert zzzz[u][v]['obj'] is MDG[u][v][0]['obj']
+        elif type(zzzz) == nx.MultiDiGraph:
+            for u, v, k in zzzz.edges:
+                assert zzzz[u][v][k]['obj'] is MDG[u][v][k]['obj']
+
+        MUDG = nx.MultiGraph()
+        MUDG.add_nodes_from(MDG)
+        # obj_mdg = {id(MDG[u][v][k]['obj']) :(u, v, k) for (u, v, k) in MDG.edges}
+        nodes_order = dict(zip(MDG.nodes, range(len(MDG.nodes))))
+        edge_mapping = {}
+        for (u, v, k) in MDG.edges:
+            u_, v_ = u, v
+            if nodes_order[u] > nodes_order[v]:
+                u_, v_ = v, u
+            k_ = MUDG.add_edge(u_, v_)
+            edge_mapping[u_, v_, k_] = (u, v, k)
+        assert len(MDG.edges) == len(MUDG.edges)
+
+        rez = nx.DiGraph()
+        rez.add_nodes_from(zzzz.nodes(data=True))
+        for _u, _v, _k in MUDG.edges:
+            u, v, k = edge_mapping[(_u, _v, _k)]
+            e = MDG[u][v][k]
+            if _k==0:
+                # rez.add_edge(u, v, k=k, **e)
+                rez.add_edge(u, v, **e)
+                self.result_edges_mapping[(u, v, k)] = (u, v)
+            else:
+                mn = f'mock_node{len(self.mock_nodes)}'
+                self.mock_nodes += [mn]
+                rez.add_node(mn, obj=vrtxs.HE2_ABC_GraphVertex())
+                me = f'mock_edge{len(self.mock_edges)}'
+                self.mock_edges += [me]
+                # rez.add_edge(u, mn, k=k, **e)
+                rez.add_edge(u, mn, **e)
+                rez.add_edge(mn, v, obj=HE2_MockEdge())
+                self.result_edges_mapping[(u, v, k)] = (u, mn)
+        return rez
 
     def add_root_to_graph(self, graph):
         self.mock_nodes += [Root]
