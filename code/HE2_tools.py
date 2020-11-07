@@ -75,7 +75,6 @@ def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L
 
     return G, dict(p_nodes=p_nodes, juncs=juncs, sources=sources, sinks=sinks)
 
-
 def generate_random_net_v1(N=15, E=20, SRC=3, SNK=3, P_CNT=1, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=1,
                            randseed=None):
     '''
@@ -244,3 +243,63 @@ def check_solution(G):
     res1 = evaluate_1stCL_residual(G)
     res2 = evaluate_2ndCL_residual(G)
     return res1, res2
+
+def build_dual_schema_from_solved(schema, p_nodes, sources, sinks, juncs):
+    G = nx.MultiDiGraph(schema, data=True)
+    nodes_P, nodes_Q = {}, {}
+
+    X_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
+    for u, v, k in G.edges:
+        x = G[u][v][k]['obj'].result['x']
+        X_sum_dict[u] -= x
+        X_sum_dict[v] += x
+
+    for n in p_nodes:
+        nodes_P[n] = G.nodes[n]['obj'].P
+        nodes_Q[n] = -X_sum_dict[n]
+
+    for n in juncs:
+        nodes_Q[n] = 0
+    for n in sources:
+        nodes_Q[n] = G.nodes[n]['obj'].Q
+    for n in sinks:
+        nodes_Q[n] = -G.nodes[n]['obj'].Q
+
+    for n in {**sources, **sinks, **juncs}:
+        obj = G.nodes[n]['obj']
+        nodes_P[n] = obj.result['P_bar']
+
+    newschema = nx.MultiDiGraph()
+    p_n = np.random.choice(G.nodes)
+    for n in G.nodes:
+        kind = np.random.choice(['P', 'Q'], p=[0.2, 0.8])
+        if n == p_n:
+            kind = 'P'
+        P = nodes_P[n]
+        Q = nodes_Q[n]
+        value = abs(Q) if kind=='Q' else P
+        obj = None
+
+        if (Q<0) or (Q==0 and kind == 'P'):
+            obj = vrtxs.HE2_Boundary_Vertex(kind, value)
+        elif Q==0 and kind == 'Q':
+            obj = vrtxs.HE2_ABC_GraphVertex()
+        elif Q>0:
+            obj = vrtxs.HE2_Source_Vertex(kind, value, 'water', 20)
+
+        newschema.add_node(n, obj=obj)
+
+    for u, v, k in G.edges:
+        obj = G[u][v][k]['obj']
+        dxs, dys, diams, rghs = [], [], [], []
+        for seg in obj.segments:
+            dxs += [seg.dx_m]
+            dys += [seg.uphill_m]
+            diams += [seg.inner_diam_m]
+            rghs += [seg.roughness_m]
+
+        newobj = HE2_WaterPipe(dxs, dys, diams, rghs)
+        newschema.add_edge(u, v, obj=newobj)
+
+    return newschema
+

@@ -417,9 +417,40 @@ class TestWaterNet(unittest.TestCase):
         # resd1, resd2 = tools.check_solution(G)
         # assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
+    def test_19(self):
+        for rs in list(range(20))[5:]:
+            G, n_dict = tools.generate_random_net_v1(randseed=rs, P_CNT=2, N=15, E=17)
+
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+
+            if op_result.fun > 1e-3:
+                continue
+            print(rs)
+            print(op_result)
+
+            G2 = tools.build_dual_schema_from_solved(G, **n_dict)
+            solver = HE2_Solver(G2)
+            solver.solve()
+            print(op_result)
+
+            for n in G.nodes:
+                P1 = G.nodes[n]['obj'].result['P_bar']
+                P2 = G2.nodes[n]['obj'].result['P_bar']
+                if abs(P1 - P2) > 1e-2:
+                    print(f'{n}, {P1: .3f}, {P2: .3f}, ')
+
+            for u, v, k in G.edges:
+                x1 = G[u][v][k]['obj'].result['x']
+                x2 = G[u][v][k]['obj'].result['x']
+                if abs(x1 - x2) > 1e-2:
+                    print(f'{u} -> {v}, {x1: .3f}, {x2: .3f}, ')
+            print('-'*80)
+
 
 if __name__ == "__main__":
-    # pipe_test = TestWaterNet()
-    # pipe_test.test_18()
+    pipe_test = TestWaterNet()
+    pipe_test.test_19()
 
-    unittest.main()
+    # unittest.main()

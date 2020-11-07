@@ -150,15 +150,14 @@ class HE2_Solver():
                 mn = f'mock_node{len(self.mock_nodes)}'
                 self.mock_nodes += [mn]
                 rez.add_node(mn, obj=vrtxs.HE2_ABC_GraphVertex())
-                me = f'mock_edge{len(self.mock_edges)}'
-                self.mock_edges += [me]
-                # rez.add_edge(u, mn, k=k, **e)
                 rez.add_edge(u, mn, **e)
                 rez.add_edge(mn, v, obj=HE2_MockEdge())
+                self.mock_edges += [(mn, v)]
                 self.result_edges_mapping[(u, v, k)] = (u, mn)
         return rez
 
     def add_root_to_graph(self, graph):
+        p_node_found = False
         self.mock_nodes += [Root]
         G = nx.DiGraph(graph)
         G.add_node(Root, obj=None)
@@ -169,8 +168,8 @@ class HE2_Solver():
                 G.nodes[n]['obj'] = new_obj
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
                 self.mock_edges += [(Root, n)]
-        if len(self.mock_edges) < 1:
-            assert False, 'There must be a node with constrained pressure'
+                p_node_found = True
+        assert p_node_found, 'There must be a node with constrained pressure'
         return G
 
     def build_static_Q_vec(self, G):
