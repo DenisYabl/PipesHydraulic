@@ -5,9 +5,7 @@ import scipy.optimize as scop
 from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import HE2_ABC as abc
-
-Root = 'Root'
-
+from HE2_ABC import Root
 
 class HE2_Solver():
     def __init__(self, schema):
