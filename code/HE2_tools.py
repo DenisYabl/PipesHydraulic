@@ -303,3 +303,60 @@ def build_dual_schema_from_solved(schema, p_nodes, sources, sinks, juncs):
 
     return newschema
 
+def generate_superpositioned_colored_flows_graph(N=10, E=11, SRC=3, SNK=3, randseed=None):
+    np.random.seed(randseed)
+    RT = nx.generators.trees.random_tree(N, seed=randseed)
+    edge_list = [tuple(np.random.choice([u, v], 2, replace=False)) for u, v in RT.edges]
+    edge_set = set(edge_list)
+    while len(edge_set) < E:
+        u, v = tuple(np.random.choice(range(N), 2, replace=False))
+        if ((v, u) in edge_set) or ((v, u) in edge_set):
+            continue
+        edge_set |= {(u, v)}
+    edge_list = list(edge_set)
+
+    DRG = nx.DiGraph()
+    DRG.add_nodes_from(RT.nodes)
+    DRG.add_edges_from(edge_list)
+    base = DRG
+    can_be_source, can_be_sink = set(), set()
+    for n in base.nodes:
+        if len(base.in_edges(n)) > 0:
+            can_be_sink |= {n}
+        if len(base.out_edges(n)) > 0:
+            can_be_source |= {n}
+    A = can_be_source - can_be_sink
+    B = can_be_source - A
+    srcs = list(A) + list(B)
+    sources = {srcs[i] for i in range(SRC)}
+
+    can_be_sink -= sources
+    A = can_be_sink - can_be_source
+    B = can_be_sink - A
+    snks = list(A) + list(B)
+    sinks = {snks[i] for i in range(SNK)}
+
+    scaffold = nx.DiGraph(base)
+    scaffold_nodes = ['SUPERSOURCE', 'SUPERSINK']
+    scaffold.add_nodes_from(scaffold_nodes)
+    scaffold_edges = []
+
+    for n in sources:
+        scaffold_edges += [('SUPERSOURCE', n)]
+    src_edges = scaffold_edges[:]
+    for n in sinks:
+        scaffold_edges += [(n, 'SUPERSINK')]
+    scaffold.add_edges_from(scaffold_edges)
+    zero_capacity = {e:0 for e in src_edges}
+    all_flows = {}
+    for n in sources:
+        nx.set_edge_attributes(scaffold, name='capacity', values=zero_capacity)
+        scaffold['SUPERSOURCE'][n]['capacity'] = 100500
+        capacities = {e:np.random.randint(100) for e in base.edges}
+        nx.set_edge_attributes(scaffold, name='capacity', values=capacities)
+        flow_value, flow_dict = nx.algorithms.flow.maximum_flow(scaffold, 'SUPERSOURCE', 'SUPERSINK')
+        all_flows[n] = dict(Q=flow_value, x_dict=flow_dict)
+
+    return base, all_flows
+
+

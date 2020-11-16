@@ -550,8 +550,13 @@ class TestFluidMixer(unittest.TestCase):
         for k in rez:
             self.assertAlmostEqual(np.linalg.norm(rez[k] - ethalon[k]), 0)
 
+    def test_23(self):
+        G, x_dict = tools.generate_superpositioned_colored_flows_graph(randseed=4242)
+        pass
+
+
 if __name__ == "__main__":
     pipe_test = TestFluidMixer()
-    pipe_test.test_22()
+    pipe_test.test_23()
 
     # unittest.main()
