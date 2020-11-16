@@ -15,6 +15,7 @@ import numpy as np
 import HE2_tools as tools
 import pandas as pd
 import HE2_schema_maker as maker
+import HE2_MixFluids as mixer
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -449,8 +450,108 @@ class TestWaterNet(unittest.TestCase):
             print('-'*80)
 
 
+class TestFluidMixer(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def transform_solution_for_mixer(self, solution_graph):
+        x_dict = dict()
+        G0 = solution_graph
+        G = nx.DiGraph()
+        G.add_nodes_from(G0)
+        for u, v in G0.edges:
+            x = G0[u][v]['obj'].result['x']
+            if x < 0:
+                x_dict[(v,u)] = -x
+                G.add_edge(v, u)
+            else:
+                x_dict[(u, v)] = x
+                G.add_edge(u, v)
+        return G, x_dict
+
+    def test_20(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph() # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in rez:
+            self.assertEqual(len(rez[k]), 1)
+            self.assertAlmostEqual(rez[k][0], 1)
+
+    def test_21(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', T=20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 30))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph()  # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in rez:
+            self.assertEqual(len(rez[k]), 1)
+            self.assertAlmostEqual(rez[k][0], 1)
+
+    def test_22(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('Q', 30, 'water', T=20))
+        inlets.update(KNS_1=vrtxs.HE2_Source_Vertex('Q', 10, 'water', T=20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('P', 200))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph()  # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('KNS_1', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        self.assertEqual(len(srcs), len(inlets))
+        for k in rez:
+            self.assertEqual(len(rez[k]), len(srcs))
+
+        ethalon = {('KNS_0', 'junc_0'): np.array([1., 0.])}
+        ethalon.update({('KNS_1', 'junc_0'):np.array([0., 1.])})
+        ethalon.update({('junc_0', 'well_0'): np.array([0.75, 0.25])})
+        ethalon.update({'well_0': np.array([0.75, 0.25])})
+
+        self.assertEqual(len(rez), len(ethalon))
+        for k in rez:
+            self.assertAlmostEqual(np.linalg.norm(rez[k] - ethalon[k]), 0)
+
 if __name__ == "__main__":
-    pipe_test = TestWaterNet()
-    pipe_test.test_19()
+    pipe_test = TestFluidMixer()
+    pipe_test.test_22()
 
     # unittest.main()

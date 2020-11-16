@@ -15,7 +15,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
         if x_dict[(u, v)] == 0:
             G.remove_edge(u, v)
     for node in _G.nodes:
-        if len(G[node]) == 0:
+        if (len(G.in_edges(node)) == 0) and (len(G.out_edges(node)) == 0):
             G.remove_node(node)
 
     nodes = list(G.nodes)
@@ -50,7 +50,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
             these_vars_are_the_same += [j] # so we have to remmeber this unknown too
 
         if Q[i] > 0:
-            mx1[i] /= Q[i] # cause we need only ones and zeros on the right side
+            mx1[i] /= -Q[i] # cause we need only ones and zeros on the right side
 
         if len(these_vars_are_the_same) > 1: # if there are more than one remembered outlet flow
             for fl1, fl2 in zip(these_vars_are_the_same[1:], these_vars_are_the_same[:-1]):
@@ -73,26 +73,6 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     rez = {}
     for k, i in var_idx.items():
         rez[k] = rez_mx[i, :S]
-        np.testing.assert_almost_equal(abs(sum(rez[k])), 1)
+        np.testing.assert_almost_equal(sum(rez[k]), 1)
     return rez, srcs
-
-
-
-if __name__ == '__main__':
-    G0, nodes = tools.generate_random_net_v0(N=7, E=9, SNK=2, randseed=424242)
-    solver = HE2_Solver(G0)
-    solver.solve()
-    x_dict = dict()
-    G = nx.DiGraph()
-    G.add_nodes_from(G0)
-    for u, v in G0.edges:
-        x = G0[u][v]['obj'].result['x']
-        if x < 0:
-            x_dict[(v,u)] = -x
-            G.add_edge(v, u)
-        else:
-            x_dict[(u, v)] = x
-            G.add_edge(u, v)
-    rez = evalute_network_fluids_wo_root(G, x_dict)
-    print(rez)
 
