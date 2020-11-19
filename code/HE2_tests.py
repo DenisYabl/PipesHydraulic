@@ -488,10 +488,10 @@ class TestFluidMixer(unittest.TestCase):
 
         G, x_dict = self.transform_solution_for_mixer(G)
 
-        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
-        for k in rez:
-            self.assertEqual(len(rez[k]), 1)
-            self.assertAlmostEqual(rez[k][0], 1)
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), 1)
+            self.assertAlmostEqual(cocktails[k][0], 1)
 
     def test_21(self):
         inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', T=20))
@@ -512,10 +512,10 @@ class TestFluidMixer(unittest.TestCase):
 
         G, x_dict = self.transform_solution_for_mixer(G)
 
-        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
-        for k in rez:
-            self.assertEqual(len(rez[k]), 1)
-            self.assertAlmostEqual(rez[k][0], 1)
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), 1)
+            self.assertAlmostEqual(cocktails[k][0], 1)
 
     def test_22(self):
         inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('Q', 30, 'water', T=20))
@@ -536,27 +536,36 @@ class TestFluidMixer(unittest.TestCase):
 
         G, x_dict = self.transform_solution_for_mixer(G)
 
-        rez, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
         self.assertEqual(len(srcs), len(inlets))
-        for k in rez:
-            self.assertEqual(len(rez[k]), len(srcs))
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), len(srcs))
 
         ethalon = {('KNS_0', 'junc_0'): np.array([1., 0.])}
         ethalon.update({('KNS_1', 'junc_0'):np.array([0., 1.])})
         ethalon.update({('junc_0', 'well_0'): np.array([0.75, 0.25])})
         ethalon.update({'well_0': np.array([0.75, 0.25])})
 
-        self.assertEqual(len(rez), len(ethalon))
-        for k in rez:
-            self.assertAlmostEqual(np.linalg.norm(rez[k] - ethalon[k]), 0)
+        self.assertEqual(len(cocktails), len(ethalon))
+        for k in cocktails:
+            self.assertAlmostEqual(np.linalg.norm(cocktails[k] - ethalon[k]), 0)
 
-    def test_23(self):
-        G, x_dict = tools.generate_superpositioned_colored_flows_graph(randseed=4242)
-        pass
+    def test_24(self):
+        for rs in range(100):
+            G, n_dict = tools.generate_random_net_v0(randseed=rs)
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+            if op_result.fun > 1e-3:
+                continue
+            G, x_dict = self.transform_solution_for_mixer(G)
+            cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+            rez = tools.check_fluid_mixation(G, x_dict, cocktails, srcs)
+            self.assert_(rez)
 
 
 if __name__ == "__main__":
     pipe_test = TestFluidMixer()
-    pipe_test.test_23()
+    pipe_test.test_24()
 
     # unittest.main()

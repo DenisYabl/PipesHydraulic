@@ -244,6 +244,50 @@ def check_solution(G):
     res2 = evaluate_2ndCL_residual(G)
     return res1, res2
 
+def check_fluid_mixation(G, x_dict, cocktails, sources):
+    S = len(sources)
+    for n in G.nodes:
+        x_in, x_out = 0, 0
+        for e in G.in_edges(n):
+            x_in += x_dict.get(e, 0)
+        for e in G.out_edges(n):
+            x_out += x_dict.get(e, 0)
+
+        out_cktls = []
+        if n in cocktails:
+            out_cktls += [cocktails[n]]
+        for e in G.out_edges(n):
+            if e in cocktails:
+                out_cktls += [cocktails[e]]
+
+        if len(out_cktls) == 0:
+            assert x_in == 0
+            assert x_out == 0
+            continue
+
+        for c1, c2 in zip(out_cktls, out_cktls[1:]):
+            if np.linalg.norm(c1-c2) > 1e-5:
+                return False
+
+        out_cktl = out_cktls[0]
+        in_cktl = np.zeros(S)
+        if n in sources:
+            assert x_out >= x_in
+            idx = sources.index(n)
+            in_cktl[idx] = x_out - x_in
+
+        for e in G.in_edges(n):
+            if e in cocktails:
+                x = x_dict.get(e, 0)
+                in_cktl += x * cocktails[e]
+
+        in_cktl /= sum(in_cktl)
+        if np.linalg.norm(in_cktl - out_cktl) > 1e-5:
+            return False
+
+    return True
+
+
 def build_dual_schema_from_solved(schema, p_nodes, sources, sinks, juncs):
     G = nx.MultiDiGraph(schema, data=True)
     nodes_P, nodes_Q = {}, {}
@@ -303,7 +347,9 @@ def build_dual_schema_from_solved(schema, p_nodes, sources, sinks, juncs):
 
     return newschema
 
-def generate_superpositioned_colored_flows_graph(N=10, E=11, SRC=3, SNK=3, randseed=None):
+def generate_superpositioned_colored_flows_graph(N=10, E=13, SRC=3, SNK=3, randseed=None):
+    return
+    # Bullshit. Main idea doesnt work
     np.random.seed(randseed)
     RT = nx.generators.trees.random_tree(N, seed=randseed)
     edge_list = [tuple(np.random.choice([u, v], 2, replace=False)) for u, v in RT.edges]
@@ -344,19 +390,47 @@ def generate_superpositioned_colored_flows_graph(N=10, E=11, SRC=3, SNK=3, rands
     for n in sources:
         scaffold_edges += [('SUPERSOURCE', n)]
     src_edges = scaffold_edges[:]
+    sink_edges = []
     for n in sinks:
-        scaffold_edges += [(n, 'SUPERSINK')]
+        sink_edges += [(n, 'SUPERSINK')]
+    scaffold_edges += sink_edges
     scaffold.add_edges_from(scaffold_edges)
     zero_capacity = {e:0 for e in src_edges}
-    all_flows = {}
+    all_flows, Q = {}, {}
     for n in sources:
         nx.set_edge_attributes(scaffold, name='capacity', values=zero_capacity)
-        scaffold['SUPERSOURCE'][n]['capacity'] = 100500
-        capacities = {e:np.random.randint(100) for e in base.edges}
+        scaffold['SUPERSOURCE'][n]['capacity'] = 1000
+        capacities = {e:np.random.randint(20, 100) for e in base.edges}
+        # capacities.update({e:np.random.randint(0, 1000) for e in sink_edges})
         nx.set_edge_attributes(scaffold, name='capacity', values=capacities)
         flow_value, flow_dict = nx.algorithms.flow.maximum_flow(scaffold, 'SUPERSOURCE', 'SUPERSINK')
-        all_flows[n] = dict(Q=flow_value, x_dict=flow_dict)
+        all_flows[n] = flow_dict
+        Q[n] = flow_value
 
-    return base, all_flows
+    rez = {}
+    for n, flow_dict in all_flows.items():
+        for u, v_x_dict in flow_dict.items():
+            for v, x in v_x_dict.items():
+                xs = rez.get((u, v), [])
+                xs += [x]
+                rez[(u, v)] = xs
+
+    result, x_dict = {}, {}
+    for (u, v), xs in rez.items():
+        if len({u, v} & {'SUPERSOURCE', 'SUPERSINK'}) > 0:
+            continue
+        assert len(xs) == len(sources)
+        arr = np.array(xs)
+        sss = sum(arr)
+        x_dict[(u, v)] = sss
+        if sss == 0:
+            continue
+        arr = arr / sss
+        result[(u, v)] = arr
+        print(u, v, arr)
+
+
+
+    return result, sources, base, x_dict
 
 

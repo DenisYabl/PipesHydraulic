@@ -9,7 +9,6 @@ from HE2_ABC import Root
 
 class HE2_Solver():
     def __init__(self, schema):
-        # TODO have to implement: take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
         self.op_result = None
