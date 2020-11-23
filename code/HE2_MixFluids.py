@@ -2,7 +2,6 @@ import networkx as nx
 import numpy as np
 from HE2_ABC import Root
 import HE2_tools as tools
-from HE2_Solver import HE2_Solver
 
 
 def evalute_network_fluids_wo_root(_G, x_dict):
@@ -76,3 +75,11 @@ def evalute_network_fluids_wo_root(_G, x_dict):
         np.testing.assert_almost_equal(sum(cocktails[k]), 1)
     return cocktails, srcs
 
+def evalute_network_fluids_with_root(G, x_dict):
+    #TODO Здесь дело ен в том чтобы убрать рут и ветки к нему. Здесь надо что-то еще сделать, существенное
+    G = nx.DiGraph(G)
+    if Root in G.nodes:
+        G.remove_edges_from(G.edges[Root])
+        G.remove_node(Root)
+    cocktails, srcs = evalute_network_fluids_wo_root(G, x_dict)
+    return cocktails, srcs

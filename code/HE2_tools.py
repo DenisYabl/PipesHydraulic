@@ -429,8 +429,4 @@ def generate_superpositioned_colored_flows_graph(N=10, E=13, SRC=3, SNK=3, rands
         result[(u, v)] = arr
         print(u, v, arr)
 
-
-
     return result, sources, base, x_dict
-
-

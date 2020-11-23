@@ -3,6 +3,9 @@ from abc import abstractmethod
 
 Root = 'Root'
 
+class ESolutionIsAlredyFound(Exception):
+    pass
+
 class HE2_ABC_Fluid(ABC):
     @abstractmethod
     def calc(self, P_bar, T_C):

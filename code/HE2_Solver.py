@@ -6,9 +6,13 @@ from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import HE2_ABC as abc
 from HE2_ABC import Root
+from HE2_ABC import ESolutionIsAlredyFound
+import HE2_MixFluids as mixer
+import HE2_Fluid as fl
+import HE2_tools as tools
 
 class HE2_Solver():
-    def __init__(self, schema):
+    def __init__(self, schema, success_treshold=1e-3, fluids_move_rate=0.5):
         self.schema = schema
         self.graph = None
         self.op_result = None
@@ -26,9 +30,15 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
+        self.search_path_xs = []
+        self.search_path_ys = []
+        self.best_x = None
+        self.best_y = 100500
+        self.fev = 0
+        self.success_treshold = success_treshold
+        self.fluids_move_rate = fluids_move_rate
 
-
-    def solve(self):
+    def do_preprocess(self):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
@@ -41,8 +51,120 @@ class HE2_Solver():
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q_static = self.build_static_Q_vec(self.graph)
 
+    def solve(self):
+        self.do_preprocess()
+        if len(self.chordes) == 0:
+            self.solve_tree()
+            self.op_result = dict(x=None, fun=0, succ=True, fev=1)
+        else:
+            self.solve_cyclic_graph()
+            succ = self.best_y < self.success_treshold
+            if succ:
+                self.restore_best_solution()
+            self.op_result = dict(x=self.best_x, fun=self.best_y, succ=succ, fev=self.fev)
+
+        self.attach_results_to_schema()
+        return
+
+
+    def solve_tree(self):
+        x_tree = np.matmul(self.A_inv, self.Q_static)
+        self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+        self.evaluate_and_set_fluids_on_tree()
+        self.pt_on_tree = self.evalute_pressures_by_tree()
+
+
+    def evaluate_and_set_fluids_on_tree(self):
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(self.graph, self.edges_x)
+        src_fluids = [self.graph.nodes[n]['obj'].fluid for n in srcs]
+        for (u, v), cktl in cocktails.items():
+            fluid = fl.dot_product(cktl, src_fluids)
+            self.graph[u][v]['obj'].fluid = fluid
+
+    def evaluate_and_set_avg_fluid_on_all_edges(self):
+        G = self.graph
+        fluids = []
+        qs = []
+        for n in G.nodes:
+            obj = G.nodes[n]['obj']
+            if isinstance(obj, vrtxs.HE2_Source_Vertex):
+                fluids += [obj.fluid]
+                qs += [obj.Q]
+        avg_fluid = fl.dot_product(np.array(qs), fluids)
+        for u, v in G.edges:
+            obj = G[u][v]['obj']
+            obj.fluid = fl.HE2_DummyFluid(avg_fluid.rho_kgm3)
+        self.avg_fluid = avg_fluid
+
+    def evaluate_and_set_new_fluids(self):
+        G = self.graph
+        mr = self.fluids_move_rate
+        w = np.array([1-mr, mr])
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        for (u, v), cktl in cocktails.items():
+            obj = G.nodes[u][v]['obj']
+            fluidA = fl.dot_product(cktl, src_fluids)
+            fluidB = obj.fluid
+            fluidC = fl.dot_product(w, [fluidA, fluidB])
+            obj.fluid = fluidC
+
+
+    def evaluate_pt_residual(self, x_chordes):
+        Q = self.Q_static
+        x = x_chordes.reshape((len(x_chordes), 1))
+        Q_dynamic = np.matmul(self.A_chordes, x)
+        Q = Q - Q_dynamic
+        x_tree = np.matmul(self.A_inv, Q)
+        self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+        self.edges_x.update(dict(zip(self.chordes, x_chordes)))
+
+        self.perform_self_test_for_1stCL()
+
+        self.pt_on_tree = self.evalute_pressures_by_tree()
+        pt_residual_vec = self.evalute_chordes_pressure_residual()
+        rez = np.linalg.norm(pt_residual_vec)
+        return rez
+
+
+    def restore_best_solution(self):
+        # TODO восстановить 1) потоки, 2) жидкости 3) давления и температуры
+        pass
+
+    def search_processing(self, x, y):
+        self.fev += 1
+        self.search_path_xs += [x]
+        self.search_path_ys += [y]
+        best_was_updated = False
+        if y < self.best_y:
+            self.best_y = y
+            self.best_x = x
+            best_was_updated = True
+            #TODO Не забыть сохранить и восстановить жидкости для бест_икс
+        if self.best_y < self.success_treshold:
+            raise ESolutionIsAlredyFound
+        return best_was_updated
+
+    def solve_cyclic_graph_v2(self):
+        self.evaluate_and_set_avg_fluid_on_all_edges()
+
+        def target(x):
+            pt_residual = self.evaluate_pt_residual(x)
+            best_was_updated = self.search_processing(x, pt_residual)
+            have_to_update_fluids = best_was_updated
+            if have_to_update_fluids:
+                self.evaluate_and_set_new_fluids()
+
+            return pt_residual
+
+        x0 = np.zeros((len(self.chordes), 1))
+        try:
+            scop.minimize(target, x0, method='SLSQP')
+        except ESolutionIsAlredyFound:
+            return
+
+    def solve_cyclic_graph(self):
         def target(x_chordes):
-            # Q = np.ndarray(shape=(len(self.node_list)-1, 1), buffer=self.Q_static)
             Q = self.Q_static
             x = x_chordes.reshape((len(x_chordes), 1))
             Q_dynamic = np.matmul(self.A_chordes, x)
@@ -73,8 +195,6 @@ class HE2_Solver():
             self.op_result = scop.minimize(target, x0, method='SLSQP')
             x0 = self.op_result.x
         target(x0)
-        self.attach_results_to_schema()
-        return
 
     def perform_self_test_for_1stCL(self):
         resd_1stCL = self.evaluate_1stCL_residual()

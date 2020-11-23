@@ -561,7 +561,7 @@ class TestFluidMixer(unittest.TestCase):
             G, x_dict = self.transform_solution_for_mixer(G)
             cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
             rez = tools.check_fluid_mixation(G, x_dict, cocktails, srcs)
-            self.assert_(rez)
+            self.assertTrue(rez)
 
 
 if __name__ == "__main__":
