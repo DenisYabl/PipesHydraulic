@@ -1,10 +1,13 @@
 from abc import ABC
 from abc import abstractmethod
+import collections
 
 Root = 'Root'
 
 class ESolutionIsAlredyFound(Exception):
     pass
+
+OptimizationResult = collections.namedtuple('OptimizationResult', ['x', 'fun', 'succ', 'fev'])
 
 class HE2_ABC_Fluid(ABC):
     @abstractmethod

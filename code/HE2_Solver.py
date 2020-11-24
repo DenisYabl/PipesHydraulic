@@ -55,13 +55,13 @@ class HE2_Solver():
         self.do_preprocess()
         if len(self.chordes) == 0:
             self.solve_tree()
-            self.op_result = dict(x=None, fun=0, succ=True, fev=1)
+            self.op_result = abc.OptimizationResult(x=None, fun=0, succ=True, fev=1)
         else:
             self.solve_cyclic_graph()
             succ = self.best_y < self.success_treshold
             if succ:
                 self.restore_best_solution()
-            self.op_result = dict(x=self.best_x, fun=self.best_y, succ=succ, fev=self.fev)
+            self.op_result = abc.OptimizationResult(x=self.best_x, fun=self.best_y, succ=succ, fev=self.fev)
 
         self.attach_results_to_schema()
         return

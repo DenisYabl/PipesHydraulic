@@ -551,7 +551,7 @@ class TestFluidMixer(unittest.TestCase):
             self.assertAlmostEqual(np.linalg.norm(cocktails[k] - ethalon[k]), 0)
 
     def test_24(self):
-        for rs in range(100):
+        for rs in range(10):
             G, n_dict = tools.generate_random_net_v0(randseed=rs)
             solver = HE2_Solver(G)
             solver.solve()
