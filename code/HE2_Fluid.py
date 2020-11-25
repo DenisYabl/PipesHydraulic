@@ -27,7 +27,10 @@ def dot_product(weigths, fluids):
     '''
     assert len(weigths) == len(fluids)
     wghts_norm = weigths / sum(weigths)
-    rhos = np.array([f.rho_kgm3 for f in fluids])
+    rho_list = []
+    for f in fluids:
+        rho_list += [f.rho_kgm3]
+    rhos = np.array(rho_list)
     rez_rho = np.dot(wghts_norm, rhos)
     rez = HE2_DummyFluid(rez_rho)
     return rez

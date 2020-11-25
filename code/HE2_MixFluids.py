@@ -76,10 +76,8 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     return cocktails, srcs
 
 def evalute_network_fluids_with_root(G, x_dict):
-    #TODO Здесь дело ен в том чтобы убрать рут и ветки к нему. Здесь надо что-то еще сделать, существенное
-    G = nx.DiGraph(G)
-    if Root in G.nodes:
-        G.remove_edges_from(G.edges[Root])
-        G.remove_node(Root)
-    cocktails, srcs = evalute_network_fluids_wo_root(G, x_dict)
+    # Возможно здесь нужно еще подтаскивать флюиды из схемы, так как они могли отвалится при перестроении графа
+    edges = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
+    G2 = nx.DiGraph(edges)
+    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict)
     return cocktails, srcs

@@ -76,8 +76,14 @@ class HE2_Solver():
 
     def evaluate_and_set_fluids_on_tree(self):
         cocktails, srcs = mixer.evalute_network_fluids_with_root(self.graph, self.edges_x)
-        src_fluids = [self.graph.nodes[n]['obj'].fluid for n in srcs]
-        for (u, v), cktl in cocktails.items():
+        src_fluids =[]
+        for n in srcs:
+            src_fluids += [self.schema.nodes[n]['obj'].fluid]
+        for key, value in cocktails.items():
+            if key in self.graph.nodes:
+                continue
+            u, v = key
+            cktl = value
             fluid = fl.dot_product(cktl, src_fluids)
             self.graph[u][v]['obj'].fluid = fluid
 

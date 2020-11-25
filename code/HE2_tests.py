@@ -16,6 +16,7 @@ import HE2_tools as tools
 import pandas as pd
 import HE2_schema_maker as maker
 import HE2_MixFluids as mixer
+import HE2_Fluid
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -470,7 +471,8 @@ class TestFluidMixer(unittest.TestCase):
         return G, x_dict
 
     def test_20(self):
-        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
+        water = HE2_Fluid.HE2_DummyFluid(1000)
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, water, 20))
         outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
         outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
         juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
@@ -566,6 +568,6 @@ class TestFluidMixer(unittest.TestCase):
 
 if __name__ == "__main__":
     pipe_test = TestFluidMixer()
-    pipe_test.test_24()
+    pipe_test.test_20()
 
     # unittest.main()
