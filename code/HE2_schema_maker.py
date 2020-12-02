@@ -77,8 +77,9 @@ def make_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
 
 def make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
     df = df_pipes[["node_id_start", "node_id_end"]]
-    df.columns = ["source", "target"]
-    G = nx.from_pandas_edgelist(df, create_using=nx.MultiDiGraph)
+    df["idx_for_result"] = df.index
+    df.columns = ["source", "target", "idx_for_result"]
+    G = nx.from_pandas_edgelist(df, create_using=nx.MultiDiGraph, edge_attr="idx_for_result")
 
     cmpnts = nx.algorithms.components.number_connected_components(nx.Graph(G))
     if cmpnts != 1:
