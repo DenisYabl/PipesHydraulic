@@ -58,6 +58,19 @@ def do_something_right_now_good_name_will_come_later(input_df):
         result_df.loc[idx, result_cols] = [abs(x), dir, P1, T1, P2, T2]
     return result_df
 
-input_df = pd.read_csv('..\\data\\ends_202011301340.csv')
+def do_upcase_columns_adhoc(columns):
+    rez = []
+    for col in columns:
+        c = col
+        if len(col) == 1:
+            c = col.upper()
+        if col[-1] in ('p', 'q'):
+            c = col[:-1] + col[-1].upper()
+        rez += [c]
+    return rez
+
+
+input_df = pd.read_csv('..\\data\\q4_202012041333.csv')
+input_df.columns = do_upcase_columns_adhoc(input_df.columns)
 result_df = do_something_right_now_good_name_will_come_later(input_df)
 result_df.to_csv('..\\data\\rez1.csv')
