@@ -101,9 +101,10 @@ def make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
         pipes[(u, v, k)] = pipe
     nx.set_edge_attributes(G, name='obj', values=pipes)
 
-
-    df = df_boundaries[['Q', 'P']].fillna(-1e9)
-    df_boundaries['value'] = df.max(axis=1)
+    mask = df_boundaries.kind == 'Q'
+    df_boundaries['value'] = -1e9
+    df_boundaries.loc[mask, 'value'] = df_boundaries.loc[mask, 'Q']
+    df_boundaries.loc[~mask, 'value'] = df_boundaries.loc[~mask, 'P']
 
     nodes = dict()
     id_list = list(df_boundaries.id.values)

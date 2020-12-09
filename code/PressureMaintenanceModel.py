@@ -3,6 +3,8 @@ import HE2_schema_maker as sm
 import HE2_tools as tools
 from HE2_Solver import HE2_Solver
 import numpy as np
+from matplotlib import pyplot as plt
+
 
 def process_error():
     pass
@@ -39,6 +41,8 @@ def do_something_right_now_good_name_will_come_later(input_df):
         process_error()
         return None
 
+    # tools.draw_solution(G, shifts=None, p_nodes=[], sources=[], sinks=[], juncs=[])
+
     result_cols = ['mass_flow', 'flow_direction', 'result_start_P', 'result_start_T', 'result_end_P', 'result_end_T']
     result_df = input_df.copy()
     for col in result_cols:
@@ -69,8 +73,38 @@ def do_upcase_columns_adhoc(columns):
         rez += [c]
     return rez
 
+def split_result_df(result_df):
+    edges_cols = ['rs_schema_id', 'creation_date', 'L', 'D', 'S', 'mass_flow', 'flow_direction']
+    edges_df = result_df[edges_cols]
+    nodes_cols = ['node_id', 'node_name', 'altitude', 'node_type', 'x', 'y', 'kind', 'Q', 'P', 'result_P', 'result_T']
+
+    start_cols = ['node_id_start', 'node_name_start', 'altitude_start', 'node_type_start', 'x_start', 'y_start', 'start_kind', 'start_Q', 'start_P', 'result_start_P', 'result_start_T']
+    end_cols = ['node_id_end', 'node_name_end', 'altitude_end', 'node_type_end', 'x_end', 'y_end', 'end_kind', 'end_Q', 'end_P', 'result_end_P', 'result_end_T']
+
+    df1 = result_df[start_cols]
+    df1.columns = nodes_cols
+    df2 = result_df[end_cols]
+    df2.columns = nodes_cols
+    nodes_df = pd.concat([df1, df2]).drop_duplicates()
+    return edges_df, nodes_df
+
+def transform_measure_units(df):
+    df['D'] = df.D / 1000
+    df['S'] = df.S / 1000
+    df['start_Q'] = df.start_Q * 1000 / 86400
+    df['end_Q'] = df.end_Q * 1000 / 86400
+    return df
+
 
 input_df = pd.read_csv('..\\data\\q4_202012041333.csv')
 input_df.columns = do_upcase_columns_adhoc(input_df.columns)
+input_df = transform_measure_units(input_df)
 result_df = do_something_right_now_good_name_will_come_later(input_df)
 result_df.to_csv('..\\data\\rez1.csv')
+res_edges, res_nodes = split_result_df(result_df)
+
+# fig = plt.figure(constrained_layout=True, figsize=(12, 8))
+# ax = fig.add_subplot(1, 1, 1)
+df = res_nodes[['P', 'result_P', 'node_type']]
+df = df.dropna()
+df.plot.scatter(x='P', y='result_P', c = 'node_type', s=50)
