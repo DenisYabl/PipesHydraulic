@@ -24,7 +24,7 @@ def split_input_df_to_pipes_and_boundaries(df):
     return df_pipes, df_bnds
 
 
-def do_something_right_now_good_name_will_come_later(input_df):
+def solve_and_put_results_to_dataframe(input_df):
     df_pipes, df_bnds = split_input_df_to_pipes_and_boundaries(input_df)
 
     G = sm.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
@@ -95,16 +95,15 @@ def transform_measure_units(df):
     df['end_Q'] = df.end_Q * 1000 / 86400
     return df
 
+def do_predict(input_df):
+    df = input_df
+    df.columns = do_upcase_columns_adhoc(df.columns)
+    df = transform_measure_units(df)
+    result_df = solve_and_put_results_to_dataframe(df)
+    return result_df
 
-input_df = pd.read_csv('..\\data\\q4_202012041333.csv')
-input_df.columns = do_upcase_columns_adhoc(input_df.columns)
-input_df = transform_measure_units(input_df)
-result_df = do_something_right_now_good_name_will_come_later(input_df)
-result_df.to_csv('..\\data\\rez1.csv')
-res_edges, res_nodes = split_result_df(result_df)
 
-# fig = plt.figure(constrained_layout=True, figsize=(12, 8))
-# ax = fig.add_subplot(1, 1, 1)
-df = res_nodes[['P', 'result_P', 'node_type']]
-df = df.dropna()
-df.plot.scatter(x='P', y='result_P', c = 'node_type', s=50)
+if __name__ == '__main__':
+    input_df = pd.read_csv('..\\data\\q4_202012041333.csv')
+    result_df = do_predict(input_df)
+    result_df.to_csv('..\\data\\rez1.csv')
