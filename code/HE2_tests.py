@@ -16,6 +16,7 @@ import HE2_tools as tools
 import pandas as pd
 import HE2_schema_maker as maker
 import HE2_MixFluids as mixer
+import HE2_Fit
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -563,9 +564,115 @@ class TestFluidMixer(unittest.TestCase):
             rez = tools.check_fluid_mixation(G, x_dict, cocktails, srcs)
             self.assertTrue(rez)
 
+class TestFit(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_25(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df)
+        rez = fitter.fit()
+        print(rez)
+
+    def test_26(self):
+        # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
+        methods = ['SLSQP', 'BFGS', 'L-BFGS-B', 'Powell', 'CG', 'trust-constr', 'Nelder-Mead', 'TNC', 'COBYLA']
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        best_ys = []
+        for meth in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth)
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+        for m, y in zip(methods, best_ys):
+            print(m ,y)
+
+    def test_27(self):
+        # Bounds on variables for L - BFGS - B, TNC, SLSQP, Powell, and trust-constr methods.There are two ways to specify the bounds:
+        # 2. Sequence of(min, max) pairs for each element in x. None is used to specify no bound.
+        methods = ['SLSQP', 'L-BFGS-B', 'Powell', 'trust-constr', 'TNC']
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        best_ys = []
+        for meth in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=True)
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+        for m, y in zip(methods, best_ys):
+            print(m ,y)
+
+    def test_28(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        boundless_methods = ['COBYLA', 'L-BFGS-B', 'trust-constr', ]
+        bounded_methods = ['SLSQP', 'trust-constr']
+        methods = []
+        methods += list(zip(bounded_methods, [True]*100))
+        methods += list(zip(boundless_methods, [False]*100))
+        methods = methods[:1]
+        best_ys = []
+        for meth, b in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=b)
+            fitter.max_it = 2000
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+            rez_df = fitter.best_rez_df
+            rez_df.to_csv(f'..\\data\\rez_df{meth}{b}.csv')
+
+        for (m, b), y in zip(methods, best_ys):
+            print(m, b, y)
+
+    def test_29(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=1)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_30(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=2)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_31(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=3)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+
+    def test_32(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=4)
+        fitter.max_it = 20000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_33(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=5)
+        fitter.max_it = 20000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_34(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method='SLSQP', use_bounds=True)
+        fitter.max_it = 5
+        rez = fitter.fit()
+        rez_df = fitter.best_rez_df
+        rez_df.to_csv('..\\data\\rez_df.csv')
+        print(rez)
+
 
 if __name__ == "__main__":
-    pipe_test = TestFluidMixer()
-    pipe_test.test_24()
+    pipe_test = TestFit()
+    pipe_test.test_28()
 
     # unittest.main()

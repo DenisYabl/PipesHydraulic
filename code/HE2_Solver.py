@@ -51,7 +51,7 @@ class HE2_Solver():
             self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
             self.edges_x.update(dict(zip(self.chordes, x_chordes)))
 
-            self.perform_self_test_for_1stCL()
+            # self.perform_self_test_for_1stCL()
 
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual()

@@ -3,6 +3,7 @@ from HE2_Fluid import HE2_DummyWater
 from functools import reduce
 import uniflocpy.uTools.uconst as uc
 import numpy as np
+from functools import lru_cache
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
@@ -46,6 +47,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
         self.dx_m = (L*L - dy*dy) ** 0.5
 
+    @lru_cache(maxsize=None)
     def decode_direction(self, flow, calc_direction, unifloc_direction):
         '''
         :param unifloc_direction - направление расчета и потока относительно  координат.
@@ -55,12 +57,19 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
             00 расчет против координаты, поток по координате
             unifloc_direction перекрывает переданные flow, calc_direction
         '''
-        flow_direction = np.sign(flow)
+        # flow_direction = np.sign(flow)
         if unifloc_direction in [0, 1, 10, 11]:
             calc_direction = 1 if unifloc_direction >= 10 else -1
             flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+        else:
+            if flow < 0:
+                flow_direction = -1
+            elif flow > 0:
+                flow_direction = 1
+            else:
+                flow_direction = 0
 
-        assert calc_direction in [-1, 1]
+        # assert calc_direction in [-1, 1]
         grav_sign = calc_direction
         fric_sign = flow_direction * calc_direction
         t_sign = calc_direction
@@ -90,7 +99,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
         return 0
 
-    def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+    def calc_segment_pressure_drop_slow(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec))
         dP_fric_Pa = P_fric_grad_Pam * self.L_m
         Rho_kgm3 = self.fluid.rho_wat_kgm3
@@ -102,6 +111,12 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         return P_rez_bar, T_rez_C
 
+
+    def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
+        dP_fric_Pa = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec)) * self.L_m
+        P_rez_bar = P_bar - uc.Pa2bar(grav_sign * self.fluid.rho_wat_kgm3 * uc.g * self.uphill_m + fric_sign * dP_fric_Pa)
+        return P_rez_bar, 20
 
 class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
