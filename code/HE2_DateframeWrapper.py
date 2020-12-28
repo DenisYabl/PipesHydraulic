@@ -9,25 +9,12 @@ from matplotlib import pyplot as plt
 def process_error():
     pass
 
-def split_input_df_to_pipes_and_boundaries(df):
-    bnd_cols = ['kind', 'Q', 'is_source', 'P']
-    start_cols = ['node_id_start'] + ['start_' + col for col in bnd_cols]
-    end_cols = ['node_id_end'] + ['end_' + col for col in bnd_cols]
-    df_bnd_start = df[start_cols]
-    df_bnd_start.columns = ['id'] + bnd_cols
-    df_bnd_end = df[end_cols]
-    df_bnd_end.columns = ['id'] + bnd_cols
-    df_bnds = pd.concat([df_bnd_start, df_bnd_end])
-    df_bnds = df_bnds[~df_bnds.kind.isna()]
-    to_drop = ['start_' + col for col in bnd_cols] + ['end_' + col for col in bnd_cols]
-    df_pipes = df.drop(columns=to_drop)
-    return df_pipes, df_bnds
 
 iii = 0
 def solve_and_put_results_to_dataframe(input_df):
     global iii
     iii += 1
-    df_pipes, df_bnds = split_input_df_to_pipes_and_boundaries(input_df)
+    df_pipes, df_bnds = tools.split_input_df_to_pipes_and_boundaries(input_df)
 
     G = sm.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
 

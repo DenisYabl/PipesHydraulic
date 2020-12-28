@@ -3,6 +3,7 @@ import HE2_Vertices as vrtxs
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
                            randseed=None):
@@ -174,7 +175,7 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     fig = plt.figure(constrained_layout=True, figsize=(12, 8))
     ax = fig.add_subplot(1, 1, 1)
     # pos = nx.drawing.layout.planar_layout(G)
-    pos = nx.drawing.layout.kamada_kawai_layout(G)
+    pos = nx.drawing.layout.planar_layout(G)
     g_nodes = set(G.nodes)
     params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
     label_pos = {k:(pos[k][0] + shifts[k][0], pos[k][1] + shifts[k][1]) for k in pos} if shifts is not None else pos
@@ -182,10 +183,16 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
         nx.draw_networkx_nodes(G, nodelist=list(set(nodelist) & g_nodes), node_size=node_size, node_color=node_color, ax=ax, pos=pos)
         HE2_draw_node_labels(G, g_nodes, list(set(nodelist) & g_nodes), keys=['P_bar']+ks, ax=ax, pos=label_pos)
 
+    # if type(G) == nx.MultiDiGraph:
+    #     edge_labels = {(u,v): str(G[u][v][k]['obj'])+f"\n{G[u][v][k]['obj'].result['x']:.2f}" for u, v, k in G.edges}
+    # else:
+    #     edge_labels = {(u, v): str(G[u][v]['obj']) + f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges}
+
     if type(G) == nx.MultiDiGraph:
-        edge_labels = {(u,v): str(G[u][v][k]['obj'])+f"\n{G[u][v][k]['obj'].result['x']:.2f}" for u, v, k in G.edges}
+        edge_labels = {(u,v): f"{G[u][v][k]['obj'].result['x']:.2f}" for u, v, k in G.edges}
     else:
-        edge_labels = {(u, v): str(G[u][v]['obj']) + f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges}
+        edge_labels = {(u, v): f"{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges}
+
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9)
     nx.draw_networkx_edges(G, pos=pos, width=2, ax=ax, edge_color='black')
     plt.show()
@@ -434,3 +441,40 @@ def generate_superpositioned_colored_flows_graph(N=10, E=13, SRC=3, SNK=3, rands
     return result, sources, base, x_dict
 
 
+def split_input_df_to_pipes_and_boundaries(df):
+    bnd_cols1 = ['kind', 'Q', 'is_source', 'P']
+    bnd_cols2 = ['node_id', 'node_name']
+    start_cols = [col + '_start' for col in bnd_cols2] + ['start_' + col for col in bnd_cols1]
+    end_cols = [col + '_end' for col in bnd_cols2] + ['end_' + col for col in bnd_cols1]
+    df_bnd_start = df[start_cols]
+    df_bnd_start.columns = bnd_cols2 + bnd_cols1
+    df_bnd_end = df[end_cols]
+    df_bnd_end.columns = bnd_cols2 + bnd_cols1
+    df_bnds = pd.concat([df_bnd_start, df_bnd_end])
+    df_bnds = df_bnds[~df_bnds.kind.isna()]
+    to_drop = start_cols + end_cols
+    df_pipes = df.drop(columns=to_drop)
+    return df_pipes, df_bnds
+
+def split_result_df_to_pipes_and_nodes(df):
+    bnds_cols = ['kind', 'Q', 'is_source', 'P']
+    node_cols = ['node_id', 'node_name', 'node_type', 'x', 'y']
+    start_cols = [col + '_start' for col in node_cols] + ['result_start_P']
+    end_cols = [col + '_end' for col in node_cols] + ['result_end_P']
+    df_node_start = df[start_cols]
+    df_node_start.columns = node_cols + ['result_P']
+    df_node_end = df[end_cols]
+    df_node_end.columns = node_cols + ['result_P']
+    df_nodes = pd.concat([df_node_start, df_node_end]).drop_duplicates()
+    node_id_set = set(df.node_id_start.values) | set(df.node_id_end.values)
+    print(len(node_id_set))
+    from collections import Counter
+    cntr = Counter(df_nodes.node_id)
+    print(cntr.most_common(10))
+
+
+
+    to_drop = start_cols + end_cols
+    df_pipes = df.drop(columns=to_drop)
+    # assert len(df_nodes) == len(df_nodes.node_id.unique())
+    return df_pipes, df_nodes
