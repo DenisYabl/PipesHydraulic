@@ -17,6 +17,7 @@ import pandas as pd
 import HE2_schema_maker as maker
 import HE2_MixFluids as mixer
 import HE2_Fit
+import HE2_Visualize as vis
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -671,8 +672,22 @@ class TestFit(unittest.TestCase):
         print(rez)
 
 
+class TestDrawing(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_35(self):
+        rez_df = pd.read_csv('..\\data\\rez_df.csv')
+        vis.draw_graph(rez_df, '..\\data\\plot.svg')
+
+
+    def test_36(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        vis.draw_graph(input_df, '..\\data\\plot.svg')
+
+
 if __name__ == "__main__":
-    pipe_test = TestFit()
-    pipe_test.test_28()
+    test = TestDrawing()
+    test.test_35()
 
     # unittest.main()
