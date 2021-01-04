@@ -74,61 +74,9 @@ class HE2_ETL():
             self.move_data_from_eva_to_postgres(src, dst, **kwargs)
 
 
-
-    def fill_pipelines_table(self):
-        if not self.need_reload('pipelines'):
-            return
-        query = f'| __read__ path={self.pipelines_tablename}'
-        self.stage_name = 'grab_pipelines_from_eva, query='+ query
-        job = self.eva_eng.jobs.create(query_text=query, cache_ttl=60, tws=0, twf=0)
-        print(job.status)
-        res = job.dataset.load()
-        df = pd.DataFrame(res)
-
-        self.stage_name = 'upload pipelines table to postgres'
-        df.to_sql(name='pipelines', con=self.pg_eng, schema='HE2', if_exists='replace', index=False)
-
-
-    def fill_better_than_nothing_wellop_table(self):
-        if not self.need_reload('wellop_better_than_nothing'):
-            return
-
-        # query = f'''| __read__ path=omds_well_wellop
-        # | table _time, IDPad, padNum, WELL_ID, wellNum, nagWellopTechnAverageResponse'''
-
-        self.stage_name = 'grab wellop from csv-file'
-        df = pd.read_csv(self.wellop_csv_filename)
-
-        self.stage_name = 'upload wellop table to postgres'
-        df.to_sql(name='wellop_better_than_nothing', con=self.pg_eng, schema='HE2', if_exists='replace', index=False)
-
-    def fill_wells_pads_ids_table(self):
-        # В справочнике oms__ids есть поле padNum и поле pipePadNum. Второе - это номер куста в OIS Pipe.
-        # P.S. Аналогично - wellNum и pipeWellNum
-
-        if not self.need_reload('pipelines'):
-            return
-        query = f'| readFile format=parquet path=oms__ids'
-        self.stage_name = 'grab_pipelines_from_eva, query='+ query
-        job = self.eva_eng.jobs.create(query_text=query, cache_ttl=60, tws=0, twf=0)
-        print(job.status)
-        res = job.dataset.load()
-        df = pd.DataFrame(res)
-
-        self.stage_name = 'upload pipelines table to postgres'
-        df.to_sql(name='pipelines', con=self.pg_eng, schema='HE2', if_exists='replace', index=False)
-
-        pass
-
     def fill_all_neccesary_tables(self):
         for p_item in self.process_list:
             self.do_process_item(**p_item)
-        # self.fill_pipelines_table()
-        # self.move_data_from_xls_to_postgres(self.PQ_xls_filename, 'pads_telemetry')
-        # self.move_data_from_xls_to_postgres(self.KNS_xls_filename, 'kns_telemetry')
-        # self.move_data_from_xls_to_postgres(self.Visio_schema_xls_filename, 'visio_schema')
-        # self.fill_better_than_nothing_wellop_table()
-        # self.fill_wells_pads_ids_table()
 
     def main(self):
         try:
