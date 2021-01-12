@@ -1,9 +1,9 @@
-import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
 from ot_simple_connector.connector import Connector
 from datetime import datetime
 import numpy as np
+from matplotlib import pyplot
 
 class HE2_ETL():
     """
@@ -18,8 +18,9 @@ class HE2_ETL():
     """
 
     def __init__(self, postgres_credentials, eva_credentials):
-        self.pg_eng = create_engine(postgres_credentials)
+        self.pg_eng = create_engine(postgres_credentials, connect_args={'options': '-c search_path=dbo,public,"HE2"'})
         self.eva_eng = Connector(**eva_credentials)
+
         self.force_reload = False
 
         process_list = []
@@ -36,7 +37,7 @@ class HE2_ETL():
     def table_exists(self, table_name):
         rez = True
         try:
-            probe_df = pd.read_sql(f'Select * from "HE2".{table_name} limit 10', con=self.pg_eng)
+            probe_df = pd.read_sql(f'Select * from {table_name} limit 10', con=self.pg_eng)
         except Exception as e:
             rez = False
         return rez
@@ -78,32 +79,103 @@ class HE2_ETL():
         for p_item in self.process_list:
             self.do_process_item(**p_item)
 
-    def main(self):
-        try:
-            self.fill_all_neccesary_tables()
-# Два параметра на вход - какую КНС считаем 1 или 2, и дата-время
-# По первому получаем rs_id, делаем выборку из pipelines. Это уже граф, но неполный
-    # Выпиливаем трубы соединяющие куст и скважину
-    # Выпиливаем двойные трубы по критерию даты создания или еще какому-то флагу (статусы трубопроводов)
-# По телеметрии выбираем на дату-время закачку и давления по скважинам. Выкидываем аутлайеров
-# Агрегируем скважины в кусты.
-# Выделяем множество кустов, по которым есть телеметрия, но нет труб
+    def get_wells_need_preprocess(self):
+        query = f'''
+            With
+            q0 as (select kust, skv, "ValueDATE" dt, "DVALUE" pitch from pads_telemetry where priz='Q'),
+            q1 as (select * from q0 where pitch <> FLOOR(pitch)),
+            q2 as (select min(pitch) min_q, max(pitch) max_q, count(*) cnt_q, skv from q1 group by skv),
+            q4 as (select distinct skv, kust from q1),
+            q5 as (select q4.*, min_q, max_q, cnt_q from q4 left join q2 on q4.skv=q2.skv),
+            good2 as (select * from q5 where max_q/min_q <= 2 and cnt_q >= 5)
+            select skv from q5 except select skv from good2        
+        '''
+        df = pd.read_sql(query, self.pg_eng)
+        return df
+
+    def get_well_Q(self, well):
+        query = f'''
+            select "ValueDATE" dt, "DVALUE" pitch from pads_telemetry where priz='Q' and skv='{well}'             
+        '''
+        df = pd.read_sql(query, self.pg_eng)
+        return df
+
+    def estimate_outliers_by_window(self, pitches, window_width=5):
+        n = len(pitches)
+        ww = window_width
+        hww = (window_width - 1) // 2
+        mx = np.zeros([ww, n + 2 * hww])
+        mx[:, :ww] = pitches[0]
+        mx[:, -ww:] = pitches[-1]
+        for i in range(ww):
+            mx[i, i:i+n] = pitches
+        mx = mx[:, hww:-hww]
+        m = np.mean(mx,axis=0)
+        sigma = np.std(mx, axis=0)
+        u = m + 2*sigma
+        d = m - 2*sigma
+        mask1 = pitches > u
+        mask2 = pitches < d
+        mask = mask1 | mask2
+        return sum(mask)
+
+
+    def preprocess_wells_Q(self):
+        df = self.get_wells_need_preprocess()
+        wells_list = list(df.skv.values)
+        for well in wells_list:
+            df = self.get_well_Q(well)
+            n = len(df)
+            if n <= 5:
+                print('I dont know what to do')
+                continue
+            out_cnt = self.estimate_outliers_by_window(df.pitch.values)
+            print(well, out_cnt)
+
+
+
+    def execute_query(self, query):
+        conn = self.pg_eng.connect()
+        conn.execute(query)
+        conn.close()
+
+    # По телеметрии выбираем на дату-время закачку и давления по скважинам. Выкидываем аутлайеров
+    # Агрегируем скважины в кусты.
+    # Выделяем множество кустов, по которым есть телеметрия, но нет труб
     # Проверяем что эти кусты подключены на схеме.
     # Генерируем синтетические трубы
-# Выделяем множество кустов, которые присоединены к сети ППД, но по ним нет телеметрии
+    # Выделяем множество кустов, которые присоединены к сети ППД, но по ним нет телеметрии
     # Подтаскиваем по ним какие-то заглушки из режимной закачки
-# Формируем и выгружаем датасет для расчета
+    # Формируем и выгружаем датасет для расчета
 
-        except Exception as e:
-            print(f'Something wrong on stage {self.stage_name}')
-            raise e
+    def get_pipelines_and_drop_outliers(self, rs_id, tmp_table_name):
+        query = f'''
+            with
+            q1 as (select * from pipelines p where rs_schema_id = {rs_id}),
+            q2 as (select * from q1 where pipe_status='Действующий'),
+            q3 as (select * from q2 where node_type_start in (1, 3, 8) and node_type_end in (1, 3, 8))
+            select * into temporary {tmp_table_name} from q3
+        '''
+        self.execute_query(query)
+
+
+    def make_dataframe_for_calculation(self, timespan, rs_id):
+        # Два параметра на вход - какую КНС считаем 1 или 2, и дата-время
+        # По первому получаем rs_id, делаем выборку из pipelines. Это уже граф, но неполный
+        # Выпиливаем трубы соединяющие куст и скважину
+        # Выпиливаем двойные трубы по критерию даты создания или еще какому-то флагу (статусы трубопроводов)
+        self.get_pipelines_and_drop_outliers(rs_id, 't_1st_step')
+
+
+
 
 if __name__ == '__main__':
-    # engine = create_engine('postgresql://db_user:210106@localhost:5432/postgres')
-    # test_df = pd.read_csv('..\\data\\input_df.csv')
-    # test_df.to_sql(name='test',con=engine, schema='HE2', index=False)
     # conn =  psycopg2.connect(dbname='postgres', user='db_user', password='210106', host='localhost')
+    rs_id = [1750000976, 1750000710][0]
+    timespan = (datetime.fromisoformat('2019-02-01 01:00'), datetime.fromisoformat('2019-02-01 01:15'))
 
     pipeline = HE2_ETL('postgresql://db_user:210106@localhost:5432/postgres', dict(host="192.168.4.65", port='80', user="am", password="12345678"))
-    pipeline.main()
+    pipeline.fill_all_neccesary_tables()
+    pipeline.preprocess_wells_Q()
+    pipeline.make_dataframe_for_calculation(timespan, rs_id)
     print('Finished')
