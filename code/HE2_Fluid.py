@@ -69,4 +69,52 @@ class HE2_OilWater(HE2_ABC_Fluid):
         #Return for pressure gradient calculation
         return temp_mishenko
 
+class HE2_DummyOil(HE2_ABC_Fluid):
+    def __init__(self, VolumeWater):
+        #Давление насыщения
+        self.SaturationPressure = 67
+        # Пластовая температура
+        self.PlastT = 84
+        # Газовый фактор нефти
+        self.GasFactor = 39
+        # Доля углеводородных газов
+        self.CarbGasAmount = 0.91  # Нет в данных
+        # Доля неуглеводородных газов
+        self.NonCarbGasAmount = 0.09  # Нет в данных
+        # Плотность дегазированной нефти
+        self.SepOilDensity = 0.826
+        # Плотность газа
+        self.GasDensity = 1
+        # Динамическая вязкость сепарированной нефти
+        self.SepOilDynamicViscosity = 21
+        # Обводненность нефти
+        self.VolumeWater = VolumeWater
+        # Объемный фактор нефти
+        self.OilVolumeCoeff = 1.15
+        # Плотность пластовой воды
+        self.PlastWaterDensity = 1.015
+        self.CurrentLiquidDensity = 1000 * (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100)
 
+    def calc(self, P_bar, T_C, X_kgsec, IntDiameter):
+        oil_params = {
+            "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
+            "PlastT": self.PlastT,  # Пластовая температура, исходные данные
+            "GasFactor": self.GasFactor,  # Газовый фактор нефти, исходные данные
+            "SepOilWeight": self.SepOilDensity,  # Плотность нефти, исходные данные
+            "GasDensity": self.GasDensity,  # Плотность попутного газа, исходные данные
+            "SepOilDynamicViscosity": self.SepOilDynamicViscosity,  # Динамическая вязкость нефти, исходные данные
+            "wellopVolumeWater": self.VolumeWater,  # Обводненность нефти, исходные данные
+            "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
+            "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
+            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100),  # Дебит скважины, исходные данные
+            "CurrentP": P_bar,
+            "CurrentT": T_C
+        }
+        tubing = {"IntDiameter": IntDiameter}
+        temp_mishenko = Mishenko.from_oil_params(oil_params=oil_params, tubing=tubing)
+        #Side effects
+        self. CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
+        self.CurrentOilViscosity = temp_mishenko.CurrentOilViscosity
+        self.Q_m3sec = temp_mishenko.Q
+        #Return for pressure gradient calculation
+        return temp_mishenko

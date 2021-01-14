@@ -1,5 +1,5 @@
 import HE2_ABC as abc
-from HE2_Fluid import HE2_DummyWater, HE2_OilWater
+from HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
 from functools import reduce
 import uniflocpy.uTools.uconst as uc
 import numpy as np
@@ -147,11 +147,14 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
     '''
     def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
+        if fluid is None:
+            fluid = HE2_DummyOil(45)
         self.fluid = fluid
+
         self.inner_diam_m = inner_diam_m
         self.roughness_m = roughness_m
-        self.L_m = None
-        self.uphill_m = None
+        self.L_m = L_m
+        self.uphill_m = uphill_m
         self.angle_dgr = 90
         self.dx_m = None
         self.set_pipe_geometry(L=L_m, dy=uphill_m)
@@ -176,7 +179,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
 
         self.L_m = L
         self.uphill_m = dy
-        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
+        self.angle_dgr = uc.rad2grad(np.arcsin(-dy / L)) + 90
         self.dx_m = (L*L - dy*dy) ** 0.5
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):
@@ -205,10 +208,10 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         if X_kgsec == 0:
             return 0
         # Fluid.calc will be optimized at lower level. So we will call it every time
-        current_mishenko = self.fluid.calc(P_bar, T_C, X_kgsec / self.fluid.CurrentLiquidDensity, self.inner_diam_m)
+        current_mishenko = self.fluid.calc(P_bar, T_C, X_kgsec, self.inner_diam_m)
         #Определяем угол в зависимости от fric_sign
         angle = self.angle_dgr if fric_sign > 0 else 180 - self.angle_dgr
-        P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":self.angle_dgr, "Roughness":self.roughness_m})
+        P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
         return fric_sign * P_fric_grad_Pam
 
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
@@ -222,7 +225,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         #Считаем потери давления на сегменте
         dP_full_Pa = P_fric_grad_Pam * self.L_m
         #Считаем полные потери давления по сегменту
-        P_drop_bar = uc.Pa2bar(fric_sign * dP_full_Pa)
+        P_drop_bar = uc.Pa2bar(dP_full_Pa)
         P_rez_bar = P_bar - P_drop_bar
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
@@ -235,8 +238,9 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.intermediate_results = []
         self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
         for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
-            seg = HE2_OilPipeSegment(None, diam, rgh)
-            seg.set_pipe_geometry(dx, dy)
+            seg = HE2_OilPipeSegment(fluid=None, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
+            seg.set_pipe_geometry(dx=dx, dy=dy)
+            a = seg
             self.segments += [seg]
 
     def __str__(self):

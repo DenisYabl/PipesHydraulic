@@ -41,9 +41,11 @@ def calculate (mishenko, tubing):
     form = get_flow_structure_MB(Lw, Lg, Lm, tubing)
     C1, C2, C3, C4, C5, C6 = get_coefs_MB(tubing, form)
     #!!!!!!!!!!!
-    phi1 = math.exp((C1 + C2 * math.sin(math.radians(angle)) + C3 * math.cos(
-        math.radians(angle)) ** 2 + C4 * Lm ** 2) * (
-                            Lg ** C5 / Lw ** C6))
+    try:
+        phi1 = math.exp((C1 + C2 * math.sin(math.radians(angle)) + C3 * math.cos(
+        math.radians(angle)) ** 2 + C4 * Lm ** 2) * (Lg ** C5 / Lw ** C6))
+    except:
+        phi1 = 1
     # Число Фруда смеси
     Fr = count_Frud(mishenko, wm, tubing)
     # Объемные концентрации

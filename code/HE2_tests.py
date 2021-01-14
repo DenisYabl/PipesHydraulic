@@ -1,5 +1,5 @@
 import unittest
-from HE2_Pipe import HE2_WaterPipeSegment
+from HE2_Pipe import HE2_WaterPipeSegment, HE2_OilPipeSegment
 from HE2_Pipe import HE2_WaterPipe
 import uniflocpy.uWell.uPipe as uPipe
 import uniflocpy.uTools.uconst as uc
@@ -412,3 +412,48 @@ if __name__ == "__main__":
     pipe_test.test_16()
 
     # unittest.main()
+class TestOilNet(unittest.TestCase):
+    def setUp(self):
+        pass
+    def test1(self):
+        p0_bar = 50
+        t0_C = 20
+        pipe = HE2_OilPipeSegment()
+        pipe.inner_diam_m = 0.05
+        pipe.roughness_m = 1e-5
+        pipe.L_m = 100
+
+        pipe.uphill_m = 10
+        x_kgs = 10
+        p_fwd_0, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        pipe.uphill_m = 10
+        x_kgs = -10
+        p_fwd_downhill, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        pipe.uphill_m = 10
+        x_kgs = 10
+        p_fwd_uphill, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        pipe.uphill_m = 0
+        x_kgs = -10
+        p_back_0, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        pipe.uphill_m = -10
+        x_kgs = -10
+        p_back_downhill, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        pipe.uphill_m = 10
+        x_kgs = -10
+        p_back_uphill, t = pipe.calc_segment_pressure_drop(p0_bar, t0_C, x_kgs, 1)
+
+        p10m_bar = uc.Pa2bar(9.81 * 10 * 1000)
+        self.assertAlmostEqual(p_fwd_downhill, p_fwd_0 + p10m_bar, 3)
+        self.assertAlmostEqual(p_fwd_uphill, p_fwd_0 - p10m_bar, 3)
+
+        self.assertAlmostEqual(p_back_downhill, p_back_0 + p10m_bar, 3)
+        self.assertAlmostEqual(p_back_uphill, p_back_0 - p10m_bar, 3)
+
+        self.assertAlmostEqual(p_back_0 + p_fwd_0, 2*p0_bar, 3)
+        self.assertAlmostEqual(p_back_downhill + p_fwd_uphill, 2*p0_bar, 3)
+        self.assertAlmostEqual(p_back_uphill + p_fwd_downhill, 2*p0_bar, 3)
