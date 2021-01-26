@@ -50,11 +50,7 @@ def get_flow_structure_MB(Lw, Lg, Lm, tubing):
 
     if Lg > Lg_s_m:
         return "annular"
-    elif tubing["angle"] > 0:
-        if Lw > Lw_b_s:
-            return "bubble"
-        else:
-            return "slug"
+
     elif tubing["angle"] > 30:
         if Lw > Lw_s_t:
             if Lw > Lg_b_s:
@@ -63,6 +59,13 @@ def get_flow_structure_MB(Lw, Lg, Lm, tubing):
                 return "stratified"
         else:
             return "bubble"
+
+    elif tubing["angle"] > 0:
+        if Lw > Lw_b_s:
+            return "bubble"
+        else:
+            return "slug"
+
     elif Lw > Lw_s_t:
         if Lg > Lg_b_s:
             return "slug"
@@ -141,3 +144,21 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
             math.radians(angle))
         temp = dP
     return dP
+
+
+def RecalculateNRH_coefficients(mishenko, inverse = False):
+
+    pseudo = 1.95 * math.pow(mishenko.CurrentOilViscosity, 0.5) * 0.04739 * math.pow(RequiredH / 0.3048, 0.25739) * math.pow(math.pow(RequiredQ / 0.227, 0.5), 0.5)
+    CQ = 0.9873 * math.pow(pseudo, 0) + 0.009019 * math.pow(pseudo, 1) - 0.0016233 * math.pow(pseudo, 2) + 0.00007233 * math.pow(pseudo,
+        3) - 0.0000020258 * math.pow(
+        pseudo, 4) + 0.000000021009 * math.pow(pseudo, 5)
+    CH = 1.0045 * math.pow(pseudo, 0) - 0.002664 * math.pow(pseudo, 1) - 0.00068292 * math.pow(pseudo, 2) + 0.000049706 * math.pow(pseudo,
+        3) - 0.0000016522 * math.pow(
+        pseudo, 4) + 0.000000019172 * math.pow(pseudo, 5)
+
+    CEff = 1.0522 * math.pow(pseudo, 0) - 0.03512 * math.pow(pseudo, 1) - 0.00090394 * math.pow(pseudo, 2) + 0.00022218 * math.pow(pseudo,
+        3) - 0.00001198 * math.pow(
+        pseudo, 4) + 0.00000019895 * math.pow(pseudo, 5)
+
+    return CQ, CH, CEff
+

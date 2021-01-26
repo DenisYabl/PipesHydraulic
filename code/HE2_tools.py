@@ -81,12 +81,15 @@ def HE2_draw_node_labels(G, g_nodes, nodelist, keys, **kwargs):
         sss = [n]
         obj = G.nodes[n]['obj']
         for k in keys:
-            if k in obj.__dict__:
-                sss += [f'{obj.__dict__[k]:.2f}']
-            elif 'result' in obj.__dict__ and k in obj.result:
-                sss += [f'{obj.result[k]:.2f}']
+            try:
+                if 'result' in obj.__dict__ and k in obj.result:
+                    sss += [f'{obj.result[k]:.2f}']
+                elif k in obj.__dict__:
+                    sss += [f'{obj.__dict__[k]:.2f}']
+            except:
+                pass
         lbls.update({n: '\n'.join(sss)})
-    nx.draw_networkx_labels(G, labels=lbls, **kwargs)
+    nx.draw_networkx_labels(G, labels=lbls, **kwargs, font_size=7)
 
 def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     #TODO Не однообразно рисую узлы и дуги, просит рефакторинга
@@ -95,14 +98,16 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     ax = fig.add_subplot(1, 1, 1)
     pos = nx.drawing.layout.planar_layout(G)
     g_nodes = set(G.nodes)
-    params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
+    # params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
+    params = zip([sources, sinks], [50, 10], ['blue','black'], [['Q'], ['Q']])
     label_pos = {k:(pos[k][0] + shifts[k][0], pos[k][1] + shifts[k][1]) for k in pos} if shifts is not None else pos
     for nodelist, node_size, node_color, ks in params:
         nx.draw_networkx_nodes(G, nodelist=list(set(nodelist) & g_nodes), node_size=node_size, node_color=node_color, ax=ax, pos=pos)
         HE2_draw_node_labels(G, g_nodes, list(set(nodelist) & g_nodes), keys=['P_bar']+ks, ax=ax, pos=label_pos)
 
-    edge_labels = {(u,v): str(G[u][v]['obj'])+f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
-    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9)
+    # edge_labels = {(u,v): str(G[u][v]['obj'])+f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
+    edge_labels = {(u,v): f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
+    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=7)
     nx.draw_networkx_edges(G, pos=pos, width=2, ax=ax, edge_color='black')
     plt.show()
 

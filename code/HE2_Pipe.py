@@ -204,7 +204,6 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
 
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign):
         #Уточнить про X_kgsec
-        assert X_kgsec >= 0
         if X_kgsec == 0:
             return 0
         # Fluid.calc will be optimized at lower level. So we will call it every time

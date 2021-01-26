@@ -241,6 +241,14 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
+
+            Q = 0
+            if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
+                Q = self.edges_x[(Root, u)]
+            if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'Q':
+                Q = obj.value if obj.is_source else -obj.value
+            obj.result['Q'] = Q
+
         if type(self.schema) == nx.DiGraph:
             for u, v in self.schema.edges:
                 obj = self.schema[u][v]['obj']
