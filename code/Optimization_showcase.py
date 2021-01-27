@@ -78,7 +78,7 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
            "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 50], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
 }
 
-Full_system_daily_debit = 8000
+Full_system_daily_debit = 15000
 G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
 #tools.draw_solution(G, None, inlets, inlets, outlets, juncs)
 print(G.nodes["DNS_2"]["obj"].result)
