@@ -54,7 +54,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1, self.fluid.calc(P_bar, T_C, X_kgsec, 0.12))
+        fl = self.fluid.calc(P_bar, T_C, X_kgsec, 0.12)
+        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1, fl)
         self.intermediate_results += [(p, t)]
         return p, t
 

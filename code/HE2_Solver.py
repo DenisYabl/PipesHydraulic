@@ -29,7 +29,7 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
-
+        self.total_q = 0
 
     def solve(self):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
@@ -59,9 +59,12 @@ class HE2_Solver():
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual()
             rez = np.linalg.norm(pt_residual_vec)
+            print(rez)
             return rez
 
-        x0 = np.zeros((len(self.chordes), 1))
+        x0 = np.ones((len(self.chordes), 1))
+        x0 = x0 * self.total_q / len(self.chordes)
+
         # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
         # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
         # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
@@ -75,7 +78,8 @@ class HE2_Solver():
         if self.chordes:
             self.op_result = scop.minimize(target, x0, method='SLSQP')
             x0 = self.op_result.x
-        target(x0)
+        y = target(x0)
+        print(y)
         self.attach_results_to_schema()
         return
 
@@ -214,6 +218,8 @@ class HE2_Solver():
                 p_unk, t_unk = obj.perform_calc_forward(p_kn, t_kn, x)
             else:
                 p_unk, t_unk = obj.perform_calc_backward(p_kn, t_kn, x)
+            if np.isnan(p_unk):
+                print(u, v, obj)
             pt[unknown] = (p_unk, t_unk)
         return pt
 

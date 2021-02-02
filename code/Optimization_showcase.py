@@ -1,5 +1,6 @@
 from HE2_Fluid import HE2_OilWater
 from Optimization_test import model_DNS_2
+from Optimization_test import model_DNS_2_by_parts
 import HE2_tools as tools
 import pandas as pd
 """
@@ -80,6 +81,9 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
 
 Full_system_daily_debit = 15000
 G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+
+# G, inlets, juncs, outlets = model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+
 #tools.draw_solution(G, None, inlets, inlets, outlets, juncs)
 print(G.nodes["DNS_2"]["obj"].result)
 print(G.nodes["UDR_1"]["obj"].result)

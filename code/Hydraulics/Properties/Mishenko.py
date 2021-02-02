@@ -115,7 +115,8 @@ class Mishenko:
         Qw = Q * VolumeWater
 
         #Объемное расходное водосодержание
-        VolumeWater = Qw / (Qw + Qo)
+        if Q != 0:
+            VolumeWater = Qw / (Qw + Qo)
 
         #Скорость смеси
         wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
