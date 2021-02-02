@@ -46,6 +46,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
 
 
     def calc(self, P_bar, T_C, Q_Liquid, IntDiameter):
+        P_for_PVT = abs(P_bar)
         oil_params = {
             "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
             "PlastT": self.PlastT,  # Пластовая температура, исходные данные
@@ -57,11 +58,10 @@ class HE2_OilWater(HE2_ABC_Fluid):
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
             "adkuLiquidDebit": Q_Liquid,  # Дебит скважины, исходные данные
-            "CurrentP": P_bar if P_bar >= 0 else abs(P_bar),
+            "CurrentP": P_for_PVT,
             "CurrentT": T_C
         }
         tubing = {"IntDiameter": IntDiameter}
-        temp_params = oil_params
         temp_mishenko = Mishenko.from_oil_params(oil_params=oil_params, tubing=tubing)
         #Side effects
         self. CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
@@ -97,6 +97,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         self.CurrentLiquidDensity = 1000 * (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100)
 
     def calc(self, P_bar, T_C, X_kgsec, IntDiameter):
+        P_for_PVT = abs(P_bar)
         oil_params = {
             "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
             "PlastT": self.PlastT,  # Пластовая температура, исходные данные
@@ -108,7 +109,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
             "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100),  # Дебит скважины, исходные данные
-            "CurrentP": P_bar,
+            "CurrentP": P_for_PVT,
             "CurrentT": T_C
         }
         tubing = {"IntDiameter": IntDiameter}
