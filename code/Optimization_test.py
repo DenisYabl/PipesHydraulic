@@ -726,7 +726,7 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     G.add_edge('Zaboi_1562', 'Pump_intake_1562',obj=HE2_OilPipe([36.4499], [325.55], [0.143 * real_diam_coefficient], [5 * roughness]))
 
     G.add_edge('Wellhead_1562', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1385', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_1523', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_146', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_142', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
 
@@ -837,7 +837,7 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     # Куст 49    
 
     G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([811.92], [67.67], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([668], [211.7], [0.143 * real_diam_coefficient], [5 * roughness]))
 
 
     G.add_edge('Pump_outlet_2630', 'Wellhead_2630', obj=HE2_OilPipe([419.86], [2370.14], [0.125 * real_diam_coefficient], [roughness]))

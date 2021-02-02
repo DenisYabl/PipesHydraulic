@@ -37,8 +37,10 @@ def calculate (mishenko, tubing):
         dP = lambda_ * mishenko.CurrentLiquidDensity * wm ** 2 * 0.5 / tubing["IntDiameter"] + mishenko.CurrentLiquidDensity * mishenko.g * math.sin(math.radians(angle))
         temp = mishenko.CurrentLiquidDensity
         return dP
-
-    form = get_flow_structure_MB(Lw, Lg, Lm, tubing)
+    try:
+        form = get_flow_structure_MB(Lw, Lg, Lm, tubing)
+    except:
+        form = "stratified"
     C1, C2, C3, C4, C5, C6 = get_coefs_MB(tubing, form)
     #!!!!!!!!!!!
     try:

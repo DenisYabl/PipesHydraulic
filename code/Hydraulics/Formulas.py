@@ -37,6 +37,7 @@ def get_flow_structure_MB(Lw, Lg, Lm, tubing):
     angle = 90 - tubing["angle"] if tubing["angle"] >= 0 else 180 - tubing["angle"]
     #if angle > 0:
     x1 = math.log10(Lg) + 0.940 + 0.074 * math.sin(math.radians(angle)) - 0.855 * math.sin(math.radians(angle)) ** 2 + 3.695 * Lm
+
     Lw_b_s = 10 ** x1
     #else:
     x2 = 0.431 - 3.003 * Lm - 1.138 * math.sin(math.radians(angle)) * math.log10(Lw) - 0.429 * math.sin(

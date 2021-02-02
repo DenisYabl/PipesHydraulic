@@ -45,7 +45,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             P_rez_bar =  P_bar -  ((X_kgsec * 86400 /  self.fluid.calc(P_bar, T_C, X_kgsec, 1.5).CurrentLiquidDensity) / self.Productivity)
             T_rez_C = T_C
         else:
-            P_rez_bar = -1e-6 * uc.bar2Pa(P_bar) + 1e-6 * (X_kgsec * 86400 /  self.fluid.calc(P_bar, T_C, X_kgsec, 1.5).CurrentLiquidDensity) / self.Productivity
+            P_rez_bar = P_bar +  ((X_kgsec * 86400 /  self.fluid.calc(P_bar, T_C, X_kgsec, 1.5).CurrentLiquidDensity) / self.Productivity)
             T_rez_C = T_C
         result_pressure = P_rez_bar
         return result_pressure, T_rez_C

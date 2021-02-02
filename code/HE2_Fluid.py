@@ -57,10 +57,11 @@ class HE2_OilWater(HE2_ABC_Fluid):
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
             "adkuLiquidDebit": Q_Liquid,  # Дебит скважины, исходные данные
-            "CurrentP": P_bar,
+            "CurrentP": P_bar if P_bar >= 0 else abs(P_bar),
             "CurrentT": T_C
         }
         tubing = {"IntDiameter": IntDiameter}
+        temp_params = oil_params
         temp_mishenko = Mishenko.from_oil_params(oil_params=oil_params, tubing=tubing)
         #Side effects
         self. CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
