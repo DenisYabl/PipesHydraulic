@@ -12,12 +12,12 @@ oil_params = {
     "OilSaturationP": 66.7, #Давление насыщения нефти при стандартных условиях, исходные данные
     "PlastT": 84.0, #Пластовая температура, исходные данные
     "GasFactor": 34.8, #Газовый фактор нефти, исходные данные
-    "SepOilWeight": 0.826, #Плотность нефти, исходные данные
+    "SepOilWeight": 0.885, #Плотность нефти, исходные данные
     "GasDensity": 1.003, #Плотность попутного газа, исходные данные
     "SepOilDynamicViscosity": 43.03, #Динамическая вязкость нефти, исходные данные
     "wellopVolumeWater": 92.8, #Обводненность нефти, исходные данные
     "VolumeOilCoeff": 1.097, #Объемный коэффициент нефти, исходные данные
-    "PlastWaterWeight": 1.015, #Плотность попутной воды, исходные данные
+    "PlastWaterWeight": 1.025, #Плотность попутной воды, исходные данные
 }
 fluid = HE2_OilWater(oil_params)
 
@@ -30,14 +30,14 @@ juncs = dict(Pump_intake=vrtxs.HE2_ABC_GraphVertex(),
             Pump_outlet=vrtxs.HE2_ABC_GraphVertex(),
              ZABOI_ZONE = vrtxs.HE2_ABC_GraphVertex())
 
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 15))
-#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  350 * 1000 / 86400))
+#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 25))
+outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  380 * 890 / 86400))
 
 G = nx.DiGraph()  # Di = directed
 for k, v in {**inlets, **outlets, **juncs}.items():
     G.add_node(k, obj=v)
 
-pump_3270 = ["ЭЦН5А-320-2500", 54]
+pump_3270 = ["ЭЦН5А-320-2400", 47.5]
 
 roughness = 1e-5
 real_diam_coefficient = 1

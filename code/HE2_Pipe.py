@@ -225,7 +225,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         dP_full_Pa = P_fric_grad_Pam * self.L_m
         #Считаем полные потери давления по сегменту
         P_drop_bar = uc.Pa2bar(dP_full_Pa)
-        P_rez_bar = P_bar - P_drop_bar #temp solution
+        P_rez_bar = P_bar - calc_direction * abs(P_drop_bar) #temp solution
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         return P_rez_bar, T_rez_C
@@ -250,9 +250,9 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
         if calc_direction == 1:
-            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_forward(P_bar, T_C, abs(X_kgsec)) #!
         else:
-            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_backward(P_bar, T_C, abs(X_kgsec))
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
