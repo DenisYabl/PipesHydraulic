@@ -26,7 +26,7 @@ fluid = HE2_OilWater(oil_params)
 
 
 
-def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
+def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
                 fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
     # Давления в источниках
     pressure_1523 = pressures["PAD_5"]["WELL_1523"]
@@ -118,11 +118,11 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
                   PAD_39_well_619=vrtxs.HE2_Source_Vertex('P', pressure_619, fluid, 20),  
                   PAD_39_well_609=vrtxs.HE2_Source_Vertex('P', pressure_609, fluid, 20),
 
-                  PAD_49_well_1816=vrtxs.HE2_Source_Vertex('P', pressure_1816, fluid, 20),
+                  #PAD_49_well_1816=vrtxs.HE2_Source_Vertex('P', pressure_1816, fluid, 20),
                   PAD_49_well_2630=vrtxs.HE2_Source_Vertex('P', pressure_2630, fluid, 20),
                   PAD_49_well_1815=vrtxs.HE2_Source_Vertex('P', pressure_1815, fluid, 20),
                   PAD_49_well_676=vrtxs.HE2_Source_Vertex('P', pressure_676, fluid, 20),
-                  PAD_49_well_3270=vrtxs.HE2_Source_Vertex('P', pressure_3270, fluid, 20),
+                  #PAD_49_well_3270=vrtxs.HE2_Source_Vertex('P', pressure_3270, fluid, 20),
                   PAD_49_well_3266=vrtxs.HE2_Source_Vertex('P', pressure_3266, fluid, 20),
                   PAD_49_well_1814=vrtxs.HE2_Source_Vertex('P', pressure_1814, fluid, 20),
                   PAD_49_well_1817=vrtxs.HE2_Source_Vertex('P', pressure_1817, fluid, 20),
@@ -284,10 +284,10 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
                  Pump_outlet_609=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_609=vrtxs.HE2_ABC_GraphVertex(),
 
-                 Zaboi_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_intake_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_outlet_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 Wellhead_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 #Zaboi_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 #Pump_intake_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 #Pump_outlet_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 #Wellhead_1816=vrtxs.HE2_ABC_GraphVertex(),
 
                  Zaboi_2630=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_2630=vrtxs.HE2_ABC_GraphVertex(),
@@ -304,10 +304,10 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
                  Pump_outlet_676=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_676=vrtxs.HE2_ABC_GraphVertex(),
 
-                 Zaboi_3270=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_intake_3270=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_outlet_3270=vrtxs.HE2_ABC_GraphVertex(),
-                 Wellhead_3270=vrtxs.HE2_ABC_GraphVertex(),
+                 #Zaboi_3270=vrtxs.HE2_ABC_GraphVertex(),
+                 #Pump_intake_3270=vrtxs.HE2_ABC_GraphVertex(),
+                 #Pump_outlet_3270=vrtxs.HE2_ABC_GraphVertex(),
+                 #Wellhead_3270=vrtxs.HE2_ABC_GraphVertex(),
 
                  Zaboi_3266=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_3266=vrtxs.HE2_ABC_GraphVertex(),
@@ -517,11 +517,11 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     G.add_edge('PAD_39_well_609', 'Zaboi_609', obj=HE2_Plast(productivity=productivity_609, fluid=fluid))
 
     # Куст 49
-    G.add_edge('PAD_49_well_1816', 'Zaboi_1816', obj=HE2_Plast(productivity=productivity_1816, fluid=fluid))
+    #G.add_edge('PAD_49_well_1816', 'Zaboi_1816', obj=HE2_Plast(productivity=productivity_1816, fluid=fluid))
     G.add_edge('PAD_49_well_2630', 'Zaboi_2630', obj=HE2_Plast(productivity=productivity_2630, fluid=fluid))
     G.add_edge('PAD_49_well_1815', 'Zaboi_1815', obj=HE2_Plast(productivity=productivity_1815, fluid=fluid))
     G.add_edge('PAD_49_well_676', 'Zaboi_676', obj=HE2_Plast(productivity=productivity_676, fluid=fluid))
-    G.add_edge('PAD_49_well_3270', 'Zaboi_3270', obj=HE2_Plast(productivity=productivity_3270, fluid=fluid))
+    #G.add_edge('PAD_49_well_3270', 'Zaboi_3270', obj=HE2_Plast(productivity=productivity_3270, fluid=fluid))
     G.add_edge('PAD_49_well_3266', 'Zaboi_3266', obj=HE2_Plast(productivity=productivity_3266, fluid=fluid))
     G.add_edge('PAD_49_well_1814', 'Zaboi_1814', obj=HE2_Plast(productivity=productivity_1814, fluid=fluid))
     G.add_edge('PAD_49_well_1817', 'Zaboi_1817', obj=HE2_Plast(productivity=productivity_1817, fluid=fluid))
@@ -667,16 +667,16 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
                                 IntDiameter=0.12, frequency=pump_609[1]))
     
     # Куст 49
-    G.add_edge('Pump_intake_1816', 'Pump_outlet_1816',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,IntDiameter=0.12, frequency=pump_1816[1]))
+    #G.add_edge('Pump_intake_1816', 'Pump_outlet_1816',
+               #obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,IntDiameter=0.12, frequency=pump_1816[1]))
     G.add_edge('Pump_intake_2630', 'Pump_outlet_2630',
                obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2630[0], fluid=fluid, IntDiameter=0.12, frequency=pump_2630[1]))
     G.add_edge('Pump_intake_1815', 'Pump_outlet_1815',
                obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1815[0], fluid=fluid, IntDiameter=0.12, frequency=pump_1815[1]))
     G.add_edge('Pump_intake_676', 'Pump_outlet_676',
                obj=HE2_WellPump(full_HPX=pump_curves, model=pump_676[0], fluid=fluid,IntDiameter=0.12, frequency=pump_676[1]))
-    G.add_edge('Pump_intake_3270', 'Pump_outlet_3270',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, IntDiameter=0.12, frequency=pump_3270[1]))
+    #G.add_edge('Pump_intake_3270', 'Pump_outlet_3270',
+               #obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, IntDiameter=0.12, frequency=pump_3270[1]))
     G.add_edge('Pump_intake_3266', 'Pump_outlet_3266',
                obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3266[0], fluid=fluid,IntDiameter=0.12, frequency=pump_3266[1]))
     G.add_edge('Pump_intake_1814', 'Pump_outlet_1814',
@@ -836,8 +836,8 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     
     # Куст 49    
 
-    G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([668], [211.7], [0.143 * real_diam_coefficient], [5 * roughness]))
+    #G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
+    #G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([668], [211.7], [0.143 * real_diam_coefficient], [5 * roughness]))
 
 
     G.add_edge('Pump_outlet_2630', 'Wellhead_2630', obj=HE2_OilPipe([419.86], [2370.14], [0.125 * real_diam_coefficient], [roughness]))
@@ -851,8 +851,8 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     G.add_edge('Zaboi_676', 'Pump_intake_676',obj=HE2_OilPipe([537.87], [336.76], [0.143 * real_diam_coefficient], [5 * roughness]))
 
 
-    G.add_edge('Pump_outlet_3270', 'Wellhead_3270', obj=HE2_OilPipe([310.83], [2080.17], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3270', 'Pump_intake_3270',obj=HE2_OilPipe([315.89], [637.11], [0.143 * real_diam_coefficient], [5 * roughness]))
+    #G.add_edge('Pump_outlet_3270', 'Wellhead_3270', obj=HE2_OilPipe([310.83], [2080.17], [0.125 * real_diam_coefficient], [roughness]))
+    #G.add_edge('Zaboi_3270', 'Pump_intake_3270',obj=HE2_OilPipe([315.89], [637.11], [0.143 * real_diam_coefficient], [5 * roughness]))
 
     G.add_edge('Pump_outlet_3266', 'Wellhead_3266', obj=HE2_OilPipe([119.76], [2500.24], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Zaboi_3266', 'Pump_intake_3266',obj=HE2_OilPipe([280.05], [489.3], [0.143 * real_diam_coefficient], [5 * roughness]))
@@ -875,11 +875,11 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     G.add_edge('Pump_outlet_677', 'Wellhead_677', obj=HE2_OilPipe([248.2], [2351.8], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Zaboi_677', 'Pump_intake_677',obj=HE2_OilPipe([728.15], [217.82], [0.143 * real_diam_coefficient], [5 * roughness]))
     
-    G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    #G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_2630', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_1815', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_676', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3270', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    #G.add_edge('Wellhead_3270', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_3266', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_1814', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_1817', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
@@ -959,6 +959,64 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     solver = HE2_Solver(G)
     solver.solve()
     return G, inlets, juncs, outlets
+
+def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
+
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    #Создаем солвер и решаем полученный расчетный граф
+    solver = HE2_Solver(G)
+    solver.total_q = daily_debit
+    solver.solve()
+
+
+def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
+
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    #Создаем солвер и решаем полученный расчетный граф
+    solver = HE2_Solver(G)
+    solver.total_q = daily_debit
+    solver.solve()
+    return G, inlets, juncs, outlets
+
+def cut_single_well_subgraph(G, pad_name, well):
+    rez = nx.DiGraph()  # Di = directed
+    plast = f'PAD_{pad_name}_well_{well}'
+    zaboi = f'Zaboi_{well}'
+    intake = f'Pump_intake_{well}'
+    outlet = f'Pump_outlet_{well}'
+    wellhead = f'Wellhead_{well}'
+    pad = f'PAD_{pad_name}'
+    # rez.add_nodes_from([G[plast], G[zaboi], G[intake], G[outlet], G[wellhead]])
+    nodelist = [plast, zaboi, intake, outlet, wellhead, pad]
+    edgelist = [(plast, zaboi), (zaboi, intake), (intake, outlet), (outlet, wellhead), (wellhead, pad)]
+    rez.add_nodes_from(nodelist)
+    rez.add_edges_from(edgelist)
+    node_objs = {n:G.nodes[n]['obj'] for n in nodelist[:-1]}
+    node_objs[pad] = vrtxs.HE2_Boundary_Vertex('P', 5)
+    edge_objs = {}
+    for u, v in edgelist:
+        obj = G[u][v]['obj']
+        edge_objs[(u, v)] = obj
+    nx.set_node_attributes(rez, name='obj', values=node_objs)
+    nx.set_edge_attributes(rez, name='obj', values=edge_objs)
+    return rez
+
+
+
+def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+
+    for well in inlets:
+        l = well.split('_')
+        subG = cut_single_well_subgraph(G, l[1], l[3])
+        solver = HE2_Solver(subG)
+        solver.solve()
+        print(well, subG.nodes[well]["obj"].result)
+
+    pass
 
 
 def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, daily_debit = 0, fluid = fluid, roughness = 3.5, real_diam_coefficient = 0.85 ):

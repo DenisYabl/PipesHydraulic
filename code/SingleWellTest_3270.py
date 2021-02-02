@@ -21,7 +21,7 @@ oil_params = {
 }
 fluid = HE2_OilWater(oil_params)
 
-inlets = dict(PLAST_88=vrtxs.HE2_Source_Vertex('P', 268.5, fluid, 20))
+inlets = dict(PLAST_88=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
 
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
@@ -30,7 +30,7 @@ juncs = dict(Pump_intake=vrtxs.HE2_ABC_GraphVertex(),
             Pump_outlet=vrtxs.HE2_ABC_GraphVertex(),
              ZABOI_ZONE = vrtxs.HE2_ABC_GraphVertex())
 
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 10))
+outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 20))
 #outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  47 * 890 / 86400))
 
 G = nx.DiGraph()  # Di = directed

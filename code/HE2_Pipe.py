@@ -188,9 +188,8 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
             11 расчет и поток по координате
             10 расчет по координате, поток против
             00 расчет и поток против координаты
-            01 расчет против координаты, поток по координате
+            00 расчет против координаты, поток по координате
             unifloc_direction перекрывает переданные flow, calc_direction
-            grav_sign не нужен, поскольку он учитывается в Mukherjee_Brill
         '''
         flow_direction = np.sign(flow)
         if unifloc_direction in [0, 1, 10, 11]:
@@ -198,9 +197,10 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
             flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
 
         assert calc_direction in [-1, 1]
+        grav_sign = calc_direction
         fric_sign = flow_direction * calc_direction
         t_sign = calc_direction
-        return fric_sign, t_sign
+        return grav_sign, fric_sign, t_sign
 
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign):
         #Уточнить про X_kgsec
@@ -211,21 +211,21 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         #Определяем угол в зависимости от fric_sign
         angle = self.angle_dgr if fric_sign > 0 else 180 - self.angle_dgr
         P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
-        return fric_sign * P_fric_grad_Pam
+        return P_fric_grad_Pam
 
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
         return 0
 
     def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
         #Определяем направления расчета
-        fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
+        grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         #Считаем локальный градиент давления по M_B
         P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign)
         #Считаем потери давления на сегменте
         dP_full_Pa = P_fric_grad_Pam * self.L_m
         #Считаем полные потери давления по сегменту
         P_drop_bar = uc.Pa2bar(dP_full_Pa)
-        P_rez_bar = P_bar - P_drop_bar
+        P_rez_bar = P_bar - P_drop_bar #temp solution
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         return P_rez_bar, T_rez_C
