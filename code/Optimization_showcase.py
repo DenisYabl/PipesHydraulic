@@ -93,11 +93,11 @@ def full_test():
     print(G.nodes["Pump_intake_2631"]["obj"].result)
 
 def part_test():
-    Full_system_daily_debit = 15000
+    Full_system_daily_debit = 4750
     # well_list = ['PAD_49_well_1816']
     model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
 
 
 if __name__ == '__main__':
-    # full_test()
-    part_test()
+     full_test()
+    #part_test()
