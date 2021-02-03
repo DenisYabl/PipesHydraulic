@@ -59,7 +59,6 @@ class HE2_Solver():
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual()
             rez = np.linalg.norm(pt_residual_vec)
-            print(rez)
             return rez
 
         x0 = np.ones((len(self.chordes), 1))
@@ -78,8 +77,7 @@ class HE2_Solver():
         if self.chordes:
             self.op_result = scop.minimize(target, x0, method='SLSQP')
             x0 = self.op_result.x
-        y = target(x0)
-        print(y)
+        target(x0)
         self.attach_results_to_schema()
         return
 
