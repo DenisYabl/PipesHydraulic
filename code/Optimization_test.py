@@ -116,7 +116,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                   PAD_39_well_619=vrtxs.HE2_Source_Vertex('P', pressure_619, fluid, 20),  
                   PAD_39_well_609=vrtxs.HE2_Source_Vertex('P', pressure_609, fluid, 20),
 
-                  # PAD_49_well_1816=vrtxs.HE2_Source_Vertex('P', pressure_1816, fluid, 20),
+                  PAD_49_well_1816=vrtxs.HE2_Source_Vertex('P', pressure_1816, fluid, 20),
                   PAD_49_well_2630=vrtxs.HE2_Source_Vertex('P', pressure_2630, fluid, 20),
                   PAD_49_well_1815=vrtxs.HE2_Source_Vertex('P', pressure_1815, fluid, 20),
                   PAD_49_well_676=vrtxs.HE2_Source_Vertex('P', pressure_676, fluid, 20),
@@ -282,10 +282,10 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  Pump_outlet_609=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_609=vrtxs.HE2_ABC_GraphVertex(),
 
-                 # Zaboi_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 # Pump_intake_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 # Pump_outlet_1816=vrtxs.HE2_ABC_GraphVertex(),
-                 # Wellhead_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 Zaboi_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_intake_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_outlet_1816=vrtxs.HE2_ABC_GraphVertex(),
+                 Wellhead_1816=vrtxs.HE2_ABC_GraphVertex(),
 
                  Zaboi_2630=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_2630=vrtxs.HE2_ABC_GraphVertex(),
@@ -454,7 +454,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     productivity_609 = plasts["PAD_39"]["WELL_609"]
 
     # Куст 39
-    # productivity_1816 = plasts["PAD_49"]["WELL_1816"]
+    productivity_1816 = plasts["PAD_49"]["WELL_1816"]
     productivity_2630 = plasts["PAD_49"]["WELL_2630"]
     productivity_1815 = plasts["PAD_49"]["WELL_1815"]
     productivity_676 = plasts["PAD_49"]["WELL_676"]
@@ -515,7 +515,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     G.add_edge('PAD_39_well_609', 'Zaboi_609', obj=HE2_Plast(productivity=productivity_609, fluid=fluid))
 
     # Куст 49
-    # G.add_edge('PAD_49_well_1816', 'Zaboi_1816', obj=HE2_Plast(productivity=productivity_1816, fluid=fluid))
+    G.add_edge('PAD_49_well_1816', 'Zaboi_1816', obj=HE2_Plast(productivity=productivity_1816, fluid=fluid))
     G.add_edge('PAD_49_well_2630', 'Zaboi_2630', obj=HE2_Plast(productivity=productivity_2630, fluid=fluid))
     G.add_edge('PAD_49_well_1815', 'Zaboi_1815', obj=HE2_Plast(productivity=productivity_1815, fluid=fluid))
     G.add_edge('PAD_49_well_676', 'Zaboi_676', obj=HE2_Plast(productivity=productivity_676, fluid=fluid))
@@ -578,7 +578,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     pump_609 = pumps["PAD_39"]["WELL_609"]
 
     # Куст 49
-    # pump_1816 = pumps["PAD_49"]["WELL_1816"]
+    pump_1816 = pumps["PAD_49"]["WELL_1816"]
     pump_2630 = pumps["PAD_49"]["WELL_2630"]
     pump_1815 = pumps["PAD_49"]["WELL_1815"]
     pump_676 = pumps["PAD_49"]["WELL_676"]
@@ -665,8 +665,8 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                                 IntDiameter=0.12, frequency=pump_609[1]))
     
     # Куст 49
-    # G.add_edge('Pump_intake_1816', 'Pump_outlet_1816',
-    #            obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,IntDiameter=0.12, frequency=pump_1816[1]))
+    G.add_edge('Pump_intake_1816', 'Pump_outlet_1816',
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,IntDiameter=0.12, frequency=pump_1816[1]))
     G.add_edge('Pump_intake_2630', 'Pump_outlet_2630',
                obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2630[0], fluid=fluid, IntDiameter=0.12, frequency=pump_2630[1]))
     G.add_edge('Pump_intake_1815', 'Pump_outlet_1815',
@@ -834,8 +834,8 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     
     # Куст 49    
 
-    # G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
-    # G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([811.92], [67.67], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([811.92], [67.67], [0.143 * real_diam_coefficient], [5 * roughness]))
 
 
     G.add_edge('Pump_outlet_2630', 'Wellhead_2630', obj=HE2_OilPipe([419.86], [2370.14], [0.125 * real_diam_coefficient], [roughness]))
@@ -873,7 +873,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     G.add_edge('Pump_outlet_677', 'Wellhead_677', obj=HE2_OilPipe([248.2], [2351.8], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Zaboi_677', 'Pump_intake_677',obj=HE2_OilPipe([728.15], [217.82], [0.143 * real_diam_coefficient], [5 * roughness]))
     
-    # G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_2630', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_1815', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
     G.add_edge('Wellhead_676', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
@@ -963,6 +963,7 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     solver = HE2_Solver(G)
     solver.total_q = daily_debit
     solver.solve()
+    return G, inlets, juncs, outlets
 
 def cut_single_well_subgraph(G, pad_name, well):
     rez = nx.DiGraph()  # Di = directed
@@ -988,19 +989,33 @@ def cut_single_well_subgraph(G, pad_name, well):
     return rez
 
 
-
+# Review:
+# def foo(bar = {}):
+# Это плохой паттерн. Если аргумент функции по умолчанию имеет изменяемое значение (словарь, список), то вызовы функции могут приводить к затейливым спецэффектам
+# Содержимое аргумента при выполнении тела функции, может быть разным, при вызове с одной и той же строкой параметров. Начинает зависеть от того с какими аргументами вызывалась функция раньше.
+# Вот и PyCharm это подчеркивает
 def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
-                fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1, well_list = None ):
 
-    for well in inlets:
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    wells = inlets
+    if well_list:
+        wells = list(set(well_list) & set(inlets))
+
+    for well in wells:
         l = well.split('_')
         subG = cut_single_well_subgraph(G, l[1], l[3])
         solver = HE2_Solver(subG)
         solver.solve()
-        print(well, subG.nodes[well]["obj"].result)
+        op_result = solver.op_result
+        if op_result.fun > 1e-3:
+            print(f'NOT SOLVED, {op_result.fun: .3f}')
+        # G.nodes[well]['obj'].result.Q > 0 means node is source
+        print(well, subG.nodes[well]['obj'].result)
+        u, v = list(G.edges(well))[0]
+        print(f'{u}-->{v}', subG[u][v]['obj'].result, '\n')
 
-    pass
+    return None
 
 
 def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, daily_debit = 0, fluid = fluid, roughness = 3.5, real_diam_coefficient = 0.85 ):
