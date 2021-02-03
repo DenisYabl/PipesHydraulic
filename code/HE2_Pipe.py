@@ -205,11 +205,11 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign):
         #Уточнить про X_kgsec
         if X_kgsec == 0:
-            return 0
+            return fric_sign * self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity * 9.81 * self.uphill_m
         # Fluid.calc will be optimized at lower level. So we will call it every time
         current_mishenko = self.fluid.calc(P_bar, T_C, X_kgsec, self.inner_diam_m)
         #Определяем угол в зависимости от fric_sign
-        angle = self.angle_dgr if fric_sign > 0 else 180 - self.angle_dgr
+        angle = self.angle_dgr if fric_sign > 0 else 180 + self.angle_dgr
         P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
         return P_fric_grad_Pam
 
@@ -225,7 +225,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         dP_full_Pa = P_fric_grad_Pam * self.L_m
         #Считаем полные потери давления по сегменту
         P_drop_bar = uc.Pa2bar(dP_full_Pa)
-        P_rez_bar = P_bar - calc_direction * abs(P_drop_bar) #temp solution
+        P_rez_bar = P_bar - P_drop_bar #temp solution
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         return P_rez_bar, T_rez_C

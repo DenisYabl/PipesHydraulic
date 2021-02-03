@@ -30,7 +30,7 @@ juncs = dict(Pump_intake=vrtxs.HE2_ABC_GraphVertex(),
             Pump_outlet=vrtxs.HE2_ABC_GraphVertex(),
              ZABOI_ZONE = vrtxs.HE2_ABC_GraphVertex())
 
-#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 8))
+#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 15))
 outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  47* 1000 / 86400))
 
 G = nx.DiGraph()  # Di = directed
