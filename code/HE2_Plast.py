@@ -42,6 +42,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         #Определяем направления расчета
         fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if fric_sign > 0:
+            # TODO remove this IF like this way:  friction_bar = (X_kgsec * 86400 /  liq_dens) / self.Productivity; P_rez_bar = P_bar + fric_sign * friction_bar
             P_rez_bar =  P_bar -  ((X_kgsec * 86400 /  self.fluid.calc(P_bar, T_C, X_kgsec, 1.5).CurrentLiquidDensity) / self.Productivity)
             T_rez_C = T_C
         else:
