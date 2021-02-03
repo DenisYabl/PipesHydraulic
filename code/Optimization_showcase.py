@@ -79,16 +79,25 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
            "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 50], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
 }
 
-Full_system_daily_debit = 15000
-G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
 
-# G, inlets, juncs, outlets = model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+def full_test():
+    Full_system_daily_debit = 15000
+    G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
+                                            daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+    print(G.nodes["DNS_2"]["obj"].result)
+    print(G.nodes["UDR_1"]["obj"].result)
+    print(G.nodes["Pump_outlet_725"]["obj"].result)
+    print(G.nodes["Wellhead_1383"]["obj"].result)
+    print(G.nodes["Zaboi_195"]["obj"].result)
+    print(G.nodes["Pump_intake_729"]["obj"].result)
+    print(G.nodes["Pump_intake_2631"]["obj"].result)
 
-#tools.draw_solution(G, None, inlets, inlets, outlets, juncs)
-print(G.nodes["DNS_2"]["obj"].result)
-print(G.nodes["UDR_1"]["obj"].result)
-print(G.nodes["Pump_outlet_725"]["obj"].result)
-print(G.nodes["Wellhead_1383"]["obj"].result)
-print(G.nodes["Zaboi_195"]["obj"].result)
-print(G.nodes["Pump_intake_729"]["obj"].result)
-print(G.nodes["Pump_intake_2631"]["obj"].result)
+def part_test():
+    Full_system_daily_debit = 15000
+    # well_list = ['PAD_49_well_1816']
+    model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+
+
+if __name__ == '__main__':
+    # full_test()
+    part_test()
