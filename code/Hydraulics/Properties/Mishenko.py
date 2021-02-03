@@ -255,6 +255,8 @@ class Mishenko:
         else:
             t = 0.32 + 1 / 1.567
         DissolvedGasAmount = GasFactor * (CurrentP / Saturation_pressure) ** t
+        if CurrentP < 0:
+            DissolvedGasAmount = 0
         # Количество выделившегося из одного кубометра нефти свободного газа
         FreeGasAmount = GasFactor - DissolvedGasAmount
 
@@ -269,7 +271,10 @@ class Mishenko:
         # Плотность газонасыщенной нефти
         m = 1 + 0.029 * (CurrentT - 303) * (SepOilDensity * FreeGasDensity * 1e-3 - 0.7966)
         # Относительная плотность растворенного в нефти свободного газа
-        DissolvedGasDensity = GasFactor * (a1 * m * GasDensity - FreeGasDensity * (
+        if CurrentP < 0:
+            DissolvedGasDensity = 0
+        else:
+            DissolvedGasDensity = GasFactor * (a1 * m * GasDensity - FreeGasDensity * (
                 FreeGasAmount / GasFactor)) / DissolvedGasAmount
 
         SaturatedOilDensity = SepOilDensity * (1 + 1.293e-3 * DissolvedGasDensity * DissolvedGasAmount /

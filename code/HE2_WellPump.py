@@ -21,9 +21,9 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.IntDiameter = IntDiameter
         self.frequency = frequency
         self._printstr = self.base_HPX.to_string()
-
+        visc_approx = self.fluid.calc(30, 20, 1, 0.12).CurrentOilViscosity
         self.true_HPX = self.base_HPX.copy()
-        self.true_HPX["pseudo"] = 1.95 * math.pow(fluid.SepOilDynamicViscosity, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
+        self.true_HPX["pseudo"] = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
         self.true_HPX["Cq"] = 0.9873 * (self.true_HPX["pseudo"] ** 0) + 0.009019 * (self.true_HPX["pseudo"] ** 1) - 0.0016233 * (self.true_HPX["pseudo"] ** 2) + 0.00007233 * (self.true_HPX["pseudo"] ** 3) - 0.0000020258 * (
         self.true_HPX["pseudo"] ** 4) + 0.000000021009 * (self.true_HPX["pseudo"] ** 5)
         self.true_HPX["Ch"] = 1.0045 * (self.true_HPX["pseudo"] ** 0) - 0.002664 * (self.true_HPX["pseudo"] ** 1) - 0.00068292 * (self.true_HPX["pseudo"] ** 2) + 0.000049706 * (self.true_HPX["pseudo"] ** 3) - 0.0000016522 * (
@@ -62,9 +62,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
 
-
-
-
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1, self.fluid.calc(P_bar, T_C, X_kgsec, self.IntDiameter))
 
         self.intermediate_results += [(p, t)]
@@ -78,12 +75,10 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         else:
             get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], fill_value="extrapolate")
 
-        if fric_sign > 0:
-            P_rez_bar = P_bar + uc.Pa2bar(get_pressure_raise(abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity) * 9.81 *  mishenko.CurrentLiquidDensity)
-            T_rez_C = T_C
-        else:
-            P_rez_bar = P_bar - uc.Pa2bar(get_pressure_raise(abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity) * 9.81 *  mishenko.CurrentLiquidDensity)
-            T_rez_C = T_C
+
+        P_rez_bar = P_bar + fric_sign * uc.Pa2bar(get_pressure_raise(abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity) * 9.81 *  mishenko.CurrentLiquidDensity)
+        T_rez_C = T_C
+
         return P_rez_bar, T_rez_C
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):
