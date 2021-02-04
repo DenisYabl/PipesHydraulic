@@ -179,7 +179,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
 
         self.L_m = L
         self.uphill_m = dy
-        self.angle_dgr = uc.rad2grad(np.arcsin(-dy / L)) + 90
+        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
         self.dx_m = (L*L - dy*dy) ** 0.5
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):
@@ -202,16 +202,16 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         t_sign = calc_direction
         return grav_sign, fric_sign, t_sign
 
-    def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign):
+    def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign, grav_sign, calc_direction):
         #Уточнить про X_kgsec
         if X_kgsec == 0:
-            return fric_sign * self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity * 9.81 * self.uphill_m
+            return 0, self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity * 9.81
         # Fluid.calc will be optimized at lower level. So we will call it every time
-        current_mishenko = self.fluid.calc(P_bar, T_C, X_kgsec, self.inner_diam_m)
+        current_mishenko = self.fluid.calc(P_bar, T_C,abs(X_kgsec), self.inner_diam_m)
         #Определяем угол в зависимости от fric_sign
-        angle = self.angle_dgr if fric_sign > 0 else 180 + self.angle_dgr
-        P_fric_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
-        return P_fric_grad_Pam
+        angle = self.angle_dgr if calc_direction > 0 else -self.angle_dgr
+        P_fric_grad_Pam, P_grav_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
+        return P_fric_grad_Pam, P_grav_grad_Pam
 
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
         return 0
@@ -220,11 +220,12 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         #Определяем направления расчета
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         #Считаем локальный градиент давления по M_B
-        P_fric_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign)
+        P_fric_grad_Pam, P_grav_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign, grav_sign, calc_direction)
         #Считаем потери давления на сегменте
         dP_full_Pa = P_fric_grad_Pam * self.L_m
+        dP_full_grav_Pa = P_grav_grad_Pam * self.uphill_m
         #Считаем полные потери давления по сегменту
-        P_drop_bar = uc.Pa2bar(dP_full_Pa)
+        P_drop_bar = fric_sign * uc.Pa2bar(dP_full_Pa) + grav_sign * uc.Pa2bar(dP_full_grav_Pa)
         P_rez_bar = P_bar - P_drop_bar #temp solution
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
@@ -250,9 +251,9 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
         if calc_direction == 1:
-            return self.perform_calc_forward(P_bar, T_C, abs(X_kgsec)) #!
+            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec)) #!
         else:
-            return self.perform_calc_backward(P_bar, T_C, abs(X_kgsec))
+            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C

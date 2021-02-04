@@ -99,5 +99,5 @@ def part_test():
 
 
 if __name__ == '__main__':
-    # full_test()
-    part_test()
+    full_test()
+    #part_test()

@@ -34,7 +34,7 @@ def get_coefficients(u, mu1, mu2, dens1, dens2, Fr):
 
 
 def get_flow_structure_MB(Lw, Lg, Lm, tubing):
-    angle = 90 - tubing["angle"] if tubing["angle"] >= 0 else 180 - tubing["angle"]
+    angle = tubing["angle"]
     #if angle > 0:
     x1 = math.log10(Lg) + 0.940 + 0.074 * math.sin(math.radians(angle)) - 0.855 * math.sin(math.radians(angle)) ** 2 + 3.695 * Lm
 
@@ -89,11 +89,11 @@ def get_coefs_MB(params, flow):
 
 
 def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, Lg, Lm, wm):
-    angle = 90 - tubing["angle"] if tubing["angle"] >= 0 else 180 - tubing["angle"]
+    angle = tubing["angle"]
     if form in ['slug', 'bubble']:
         #Расчет для пузырькового течения
-        dP = (lambda0 * 0.5 * dens_true * wm ** 2 / tubing["IntDiameter"] + dens_true * mishenko.g * math.sin(
-            math.radians(angle))) / (1 - Ek)
+        dP_fric = (lambda0 * 0.5 * dens_true * wm ** 2 / tubing["IntDiameter"]) / (1 - Ek)
+        dP_grav = (dens_true * mishenko.g) / (1 - Ek)
     elif form == 'annular':
         #Расчет для кольцевого течения
         y = mishenko.OilVolumeCoeff / phi1
@@ -109,8 +109,8 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
             extrapolate_function = interp1d(x=HR, y=fr, fill_value="extrapolate")
             res = extrapolate_function(y)
         lambdam = lambda0 * res
-        dP = (lambdam * 0.5 * dens_true * wm ** 2 / tubing["IntDiameter"] + dens_true * mishenko.g * math.sin(
-            math.radians(angle))) / (1 - Ek)
+        dP_fric = (lambdam * 0.5 * dens_true * wm ** 2 / tubing["IntDiameter"]) / (1 - Ek)
+        dP_grav = (dens_true * mishenko.g) / (1 - Ek)
     elif form == 'stratified':
         #Расчет для расслоенного течения
         # Заполненность трубы жидкостью
@@ -140,26 +140,8 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         # Касательные напряжения на стенке трубы
         tauo = lambdao * mishenko.SaturatedOilDensity * wo ** 2 * 0.5 / mishenko.g
         taug = lambdag * mishenko.FreeGasDensity * wg ** 2 * 0.5 / mishenko.g
-        dP = -(tauo * Perimo + taug * Perimg) / mishenko.GasFactor - (
-                mishenko.CurrentLiquidDensity * phi1 + mishenko.CurrentFreeGasDensity * phi2) * mishenko.g * math.sin(
-            math.radians(angle))
-        temp = dP
-    return dP
+        dP_fric = -(tauo * Perimo + taug * Perimg) / mishenko.GasFactor
+        dP_grav = (mishenko.CurrentLiquidDensity * phi1 - mishenko.CurrentFreeGasDensity * phi2) * mishenko.g
+    return dP_fric, dP_grav
 
-
-def RecalculateNRH_coefficients(mishenko, inverse = False):
-
-    pseudo = 1.95 * math.pow(mishenko.CurrentOilViscosity, 0.5) * 0.04739 * math.pow(RequiredH / 0.3048, 0.25739) * math.pow(math.pow(RequiredQ / 0.227, 0.5), 0.5)
-    CQ = 0.9873 * math.pow(pseudo, 0) + 0.009019 * math.pow(pseudo, 1) - 0.0016233 * math.pow(pseudo, 2) + 0.00007233 * math.pow(pseudo,
-        3) - 0.0000020258 * math.pow(
-        pseudo, 4) + 0.000000021009 * math.pow(pseudo, 5)
-    CH = 1.0045 * math.pow(pseudo, 0) - 0.002664 * math.pow(pseudo, 1) - 0.00068292 * math.pow(pseudo, 2) + 0.000049706 * math.pow(pseudo,
-        3) - 0.0000016522 * math.pow(
-        pseudo, 4) + 0.000000019172 * math.pow(pseudo, 5)
-
-    CEff = 1.0522 * math.pow(pseudo, 0) - 0.03512 * math.pow(pseudo, 1) - 0.00090394 * math.pow(pseudo, 2) + 0.00022218 * math.pow(pseudo,
-        3) - 0.00001198 * math.pow(
-        pseudo, 4) + 0.00000019895 * math.pow(pseudo, 5)
-
-    return CQ, CH, CEff
 

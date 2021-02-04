@@ -41,18 +41,13 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
         #Определяем направления расчета
         fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
-        if fric_sign > 0:
-            # TODO remove this IF like this way:  friction_bar = (X_kgsec * 86400 /  liq_dens) / self.Productivity; P_rez_bar = P_bar + fric_sign * friction_bar
-            P_rez_bar =  P_bar -  ((X_kgsec * 86400 /  self.fluid.calc(P_bar, T_C, X_kgsec, 1.5).CurrentLiquidDensity) / self.Productivity)
-            T_rez_C = T_C
-        else:
-            fl =  self.fluid
-            liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
-            liq_dens = liq.CurrentLiquidDensity
-            P_rez_bar = P_bar + (X_kgsec * 86400 /  liq_dens) / self.Productivity
-            T_rez_C = T_C
-        result_pressure = P_rez_bar
-        return result_pressure, T_rez_C
+
+        fl =  self.fluid
+        liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
+        liq_dens = liq.CurrentLiquidDensity
+        P_rez_bar = P_bar - fric_sign * (X_kgsec * 86400 /  liq_dens) / self.Productivity
+        T_rez_C = T_C
+        return P_rez_bar, T_rez_C
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):
         '''

@@ -9,7 +9,7 @@ def calculate (mishenko, tubing):
     :param tubing: Сведенные данные инклинометрии и труб НКТ
     :return: dP/dL - локальная производная давления по длине
     """
-    angle = 90 - tubing["angle"] if tubing["angle"] >= 0 else 180 - tubing["angle"]
+    angle = tubing["angle"]
 
 
 
@@ -18,7 +18,7 @@ def calculate (mishenko, tubing):
     if (mishenko.VolumeWater == 1):
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity / mishenko.CurrentWaterViscosity
         lambda_ = 64 / Re if Re < 2300 else 0.11 * (68 / Re + tubing["Roughness"] / tubing["IntDiameter"]) ** 0.25
-        return lambda_ * mishenko.CurrentLiquidDensity * (wm ** 2) * 0.5 / tubing["IntDiameter"] + mishenko.CurrentLiquidDensity * mishenko.g * math.sin(math.radians(angle))
+        return lambda_ * mishenko.CurrentLiquidDensity * (wm ** 2) * 0.5 / tubing["IntDiameter"],  mishenko.CurrentLiquidDensity * mishenko.g
 
     # Коэффициент по скорости жидкости
     TensionLiquidGas = mishenko.TensionWaterGas * mishenko.VolumeWater + mishenko.TensionOilGas * (1 + mishenko.VolumeWater)
@@ -34,9 +34,7 @@ def calculate (mishenko, tubing):
     if (mishenko.CurrentP >= mishenko.SaturationPressure):
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity / mishenko.CurrentOilViscosity
         lambda_ = 64 / Re if Re < 2300 else 0.11 * (68 / Re + tubing["Roughness"] / tubing["IntDiameter"]) ** 0.25
-        dP = lambda_ * mishenko.CurrentLiquidDensity * wm ** 2 * 0.5 / tubing["IntDiameter"] + mishenko.CurrentLiquidDensity * mishenko.g * math.sin(math.radians(angle))
-        temp = mishenko.CurrentLiquidDensity
-        return dP
+        return lambda_ * mishenko.CurrentLiquidDensity * wm ** 2 * 0.5 / tubing["IntDiameter"], mishenko.CurrentLiquidDensity * mishenko.g
     try:
         form = get_flow_structure_MB(Lw, Lg, Lm, tubing)
     except:
@@ -69,6 +67,6 @@ def calculate (mishenko, tubing):
         lambda0 = (-2 * math.log10(2 * tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) - 5.02 * math.log10(
             2 * tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) + 13 / Re))) ** -2
     #Локальный градиент давления
-    dP = count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, Lg, Lm, wm)
-    temp_dP = dP
-    return dP
+    dP_fric, dP_grav = count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, Lg, Lm, wm)
+
+    return dP_fric, dP_grav

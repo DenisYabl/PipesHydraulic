@@ -22,7 +22,7 @@ oil_params = {
     "CurrentT": 84.0, #Текущая температура, меняем по необходисости
 }
 fluid = HE2_OilWater(oil_params)
-
+"""
 inlets = dict(PAD_36=vrtxs.HE2_Source_Vertex('Q', 116 * 826 / 86400, fluid, 20),
             PAD_5=vrtxs.HE2_Source_Vertex('Q', 301.2 * 826 / 86400, fluid, 20),
             PAD_35=vrtxs.HE2_Source_Vertex('Q', 160 * 826 / 86400, fluid, 20),
@@ -60,9 +60,15 @@ G.add_edge('junc_9', 'DNS_2', obj=HE2_OilPipe([200], [2.7], [0.305 * real_diam_c
 
 solver = HE2_Solver(G)
 solver.solve()
-print(f"""DNS {G.nodes['DNS_2']['obj'].Q}
-""")
+print(fDNS {G.nodes['DNS_2']['obj'].Q}
+)b
+"""
 
+a = HE2_OilPipe([668], [-211.7], [0.073], [1e-5])
+b = a.perform_calc_forward(22, 22, -5)
+print(b)
+print(a.segments[0].angle_dgr)
 
-print(HE2_OilPipe([2308, 1478], [7, -16.5], [0.138, 0.199], [1e-5, 1e-5]).perform_calc_forward(22, 22, 409.1 * 1000 / 86400))
-
+a = HE2_OilPipe([668], [211.7], [0.073], [1e-5])
+b = a.perform_calc_backward(22, 22, 5)
+print(b)

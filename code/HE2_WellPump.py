@@ -9,7 +9,6 @@ import Hydraulics.Methodics.Mukherjee_Brill as mb
 import pandas as pd
 from scipy.interpolate import interp1d
 
-from Hydraulics.Formulas import RecalculateNRH_coefficients
 
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
@@ -69,7 +68,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
         #Определяем направления расчета
-        fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
+        grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if self.true_HPX["debit"].min() <= abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity <= self.true_HPX["debit"].max():
             get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"])
         else:
@@ -87,9 +86,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             11 расчет и поток по координате
             10 расчет по координате, поток против
             00 расчет и поток против координаты
-            01 расчет против координаты, поток по координате
+            00 расчет против координаты, поток по координате
             unifloc_direction перекрывает переданные flow, calc_direction
-            grav_sign не нужен, поскольку он учитывается в Mukherjee_Brill
         '''
         flow_direction = np.sign(flow)
         if unifloc_direction in [0, 1, 10, 11]:
@@ -97,8 +95,9 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
 
         assert calc_direction in [-1, 1]
+        grav_sign = calc_direction
         fric_sign = flow_direction * calc_direction
         t_sign = calc_direction
-        return fric_sign, t_sign
+        return grav_sign, fric_sign, t_sign
 
 
