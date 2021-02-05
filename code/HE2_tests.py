@@ -15,6 +15,9 @@ import numpy as np
 import HE2_tools as tools
 import pandas as pd
 import HE2_schema_maker as maker
+import HE2_MixFluids as mixer
+import HE2_Fit
+import HE2_Visualize as vis
 
 
 class TestWaterPipe(unittest.TestCase):
@@ -333,7 +336,7 @@ class TestWaterNet(unittest.TestCase):
         print(f'{msg} Randseed=={rs}')
         if op_result:
             print(op_result)
-        tools.draw_solution(G, None, **n_dict)
+        # tools.draw_solution(G, None, **n_dict)
 
     def test_14(self):
         errs = []
@@ -348,19 +351,9 @@ class TestWaterNet(unittest.TestCase):
                 cant_solve += [rs]
                 continue
 
-            resd = tools.check_solution(G)
-            if resd > 1e-3:
-                print(resd)
-
-            resd1 = solver.evaluate_1stCL_residual()
-            if resd1 > 1e-3:
-                self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}', n_dict)
-                errs += [rs]
-                continue
-
-            resd2 = solver.evaluate_2ndCL_residual()
-            if resd1 > 1e-3:
-                self.handle_error(rs, f'2ndCL residual is {resd2: .2f}', n_dict)
+            resd1, resd2 = tools.check_solution(G)
+            if resd1 + resd2 > 1e-3:
+                self.handle_error(G, rs, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}', n_dict)
                 errs += [rs]
                 continue
 
@@ -395,21 +388,307 @@ class TestWaterNet(unittest.TestCase):
         if op_result.fun > 1e-3:
             self.handle_error(G, None, 'Cant solve.', None, op_result)
 
-        resd = tools.check_solution(G)
-        if resd > 1e-3:
-            print(resd)
+        resd1, resd2 = tools.check_solution(G)
+        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
-        resd1 = solver.evaluate_1stCL_residual()
-        if resd1 > 1e-3:
-            self.handle_error(G, None, f'1stCL residual is {resd1: .2f}', None)
 
-        resd2 = solver.evaluate_2ndCL_residual()
-        if resd1 > 1e-3:
-            self.handle_error(None, f'2ndCL residual is {resd2: .2f}', None)
+    def test_17(self):
+        df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
+        df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
+        G = maker.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+
+        solver = HE2_Solver(G)
+        solver.solve()
+        op_result = solver.op_result
+        assert op_result.fun < 1e-3, 'Cant solve'
+
+        resd1, resd2 = tools.check_solution(G)
+        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
+
+    def test_18(self):
+        for rs in range(50):
+            G, n_dict = tools.generate_random_net_v1(randseed=rs, P_CNT=2)
+
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+            resd1, resd2 = tools.check_solution(G)
+            print(f'Randseed is {rs}, fun is {op_result.fun: .2f}, 1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}', n_dict['p_nodes'])
+        # tools.draw_solution(G, None, **n_dict)
+        # assert op_result.fun < 1e-3, 'Cant solve'
+        #
+        # resd1, resd2 = tools.check_solution(G)
+        # assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
+
+    def test_19(self):
+        for rs in list(range(20))[5:]:
+            G, n_dict = tools.generate_random_net_v1(randseed=rs, P_CNT=2, N=15, E=17)
+
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+
+            if op_result.fun > 1e-3:
+                continue
+            print(rs)
+            print(op_result)
+
+            G2 = tools.build_dual_schema_from_solved(G, **n_dict)
+            solver = HE2_Solver(G2)
+            solver.solve()
+            print(op_result)
+
+            for n in G.nodes:
+                P1 = G.nodes[n]['obj'].result['P_bar']
+                P2 = G2.nodes[n]['obj'].result['P_bar']
+                if abs(P1 - P2) > 1e-2:
+                    print(f'{n}, {P1: .3f}, {P2: .3f}, ')
+
+            for u, v, k in G.edges:
+                x1 = G[u][v][k]['obj'].result['x']
+                x2 = G[u][v][k]['obj'].result['x']
+                if abs(x1 - x2) > 1e-2:
+                    print(f'{u} -> {v}, {x1: .3f}, {x2: .3f}, ')
+            print('-'*80)
+
+
+class TestFluidMixer(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def transform_solution_for_mixer(self, solution_graph):
+        x_dict = dict()
+        G0 = solution_graph
+        G = nx.DiGraph()
+        G.add_nodes_from(G0)
+        for u, v in G0.edges:
+            x = G0[u][v]['obj'].result['x']
+            if x < 0:
+                x_dict[(v,u)] = -x
+                G.add_edge(v, u)
+            else:
+                x_dict[(u, v)] = x
+                G.add_edge(u, v)
+        return G, x_dict
+
+    def test_20(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', 20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph() # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), 1)
+            self.assertAlmostEqual(cocktails[k][0], 1)
+
+    def test_21(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('P', 200, 'water', T=20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('Q', 30))
+        outlets.update(well_1=vrtxs.HE2_Boundary_Vertex('Q', 10))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph()  # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_1', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), 1)
+            self.assertAlmostEqual(cocktails[k][0], 1)
+
+    def test_22(self):
+        inlets = dict(KNS_0=vrtxs.HE2_Source_Vertex('Q', 30, 'water', T=20))
+        inlets.update(KNS_1=vrtxs.HE2_Source_Vertex('Q', 10, 'water', T=20))
+        outlets = dict(well_0=vrtxs.HE2_Boundary_Vertex('P', 200))
+        juncs = dict(junc_0=vrtxs.HE2_ABC_GraphVertex())
+
+        G = nx.DiGraph()  # Di = directed
+        for k, v in {**inlets, **outlets, **juncs}.items():
+            G.add_node(k, obj=v)
+
+        G.add_edge('KNS_0', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('KNS_1', 'junc_0', obj=HE2_WaterPipe([300], [10], [0.1], [1e-5]))
+        G.add_edge('junc_0', 'well_0', obj=HE2_WaterPipe([200], [10], [0.1], [1e-5]))
+
+        solver = HE2_Solver(G)
+        solver.solve()
+
+        G, x_dict = self.transform_solution_for_mixer(G)
+
+        cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+        self.assertEqual(len(srcs), len(inlets))
+        for k in cocktails:
+            self.assertEqual(len(cocktails[k]), len(srcs))
+
+        ethalon = {('KNS_0', 'junc_0'): np.array([1., 0.])}
+        ethalon.update({('KNS_1', 'junc_0'):np.array([0., 1.])})
+        ethalon.update({('junc_0', 'well_0'): np.array([0.75, 0.25])})
+        ethalon.update({'well_0': np.array([0.75, 0.25])})
+
+        self.assertEqual(len(cocktails), len(ethalon))
+        for k in cocktails:
+            self.assertAlmostEqual(np.linalg.norm(cocktails[k] - ethalon[k]), 0)
+
+    def test_24(self):
+        for rs in range(10):
+            G, n_dict = tools.generate_random_net_v0(randseed=rs)
+            solver = HE2_Solver(G)
+            solver.solve()
+            op_result = solver.op_result
+            if op_result.fun > 1e-3:
+                continue
+            G, x_dict = self.transform_solution_for_mixer(G)
+            cocktails, srcs = mixer.evalute_network_fluids_wo_root(G, x_dict)
+            rez = tools.check_fluid_mixation(G, x_dict, cocktails, srcs)
+            self.assertTrue(rez)
+
+class TestFit(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_25(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df)
+        rez = fitter.fit()
+        print(rez)
+
+    def test_26(self):
+        # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
+        methods = ['SLSQP', 'BFGS', 'L-BFGS-B', 'Powell', 'CG', 'trust-constr', 'Nelder-Mead', 'TNC', 'COBYLA']
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        best_ys = []
+        for meth in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth)
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+        for m, y in zip(methods, best_ys):
+            print(m ,y)
+
+    def test_27(self):
+        # Bounds on variables for L - BFGS - B, TNC, SLSQP, Powell, and trust-constr methods.There are two ways to specify the bounds:
+        # 2. Sequence of(min, max) pairs for each element in x. None is used to specify no bound.
+        methods = ['SLSQP', 'L-BFGS-B', 'Powell', 'trust-constr', 'TNC']
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        best_ys = []
+        for meth in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=True)
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+        for m, y in zip(methods, best_ys):
+            print(m ,y)
+
+    def test_28(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        boundless_methods = ['COBYLA', 'L-BFGS-B', 'trust-constr', ]
+        bounded_methods = ['SLSQP', 'trust-constr']
+        methods = []
+        methods += list(zip(bounded_methods, [True]*100))
+        methods += list(zip(boundless_methods, [False]*100))
+        methods = methods[:1]
+        best_ys = []
+        for meth, b in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=b)
+            fitter.max_it = 2000
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+            rez_df = fitter.best_rez_df
+            rez_df.to_csv(f'..\\data\\rez_df{meth}{b}.csv')
+
+        for (m, b), y in zip(methods, best_ys):
+            print(m, b, y)
+
+    def test_29(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=1)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_30(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=2)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_31(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=3)
+        fitter.max_it = 2000
+        rez = fitter.fit()
+        print(rez)
+
+
+    def test_32(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=4)
+        fitter.max_it = 20000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_33(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, fit_version=5)
+        fitter.max_it = 20000
+        rez = fitter.fit()
+        print(rez)
+
+    def test_34(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method='SLSQP', use_bounds=True)
+        fitter.max_it = 5
+        rez = fitter.fit()
+        rez_df = fitter.best_rez_df
+        rez_df.to_csv('..\\data\\rez_df.csv')
+        print(rez)
+
+
+class TestDrawing(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_35(self):
+        rez_df = pd.read_csv('..\\data\\rez_df.csv')
+        vis.draw_graph(rez_df, '..\\data\\plot.svg')
+
+
+    def test_36(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        vis.draw_graph(input_df, '..\\data\\plot.svg')
+
 
 if __name__ == "__main__":
-    pipe_test = TestWaterNet()
-    pipe_test.test_16()
+    test = TestDrawing()
+    test.test_35()
 
     # unittest.main()
 class TestOilNet(unittest.TestCase):

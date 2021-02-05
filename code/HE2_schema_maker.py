@@ -73,3 +73,70 @@ def make_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
         assert o is not None
 
     return G
+
+
+def make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
+    df = df_pipes[["node_id_start", "node_id_end"]]
+    df["idx_for_result"] = df.index
+    df.columns = ["source", "target", "idx_for_result"]
+    G = nx.from_pandas_edgelist(df, create_using=nx.MultiDiGraph, edge_attr="idx_for_result")
+
+    cmpnts = nx.algorithms.components.number_connected_components(nx.Graph(G))
+    if cmpnts != 1:
+        print('Not single component graph!')
+        assert False
+
+    pipes = dict()
+    for u, v, k in G.edges:
+        df = df_pipes
+        df = df[(df.node_id_start == u) & (df.node_id_end == v)]
+        d = df.iloc[k].to_dict()
+
+        Ls = [d['L']]
+        Hs = [d['altitude_end'] - d['altitude_start']]
+        Ds = [d['D'] - 2 * d['S']]
+        Rs = [1e-5]
+
+        pipe = HE2_WaterPipe(Ls, Hs, Ds, Rs)
+        pipes[(u, v, k)] = pipe
+    nx.set_edge_attributes(G, name='obj', values=pipes)
+
+    mask = df_boundaries.kind == 'Q'
+    df_boundaries['value'] = -1e9
+    df_boundaries.loc[mask, 'value'] = df_boundaries.loc[mask, 'Q']
+    df_boundaries.loc[~mask, 'value'] = df_boundaries.loc[~mask, 'P']
+
+    nodes = dict()
+    id_list = list(df_boundaries.id.values)
+    for n in G.nodes():
+        df = df_boundaries
+        if n in id_list:
+            df = df[df.id == n]
+            d = df.iloc[0].to_dict()
+        else:
+            obj = vrtxs.HE2_ABC_GraphVertex()
+            nodes[n] = obj
+            continue
+        # if d['kind']=='P':
+        #     print(d)
+
+        if d['is_source']:
+            obj = vrtxs.HE2_Source_Vertex(d['kind'], d['value'], 'water', 20)
+        elif d['kind']=='Q' and ((d['Q'] is None) or d['Q']==0):
+            obj = vrtxs.HE2_ABC_GraphVertex()
+        else:
+            obj = vrtxs.HE2_Boundary_Vertex(d['kind'], d['value'])
+        nodes[n] = obj
+
+    nx.set_node_attributes(G, name='obj', values=nodes)
+
+
+    for n in G.nodes():
+        o = G.nodes[n]['obj']
+        assert o is not None
+
+    for u, v, k in G.edges:
+        o = G[u][v][k]['obj']
+        assert o is not None
+
+    return G

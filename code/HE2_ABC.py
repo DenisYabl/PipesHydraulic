@@ -1,6 +1,7 @@
 from abc import ABC
 from abc import abstractmethod
 
+Root = 'Root'
 
 class HE2_ABC_Fluid(ABC):
     @abstractmethod

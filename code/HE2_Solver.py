@@ -5,13 +5,10 @@ import scipy.optimize as scop
 from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import HE2_ABC as abc
-
-Root = 'Root'
-
+from HE2_ABC import Root
 
 class HE2_Solver():
     def __init__(self, schema):
-        # TODO have to implement: take MultiDiGraph and convert it to equal DiGraph with some added mock edges
         self.schema = schema
         self.graph = None
         self.op_result = None
@@ -29,7 +26,9 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
+
         self.total_q = 0
+
 
     def solve(self):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
@@ -54,7 +53,7 @@ class HE2_Solver():
             self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
             self.edges_x.update(dict(zip(self.chordes, x_chordes)))
 
-            self.perform_self_test_for_1stCL()
+            # self.perform_self_test_for_1stCL()
 
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual()
@@ -245,7 +244,7 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
-
+            
             Q = 0
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
                 Q = self.edges_x[(Root, u)]
