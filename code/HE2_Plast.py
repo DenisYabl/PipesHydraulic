@@ -22,19 +22,19 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
         if calc_direction == 1:
-            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_forward(P_bar, T_C,  abs(X_kgsec))
         else:
-            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_backward(P_bar, T_C, abs(X_kgsec))
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1)
+        p, t = self.calculate_pressure_differrence(p, t, abs(X_kgsec), 1)
         self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1)
+        p, t = self.calculate_pressure_differrence(p, t, abs(X_kgsec), -1)
         self.intermediate_results += [(p, t)]
         return p, t
 
@@ -45,7 +45,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         fl =  self.fluid
         liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
         liq_dens = liq.CurrentLiquidDensity
-        P_rez_bar = P_bar - fric_sign * (X_kgsec * 86400 /  liq_dens) / self.Productivity
+        P_rez_bar = P_bar - calc_direction * (X_kgsec * 86400 /  liq_dens) / self.Productivity
         T_rez_C = T_C
         return P_rez_bar, T_rez_C
 
