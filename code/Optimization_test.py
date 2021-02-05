@@ -1002,6 +1002,7 @@ def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0,
     if well_list:
         wells = list(set(well_list) & set(inlets))
 
+    good_cnt, bad_cnt = 0, 0
     for well in wells:
         l = well.split('_')
         subG = cut_single_well_subgraph(G, l[1], l[3])
@@ -1012,14 +1013,17 @@ def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0,
         if op_result.fun < 1e-3 and Q > 0:
             # Q > 0 means node is a source
             # print(well, ' is ok')
+            good_cnt+=1
             continue
 
+        bad_cnt +=1
         if op_result.fun > 1e-3:
             print(f'NOT SOLVED, {op_result.fun: .3f}')
         print(well, subG.nodes[well]['obj'].result)
         u, v = list(G.edges(well))[0]
         print(f'{u}-->{v}', subG[u][v]['obj'].result, '\n')
 
+    print(good_cnt, bad_cnt, len(wells))
     return None
 
 
