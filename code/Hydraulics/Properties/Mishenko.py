@@ -359,7 +359,7 @@ class Mishenko:
         Qc = Q + Q2
 
         # Объемное расходное газосодержание
-        VolumeGas = Q2 / Qc  # if CurrentP < SaturationPressure else 0
+        VolumeGas = Q2 / Qc if Qc!=0 else 0  # if CurrentP < SaturationPressure else 0
 
         return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure=Saturation_pressure,

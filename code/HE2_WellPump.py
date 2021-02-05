@@ -47,9 +47,9 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
 
         if calc_direction == 1:
-            return self.perform_calc_forward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_forward(P_bar, T_C, X_kgsec)
         else:
-            return self.perform_calc_backward(P_bar, T_C, flow_direction * abs(X_kgsec))
+            return self.perform_calc_backward(P_bar, T_C, X_kgsec)
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
@@ -68,14 +68,16 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
         #Определяем направления расчета
+        liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
-        if self.true_HPX["debit"].min() <= abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity <= self.true_HPX["debit"].max():
-            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"])
+        if liquid_debit <= 0:
+            get_pressure_raise = lambda x: self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+        elif (self.true_HPX["debit"].min() < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HPX["debit"].max()) :
+            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
         else:
-            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], fill_value="extrapolate")
+            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
 
-
-        P_rez_bar = P_bar + fric_sign * uc.Pa2bar(get_pressure_raise(abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity) * 9.81 *  mishenko.CurrentLiquidDensity)
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity)
         T_rez_C = T_C
 
         return P_rez_bar, T_rez_C
@@ -89,7 +91,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             00 расчет против координаты, поток по координате
             unifloc_direction перекрывает переданные flow, calc_direction
         '''
-        flow_direction = np.sign(flow)
+        flow_direction = np.sign(flow) if flow !=0 else 1
         if unifloc_direction in [0, 1, 10, 11]:
             calc_direction = 1 if unifloc_direction >= 10 else -1
             flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
