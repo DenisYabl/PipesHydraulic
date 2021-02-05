@@ -20,12 +20,12 @@ oil_params = {
     "PlastWaterWeight": 1.025, #Плотность попутной воды, исходные данные
 }
 fluid = HE2_OilWater(oil_params)
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  400 * 890 / 86400))
+outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  380 * 890 / 86400))
 
 inlets = dict(PLAST_1816=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
 
 #outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  0 * 890 / 86400))
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 11))
+#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 11))
 
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
