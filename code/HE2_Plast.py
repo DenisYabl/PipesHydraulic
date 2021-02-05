@@ -22,19 +22,19 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
         if calc_direction == 1:
-            return self.perform_calc_forward(P_bar, T_C,  abs(X_kgsec))
+            return self.perform_calc_forward(P_bar, T_C,  X_kgsec)
         else:
-            return self.perform_calc_backward(P_bar, T_C, abs(X_kgsec))
+            return self.perform_calc_backward(P_bar, T_C, X_kgsec)
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        p, t = self.calculate_pressure_differrence(p, t, abs(X_kgsec), 1)
+        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1)
         self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        p, t = self.calculate_pressure_differrence(p, t, abs(X_kgsec), -1)
+        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1)
         self.intermediate_results += [(p, t)]
         return p, t
 
