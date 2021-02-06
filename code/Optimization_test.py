@@ -139,6 +139,61 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                   PAD_57_well_3116=vrtxs.HE2_Source_Vertex('P', pressure_3116, fluid, 20),
                   )
 
+    # inlets = dict(PAD_5_well_1523=vrtxs.HE2_Source_Vertex('Q', 0.66, fluid, 20),  #Куст 5
+    #               PAD_5_well_146=vrtxs.HE2_Source_Vertex('Q', 0.889, fluid, 20),
+    #               PAD_5_well_142=vrtxs.HE2_Source_Vertex('Q', 0.442, fluid, 20),
+    #               PAD_5_well_1562=vrtxs.HE2_Source_Vertex('Q', 0.645, fluid, 20),
+    #
+    #               PAD_33_well_1385=vrtxs.HE2_Source_Vertex('Q', 0.53, fluid, 20),  #Куст 33
+    #               PAD_33_well_736=vrtxs.HE2_Source_Vertex('Q', 0.494, fluid, 20),
+    #               PAD_33_well_739=vrtxs.HE2_Source_Vertex('Q', 0.912, fluid, 20),
+    #               PAD_33_well_1383=vrtxs.HE2_Source_Vertex('Q', 1.098, fluid, 20),
+    #               PAD_33_well_738=vrtxs.HE2_Source_Vertex('Q', 0.8937, fluid, 20),
+    #               PAD_33_well_725=vrtxs.HE2_Source_Vertex('Q', 1.0907, fluid, 20),
+    #
+    #
+    #               PAD_34_well_731=vrtxs.HE2_Source_Vertex('Q', 0.912, fluid, 20),  #Куст 34
+    #               PAD_34_well_196=vrtxs.HE2_Source_Vertex('Q', 1.459, fluid, 20),
+    #               PAD_34_well_734=vrtxs.HE2_Source_Vertex('Q', 1.158, fluid, 20),
+    #               PAD_34_well_198=vrtxs.HE2_Source_Vertex('Q', 0.991, fluid, 20),
+    #               PAD_34_well_199=vrtxs.HE2_Source_Vertex('Q', 1.064, fluid, 20),
+    #               PAD_34_well_197=vrtxs.HE2_Source_Vertex('Q', 0.6709, fluid, 20),
+    #               PAD_34_well_195=vrtxs.HE2_Source_Vertex('Q', 0.698, fluid, 20),
+    #               PAD_34_well_191=vrtxs.HE2_Source_Vertex('Q', 0.601, fluid, 20),
+    #               PAD_34_well_729=vrtxs.HE2_Source_Vertex('Q', 2.99, fluid, 20),
+    #               PAD_34_well_730=vrtxs.HE2_Source_Vertex('Q', 0.492, fluid, 20),
+    #               PAD_34_well_192=vrtxs.HE2_Source_Vertex('Q', 1.056, fluid, 20),
+    #               PAD_34_well_148=vrtxs.HE2_Source_Vertex('Q', 0.631, fluid, 20),
+    #
+    #               PAD_39_well_3552=vrtxs.HE2_Source_Vertex('Q', 1.977, fluid, 20),  # Куст 34
+    #               PAD_39_well_617=vrtxs.HE2_Source_Vertex('Q', 0.9049, fluid, 20),
+    #               PAD_39_well_567=vrtxs.HE2_Source_Vertex('Q', 0.1068, fluid, 20),
+    #               PAD_39_well_614=vrtxs.HE2_Source_Vertex('Q', 2.083, fluid, 20),
+    #               PAD_39_well_619=vrtxs.HE2_Source_Vertex('Q', 0.8549, fluid, 20),
+    #               PAD_39_well_609=vrtxs.HE2_Source_Vertex('Q', 0.61696, fluid, 20),
+    #
+    #               PAD_49_well_1816=vrtxs.HE2_Source_Vertex('Q', 3.9381, fluid, 20),
+    #               PAD_49_well_2630=vrtxs.HE2_Source_Vertex('Q', 0.14, fluid, 20),
+    #               PAD_49_well_1815=vrtxs.HE2_Source_Vertex('Q', 1.414, fluid, 20),
+    #               PAD_49_well_676=vrtxs.HE2_Source_Vertex('Q', 1.92, fluid, 20),
+    #               PAD_49_well_3270=vrtxs.HE2_Source_Vertex('Q', 0.6378, fluid, 20),
+    #               PAD_49_well_3266=vrtxs.HE2_Source_Vertex('Q', 1.0612, fluid, 20),
+    #               PAD_49_well_1814=vrtxs.HE2_Source_Vertex('Q', 2.6779, fluid, 20),
+    #               PAD_49_well_1817=vrtxs.HE2_Source_Vertex('Q', 1.8012, fluid, 20),
+    #               PAD_49_well_4532=vrtxs.HE2_Source_Vertex('Q', 0.67042, fluid, 20),
+    #               PAD_49_well_2631=vrtxs.HE2_Source_Vertex('Q', 1.7264, fluid, 20),
+    #               PAD_49_well_677=vrtxs.HE2_Source_Vertex('Q', 0.98671, fluid, 20),
+    #
+    #               PAD_57_well_3113=vrtxs.HE2_Source_Vertex('Q', 1.3827, fluid, 20),
+    #               PAD_57_well_3118=vrtxs.HE2_Source_Vertex('Q', 0.15678, fluid, 20),
+    #               PAD_57_well_3112=vrtxs.HE2_Source_Vertex('Q', 1.139, fluid, 20),
+    #               PAD_57_well_4235=vrtxs.HE2_Source_Vertex('Q', 0.4738, fluid, 20),
+    #               PAD_57_well_3117=vrtxs.HE2_Source_Vertex('Q', 2.940, fluid, 20),
+    #               # PAD_57_well_1493=vrtxs.HE2_Source_Vertex('Q', 1.833, fluid, 20),
+    #               PAD_57_well_1574=vrtxs.HE2_Source_Vertex('Q', 1.42545, fluid, 20),
+    #               PAD_57_well_1579=vrtxs.HE2_Source_Vertex('Q', 0.54595, fluid, 20),
+    #               PAD_57_well_3116=vrtxs.HE2_Source_Vertex('Q', 2.62972, fluid, 20),
+    #               )
 
 
     # Узловые точки
