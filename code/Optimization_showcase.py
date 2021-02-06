@@ -81,22 +81,20 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
 
 
 def full_test():
-    Full_system_daily_debit = 15000
+    Full_system_daily_debit = 5200
     G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
                                             daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
-    print(G.nodes["DNS_2"]["obj"].result)
-    print(G.nodes["UDR_1"]["obj"].result)
-    print(G.nodes["Pump_outlet_725"]["obj"].result)
-    print(G.nodes["Wellhead_1383"]["obj"].result)
-    print(G.nodes["Zaboi_195"]["obj"].result)
-    print(G.nodes["Pump_intake_729"]["obj"].result)
-    print(G.nodes["Pump_intake_2631"]["obj"].result)
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
 
 def part_test():
     Full_system_daily_debit = 15000
     # well_list = ['PAD_49_well_1816']
     model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
-
 
 if __name__ == '__main__':
     full_test()
