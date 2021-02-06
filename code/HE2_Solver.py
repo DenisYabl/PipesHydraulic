@@ -6,6 +6,7 @@ from HE2_SpecialEdges import HE2_MockEdge
 import HE2_Vertices as vrtxs
 import HE2_ABC as abc
 from HE2_ABC import Root
+import pandas as pd
 
 class HE2_Solver():
     def __init__(self, schema):
@@ -26,11 +27,12 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
-
         self.total_q = 0
+        self.imd_rez_df = None
+        self.save_intermediate_results = False
 
 
-    def solve(self):
+    def solve(self, save_intermediate_results=False):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
@@ -42,6 +44,7 @@ class HE2_Solver():
         assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
         self.A_inv = np.linalg.inv(self.A_tree)
         self.Q_static = self.build_static_Q_vec(self.graph)
+        self.save_intermediate_results = save_intermediate_results
 
         def target(x_chordes):
             # Q = np.ndarray(shape=(len(self.node_list)-1, 1), buffer=self.Q_static)
@@ -58,6 +61,9 @@ class HE2_Solver():
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec = self.evalute_chordes_pressure_residual()
             rez = np.linalg.norm(pt_residual_vec)
+            if self.save_intermediate_results:
+                self.do_save_intermediate_results()
+
             return rez
 
         x0 = np.ones((len(self.chordes), 1))
@@ -77,8 +83,58 @@ class HE2_Solver():
             self.op_result = scop.minimize(target, x0, method='SLSQP')
             x0 = self.op_result.x
         target(x0)
+
         self.attach_results_to_schema()
         return
+
+    def make_linspace_survey(self):
+        self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
+        self.graph = self.add_root_to_graph(self.graph)
+        self.span_tree, self.chordes = self.split_graph(self.graph)
+        self.edge_list = self.span_tree + self.chordes
+        self.node_list = list(self.graph.nodes())
+        assert self.node_list[-1] == Root
+        self.tree_travers = self.build_tree_travers(self.span_tree, Root)
+        self.A_tree, self.A_chordes = self.build_incidence_matrices()
+        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
+        self.A_inv = np.linalg.inv(self.A_tree)
+        self.Q_static = self.build_static_Q_vec(self.graph)
+        self.save_intermediate_results = True
+
+        def target(x_chordes):
+            Q = self.Q_static
+            x = x_chordes.reshape((len(x_chordes), 1))
+            Q_dynamic = np.matmul(self.A_chordes, x)
+            Q = Q - Q_dynamic
+            x_tree = np.matmul(self.A_inv, Q)
+            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+            self.edges_x.update(dict(zip(self.chordes, x_chordes)))
+            self.pt_on_tree = self.evalute_pressures_by_tree()
+            pt_residual_vec = self.evalute_chordes_pressure_residual()
+            rez = np.linalg.norm(pt_residual_vec)
+            if self.save_intermediate_results:
+                self.do_save_intermediate_results()
+
+            return rez
+
+        x0 = np.zeros((len(self.chordes), 1))
+        target(x0)
+
+        assert len(self.chordes) == 1
+        xs = np.linspace(-5, 5, 1001)
+        for x in xs:
+            x0[0] = x
+            y = target(x0)
+
+        return
+
+    def do_save_intermediate_results(self):
+        if self.imd_rez_df is None:
+            cols = list(self.pt_on_tree.keys())
+            self.imd_rez_df = pd.DataFrame(columns=cols)
+        row = {k:v[0] for k, v in self.pt_on_tree.items()}
+        self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
+
 
     def perform_self_test_for_1stCL(self):
         resd_1stCL = self.evaluate_1stCL_residual()
