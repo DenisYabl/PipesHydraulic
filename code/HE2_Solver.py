@@ -27,9 +27,36 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
-        self.total_q = 0
+
         self.imd_rez_df = None
         self.save_intermediate_results = False
+        self.initial_edges_x = None
+
+    def prepare_initial_approximation(self, G, Q_dict):
+        assert len(G.nodes) == len(G.edges)+1, 'It works only on a tree graph!'
+        nodelist = [n for n in G.nodes()]
+        edgelist = [(u, v) for (u, v) in G.edges()]
+        A_full = nx.incidence_matrix(G, nodelist=nodelist, edgelist=edgelist, oriented=True)
+        A_full = -1 * A_full.toarray()
+        q_vec = np.zeros((len(nodelist)-1, 1))
+        for i, node in enumerate(nodelist):
+            if node in Q_dict:
+                q_vec[i] = Q_dict[node]
+
+        A_truncated = A_full[:-1]
+        A_inv = np.linalg.inv(A_truncated)
+        x_tree = np.matmul(A_inv, q_vec)
+        self.initial_edges_x = dict(zip(edgelist, x_tree.flatten()))
+        pass
+
+    def get_initial_approximation(self):
+        x0 = np.zeros((len(self.chordes), 1))
+        if self.initial_edges_x is None:
+            return x0
+
+        for i, c in enumerate(self.chordes):
+            x0[i] = self.initial_edges_x[c]
+        return x0
 
 
     def solve(self, save_intermediate_results=False):
@@ -66,21 +93,20 @@ class HE2_Solver():
 
             return rez
 
-        x0 = np.ones((len(self.chordes), 1))
-        x0 = x0 * self.total_q / len(self.chordes)
+        x0 = self.get_initial_approximation()
 
         # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
         # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
         # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
         # L-BFGS-B,       13/50
         # Powell          14/50
-        # CG              15/50
+        # CG              15/50 44
         # trust-constr    15/50
         # Nelder-Mead     25/50
         # TNC             bullshit
         # COBYLA          bullshit
         if self.chordes:
-            self.op_result = scop.minimize(target, x0, method='SLSQP')
+            self.op_result = scop.minimize(target, x0, method='Powell')
             x0 = self.op_result.x
         target(x0)
 
