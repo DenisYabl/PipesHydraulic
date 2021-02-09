@@ -27,10 +27,13 @@ class HE2_Solver():
         self.mock_nodes = []
         self.mock_edges = []
         self.result_edges_mapping = dict()
+        self.pt_on_chords_ends = None
 
         self.imd_rez_df = None
         self.save_intermediate_results = False
         self.initial_edges_x = None
+
+        self.derivatives = None
 
     def prepare_initial_approximation(self, G, Q_dict):
         assert len(G.nodes) == len(G.edges)+1, 'It works only on a tree graph!'
@@ -86,7 +89,7 @@ class HE2_Solver():
             # self.perform_self_test_for_1stCL()
 
             self.pt_on_tree = self.evalute_pressures_by_tree()
-            pt_residual_vec = self.evalute_chordes_pressure_residual()
+            pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
             rez = np.linalg.norm(pt_residual_vec)
             if self.save_intermediate_results:
                 self.do_save_intermediate_results()
@@ -112,6 +115,28 @@ class HE2_Solver():
 
         self.attach_results_to_schema()
         return
+
+    def evaluate_derivatives_on_edges(self):
+        rez = dict()
+        for u, v in self.edge_list:
+            p, t = self.pt_on_tree[u]
+            x = self.edges_x[(u, v)]
+            dx = 1e-3
+            obj = self.graph[u][v]['obj']
+            if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                assert False
+            if (u, v) in self.span_tree:
+                p_, t_ = self.pt_on_tree[v]
+            elif (u, v) in self.chordes:
+                p_, t_ = self.pt_on_chords_ends[(u, v)]
+            else:
+                assert False
+
+            p__, t__ = obj.perform_calc_forward(p, t, x)
+            dpdx =  (p__ - p_) / dx
+            rez[(u, v)] = dpdx
+        return rez
+
 
     def make_linspace_survey(self):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
@@ -305,6 +330,7 @@ class HE2_Solver():
     def evalute_chordes_pressure_residual(self):
         # if self.C == 0:
         #     return 0
+        d = dict()
         pt_v1, pt_v2 = [], []
         for (u, v) in self.chordes:
             x = self.edges_x[(u, v)]
@@ -315,10 +341,11 @@ class HE2_Solver():
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
             pt_v1 += [(p_v, t_v)]
             pt_v2 += [self.pt_on_tree[v]]
+            d[(u, v)] = p_v, t_v
         pt_v1_vec = np.array(pt_v1)
         pt_v2_vec = np.array(pt_v2)
         pt_residual_vec = pt_v1_vec - pt_v2_vec
-        return pt_residual_vec
+        return pt_residual_vec, d
 
     def attach_results_to_schema(self):
         for u, pt in self.pt_on_tree.items():
