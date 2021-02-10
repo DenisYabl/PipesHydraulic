@@ -62,7 +62,7 @@ class HE2_Solver():
         return x0
 
 
-    def solve(self, save_intermediate_results=False):
+    def solve_wo_jacobian(self, save_intermediate_results=False):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
@@ -116,9 +116,69 @@ class HE2_Solver():
         self.attach_results_to_schema()
         return
 
+    def solve(self, save_intermediate_results=False):
+        # def solve_with_jacobian(self, save_intermediate_results=False):
+
+        self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
+        self.graph = self.add_root_to_graph(self.graph)
+        self.span_tree, self.chordes = self.split_graph(self.graph)
+        self.edge_list = self.span_tree + self.chordes
+        self.node_list = list(self.graph.nodes())
+        assert self.node_list[-1] == Root
+        self.tree_travers = self.build_tree_travers(self.span_tree, Root)
+        self.A_tree, self.A_chordes = self.build_incidence_matrices()
+        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
+        self.A_inv = np.linalg.inv(self.A_tree)
+        self.B = self.build_circuit_matrix()
+        self.Q_static = self.build_static_Q_vec(self.graph)
+        self.save_intermediate_results = save_intermediate_results
+
+        x = self.get_initial_approximation()
+        y_best, x_best = 100500100500, None
+        it_num = 0
+        step = 1
+        threshold = 0.5
+
+        B = self.B
+        Bt = np.transpose(B)
+        while True:
+            it_num += 1
+            Q = self.Q_static
+            Q_dynamic = np.matmul(self.A_chordes, x)
+            Q = Q - Q_dynamic
+            x_tree = np.matmul(self.A_inv, Q)
+            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+            self.edges_x.update(dict(zip(self.chordes, x)))
+            self.pt_on_tree = self.evalute_pressures_by_tree()
+            pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
+            y = np.linalg.norm(pt_residual_vec)
+            if y < y_best:
+                # print(np.log10(y))
+                y_best = y
+                x_best = x
+
+            if y_best < threshold:
+                break
+            if it_num > 1000:
+                break
+
+            self.derivatives, der_vec = self.evaluate_derivatives_on_edges()
+            F_ = np.diag(der_vec)
+            B_F_Bt = np.dot(np.dot(B, F_), Bt)
+            p_residuals = pt_residual_vec[:,0]
+            inv_B_F_Bt = np.linalg.inv(B_F_Bt)
+            dx = -1 * np.matmul(inv_B_F_Bt, p_residuals)
+            dx = dx.reshape((len(dx), 1))
+            x = x + step * dx
+
+        self.attach_results_to_schema()
+        return
+
+
     def evaluate_derivatives_on_edges(self):
         rez = dict()
-        for u, v in self.edge_list:
+        rez_vec = np.zeros(len(self.edge_list))
+        for i, (u, v) in enumerate(self.edge_list):
             p, t = self.pt_on_tree[u]
             x = self.edges_x[(u, v)]
             dx = 1e-3
@@ -132,10 +192,11 @@ class HE2_Solver():
             else:
                 assert False
 
-            p__, t__ = obj.perform_calc_forward(p, t, x)
+            p__, t__ = obj.perform_calc_forward(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
             rez[(u, v)] = dpdx
-        return rez
+            rez_vec[i] = dpdx
+        return rez, rez_vec
 
 
     def make_linspace_survey(self):
@@ -192,6 +253,18 @@ class HE2_Solver():
         x_sum = sum(map(abs, self.edges_x.values()))
         if abs(resd_1stCL) > 1e-7 * x_sum:
             assert False
+
+    def build_circuit_matrix(self):
+        # just for remember self.edge_list = self.span_tree + self.chordes
+        c = len(self.chordes)
+        m = len(self.edge_list)
+        B = np.zeros((c, m))
+        B[:,-c:] = np.identity(c)
+        A_tree_inv = np.linalg.inv(self.A_tree)
+        B_tree_transp = -1 * np.dot(A_tree_inv, self.A_chordes)
+        B_tree = np.transpose(B_tree_transp)
+        B[:,:m-c] = B_tree
+        return B
 
     def build_tree_travers(self, di_tree, root):
         di_edges = set(di_tree)
@@ -331,20 +404,21 @@ class HE2_Solver():
         # if self.C == 0:
         #     return 0
         d = dict()
-        pt_v1, pt_v2 = [], []
-        for (u, v) in self.chordes:
+        pt_v1 = np.zeros((len(self.chordes), 2))
+        pt_v2 = np.zeros((len(self.chordes), 2))
+        for i, (u, v) in enumerate(self.chordes):
             x = self.edges_x[(u, v)]
             obj = self.graph[u][v]['obj']
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
                 assert False
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
-            pt_v1 += [(p_v, t_v)]
-            pt_v2 += [self.pt_on_tree[v]]
+            pt_v1[i,0] = p_v
+            pt_v1[i,1] = t_v
+            pt_v2[i,0] = self.pt_on_tree[v][0]
+            pt_v2[i,1] = self.pt_on_tree[v][1]
             d[(u, v)] = p_v, t_v
-        pt_v1_vec = np.array(pt_v1)
-        pt_v2_vec = np.array(pt_v2)
-        pt_residual_vec = pt_v1_vec - pt_v2_vec
+        pt_residual_vec = pt_v1 - pt_v2
         return pt_residual_vec, d
 
     def attach_results_to_schema(self):
