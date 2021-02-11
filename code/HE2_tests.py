@@ -686,11 +686,6 @@ class TestDrawing(unittest.TestCase):
         vis.draw_graph(input_df, '..\\data\\plot.svg')
 
 
-if __name__ == "__main__":
-    test = TestDrawing()
-    test.test_35()
-
-    # unittest.main()
 class TestOilNet(unittest.TestCase):
     def setUp(self):
         pass
@@ -736,3 +731,11 @@ class TestOilNet(unittest.TestCase):
         self.assertAlmostEqual(p_back_0 + p_fwd_0, 2*p0_bar, 3)
         self.assertAlmostEqual(p_back_downhill + p_fwd_uphill, 2*p0_bar, 3)
         self.assertAlmostEqual(p_back_uphill + p_fwd_downhill, 2*p0_bar, 3)
+
+
+class TestOilPipeDerivatives(unittest.TestCase):
+    pass
+
+if __name__ == "__main__":
+    test = TestDrawing()
+    test.test_35()
