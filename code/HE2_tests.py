@@ -45,9 +45,9 @@ class TestWaterPipe(unittest.TestCase):
             oil_params.update(VolumeOilCoeff=1.2, PlastOilDynamicViscosity=1,SepOilDynamicViscosity=1, OilSaturationP=100, PlastOilWeight=0.85, SepOilWeight=0.85, GasDensity=0.8)
             tubing = dict(IntDiameter=pipe.inner_diam_m, angle=90, Roughness=pipe.roughness_m)
             mishenko = msch.Mishenko.from_oil_params(oil_params, tubing)
-            misch_grad = mb.calculate(mishenko, tubing)
+            misch_fric_grad, misch_grav_grad = mb.calculate(mishenko, tubing)
             p_grad = abs(p_grad)
-            misch_grad = abs(misch_grad)
+            misch_grad = abs(misch_fric_grad)
             bias = 1 - min(p_grad, misch_grad)/max(p_grad, misch_grad)
             if bias > max_bias:
                 max_bias = bias
