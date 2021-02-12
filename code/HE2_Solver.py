@@ -148,7 +148,7 @@ class HE2_Solver():
             Q = Q - Q_dynamic
             x_tree = np.matmul(self.A_inv, Q)
             self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
-            self.edges_x.update(dict(zip(self.chordes, x)))
+            self.edges_x.update(dict(zip(self.chordes, x.flatten())))
             self.pt_on_tree = self.evalute_pressures_by_tree()
             pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
             y = np.linalg.norm(pt_residual_vec)
@@ -257,6 +257,8 @@ class HE2_Solver():
     def build_circuit_matrix(self):
         # just for remember self.edge_list = self.span_tree + self.chordes
         c = len(self.chordes)
+        if c==0:
+            return None
         m = len(self.edge_list)
         B = np.zeros((c, m))
         B[:,-c:] = np.identity(c)
