@@ -116,7 +116,7 @@ class HE2_Solver():
         self.attach_results_to_schema()
         return
 
-    def solve(self, save_intermediate_results=False):
+    def solve(self, save_intermediate_results=False, threshold=0.1):
         # def solve_with_jacobian(self, save_intermediate_results=False):
 
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
@@ -137,8 +137,6 @@ class HE2_Solver():
         y_best, x_best = 100500100500, None
         it_num = 0
         step = 1
-        threshold = 0.5
-
         B = self.B
         Bt = np.transpose(B)
         while True:
@@ -166,12 +164,16 @@ class HE2_Solver():
             F_ = np.diag(der_vec)
             B_F_Bt = np.dot(np.dot(B, F_), Bt)
             p_residuals = pt_residual_vec[:,0]
+            detB = np.linalg.det(B_F_Bt)
+            if detB == 0:
+                break
             inv_B_F_Bt = np.linalg.inv(B_F_Bt)
             dx = -1 * np.matmul(inv_B_F_Bt, p_residuals)
             dx = dx.reshape((len(dx), 1))
             x = x + step * dx
 
         self.attach_results_to_schema()
+        self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
         return
 
 
