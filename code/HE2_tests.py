@@ -341,10 +341,16 @@ class TestWaterNet(unittest.TestCase):
     def test_14(self):
         errs = []
         cant_solve = []
+        sing_matrix = []
         for rs in range(50):
             G, n_dict = tools.generate_random_net_v0(randseed=rs, N=6, E=8, SNK=1, SRC=2, SEGS=2)
             solver = HE2_Solver(G)
-            solver.solve()
+            try:
+                # solver.solve_wo_jacobian()
+                solver.solve(threshold=1e-3)
+            except np.linalg.LinAlgError:
+                sing_matrix += [rs]
+                continue
             op_result = solver.op_result
             if op_result.fun > 1e-3:
                 self.handle_error(G, rs, 'Cant solve.', n_dict, op_result)
@@ -360,6 +366,7 @@ class TestWaterNet(unittest.TestCase):
         print('-' * 80)
         print('errs', errs)
         print('cant_solve', cant_solve)
+        print('sing_matrix', sing_matrix)
 
     # def test_15(self):
     #     methods = ['SLSQP','BFGS','L-BFGS-B','Powell','CG','trust-constr','Nelder-Mead','TNC','COBYLA']
@@ -377,33 +384,35 @@ class TestWaterNet(unittest.TestCase):
     #         print(m1, m2)
     #         print(len(errs), errs)
 
-    def test_16(self):
-        df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
-        df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
-        G = maker.make_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+    # def test_16(self):
+    #     return
+    #     df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
+    #     df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
+    #     G = maker.make_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+    #
+    #     solver = HE2_Solver(G)
+    #     solver.solve()
+    #     op_result = solver.op_result
+    #     if op_result.fun > 1e-3:
+    #         self.handle_error(G, None, 'Cant solve.', None, op_result)
+    #
+    #     resd1, resd2 = tools.check_solution(G)
+    #     assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
-        solver = HE2_Solver(G)
-        solver.solve()
-        op_result = solver.op_result
-        if op_result.fun > 1e-3:
-            self.handle_error(G, None, 'Cant solve.', None, op_result)
 
-        resd1, resd2 = tools.check_solution(G)
-        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
-
-
-    def test_17(self):
-        df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
-        df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
-        G = maker.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
-
-        solver = HE2_Solver(G)
-        solver.solve()
-        op_result = solver.op_result
-        assert op_result.fun < 1e-3, 'Cant solve'
-
-        resd1, resd2 = tools.check_solution(G)
-        assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
+    # def test_17(self):
+    #     return
+    #     df_pipes = pd.read_csv('..\\data\\rs_1750000976.csv')
+    #     df_bnds  = pd.read_csv('..\\data\\boundaries.csv')
+    #     G = maker.make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_bnds)
+    #
+    #     solver = HE2_Solver(G)
+    #     solver.solve()
+    #     op_result = solver.op_result
+    #     assert op_result.fun < 1e-3, 'Cant solve'
+    #
+    #     resd1, resd2 = tools.check_solution(G)
+    #     assert resd1 + resd2 < 1e-3, f'1stCL residual is {resd1: .2f}, 2ndCL residual is {resd2: .2f}'
 
     def test_18(self):
         for rs in range(50):
@@ -569,6 +578,29 @@ class TestFit(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_0008(self):
+        input_df = pd.read_csv('..\\data\\input_df.csv')
+        boundless_methods = ['COBYLA', 'L-BFGS-B', 'trust-constr', ]
+        bounded_methods = ['SLSQP', 'trust-constr']
+        methods = []
+        methods += list(zip(bounded_methods, [True]*100))
+        methods += list(zip(boundless_methods, [False]*100))
+        methods = methods[:1]
+        best_ys = []
+        for meth, b in methods:
+            print(meth)
+            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=b)
+            fitter.max_it = 2000
+            rez = fitter.fit()
+            print(meth, rez)
+            best_ys += [rez.fun]
+            rez_df = fitter.best_rez_df
+            rez_df.to_csv(f'..\\data\\rez_df{meth}{b}.csv')
+
+        for (m, b), y in zip(methods, best_ys):
+            print(m, b, y)
+
+
     def test_25(self):
         input_df = pd.read_csv('..\\data\\input_df.csv')
         fitter = HE2_Fit.HE2_PMNetwork_Model(input_df)
@@ -603,28 +635,6 @@ class TestFit(unittest.TestCase):
             best_ys += [rez.fun]
         for m, y in zip(methods, best_ys):
             print(m ,y)
-
-    def test_28(self):
-        input_df = pd.read_csv('..\\data\\input_df.csv')
-        boundless_methods = ['COBYLA', 'L-BFGS-B', 'trust-constr', ]
-        bounded_methods = ['SLSQP', 'trust-constr']
-        methods = []
-        methods += list(zip(bounded_methods, [True]*100))
-        methods += list(zip(boundless_methods, [False]*100))
-        methods = methods[:1]
-        best_ys = []
-        for meth, b in methods:
-            print(meth)
-            fitter = HE2_Fit.HE2_PMNetwork_Model(input_df, method=meth, use_bounds=b)
-            fitter.max_it = 2000
-            rez = fitter.fit()
-            print(meth, rez)
-            best_ys += [rez.fun]
-            rez_df = fitter.best_rez_df
-            rez_df.to_csv(f'..\\data\\rez_df{meth}{b}.csv')
-
-        for (m, b), y in zip(methods, best_ys):
-            print(m, b, y)
 
     def test_29(self):
         input_df = pd.read_csv('..\\data\\input_df.csv')
@@ -737,5 +747,5 @@ class TestOilPipeDerivatives(unittest.TestCase):
     pass
 
 if __name__ == "__main__":
-    test = TestDrawing()
-    test.test_35()
+    test = TestWaterNet()
+    test.test_12()
