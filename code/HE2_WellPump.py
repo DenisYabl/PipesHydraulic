@@ -36,6 +36,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
         self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
 
+        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+        self.get_pressure_raise_1 = lambda x: zero_head
+        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
+        self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+
+
     def __str__(self):
         return self._printstr
 
@@ -71,11 +77,11 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if liquid_debit <= 0:
-            get_pressure_raise = lambda x: self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+            get_pressure_raise = self.get_pressure_raise_1
         elif (self.true_HPX["debit"].min() < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HPX["debit"].max()) :
-            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
+            get_pressure_raise = self.get_pressure_raise_2
         else:
-            get_pressure_raise = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+            get_pressure_raise = self.get_pressure_raise_3
 
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity)
         T_rez_C = T_C
