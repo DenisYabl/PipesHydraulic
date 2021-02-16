@@ -200,48 +200,6 @@ class HE2_Solver():
             rez_vec[i] = dpdx
         return rez, rez_vec
 
-
-    def make_linspace_survey(self):
-        self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
-        self.graph = self.add_root_to_graph(self.graph)
-        self.span_tree, self.chordes = self.split_graph(self.graph)
-        self.edge_list = self.span_tree + self.chordes
-        self.node_list = list(self.graph.nodes())
-        assert self.node_list[-1] == Root
-        self.tree_travers = self.build_tree_travers(self.span_tree, Root)
-        self.A_tree, self.A_chordes = self.build_incidence_matrices()
-        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
-        self.A_inv = np.linalg.inv(self.A_tree)
-        self.Q_static = self.build_static_Q_vec(self.graph)
-        self.save_intermediate_results = True
-
-        def target(x_chordes):
-            Q = self.Q_static
-            x = x_chordes.reshape((len(x_chordes), 1))
-            Q_dynamic = np.matmul(self.A_chordes, x)
-            Q = Q - Q_dynamic
-            x_tree = np.matmul(self.A_inv, Q)
-            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
-            self.edges_x.update(dict(zip(self.chordes, x_chordes)))
-            self.pt_on_tree = self.evalute_pressures_by_tree()
-            pt_residual_vec = self.evalute_chordes_pressure_residual()
-            rez = np.linalg.norm(pt_residual_vec)
-            if self.save_intermediate_results:
-                self.do_save_intermediate_results()
-
-            return rez
-
-        x0 = np.zeros((len(self.chordes), 1))
-        target(x0)
-
-        assert len(self.chordes) == 1
-        xs = np.linspace(-5, 5, 1001)
-        for x in xs:
-            x0[0] = x
-            y = target(x0)
-
-        return
-
     def do_save_intermediate_results(self):
         if self.imd_rez_df is None:
             cols = list(self.pt_on_tree.keys())
