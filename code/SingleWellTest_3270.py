@@ -1,11 +1,11 @@
 import networkx as nx
 
-from HE2_Fluid import HE2_OilWater
-import HE2_Vertices as vrtxs
-from HE2_Pipe import HE2_OilPipe
-from HE2_Plast import HE2_Plast
-from HE2_WellPump import HE2_WellPump
-from HE2_Solver import HE2_Solver
+from Fluids.HE2_Fluid import HE2_OilWater
+from GraphNodes import HE2_Vertices as vrtxs
+from GraphEdges.HE2_Pipe import HE2_OilPipe
+from GraphEdges.HE2_Plast import HE2_Plast
+from GraphEdges.HE2_WellPump import HE2_WellPump
+from Solver.HE2_Solver import HE2_Solver
 import pandas as pd
 
 oil_params = {

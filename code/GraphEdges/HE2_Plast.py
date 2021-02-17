@@ -1,9 +1,6 @@
-import HE2_ABC as abc
-from HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
-from functools import reduce
-import uniflocpy.uTools.uconst as uc
+from Tools import HE2_ABC as abc
+from Fluids.HE2_Fluid import HE2_DummyOil
 import numpy as np
-import Hydraulics.Methodics.Mukherjee_Brill as mb
 
 
 class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):

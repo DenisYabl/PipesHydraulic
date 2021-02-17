@@ -1,8 +1,41 @@
 import networkx as nx
-import numpy as np
 import pandas as pd
-from HE2_Pipe import HE2_WaterPipe
-import HE2_Vertices as vrtxs
+from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
+from GraphNodes import HE2_Vertices as vrtxs
+from Fluids.HE2_Fluid import HE2_DummyOil
+
+def make_oilpipe_schema_from_OT_dataset(dataset):
+    outlets = {}
+    inlets = {}
+    juncs = {}
+    calc_df = dataset
+    inlets_df = dataset[dataset["startIsSource"]]
+    outletsdf = dataset[dataset["endIsOutlet"]]
+    juncs_df = pd.concat((dataset["node_id_start"], dataset["node_id_end"])).unique()
+    for index, row in inlets_df.iterrows():
+        inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"], HE2_DummyOil, row["startT"])})
+    for index, row in outletsdf.iterrows():
+        outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
+    for id in juncs_df:
+        if (id not in list(inlets.keys()) + list(outlets.keys())):
+            juncs.update({id:vrtxs.HE2_ABC_GraphVertex()})
+
+    G = nx.DiGraph()  # Di = directed
+
+    for k, v in {**inlets, **outlets, **juncs}.items():
+        G.add_node(k, obj=v)
+
+    for index, row in dataset.iterrows():
+        start = row["node_id_start"]
+        end = row["node_id_end"]
+        L = row["L"]
+        uphill = row["uphillM"]
+        diam_coef = row["effectiveD"]
+        D = row["intD"]
+        roughness = row["roughness" ]
+        G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness]))
+
+    return G
 
 
 def make_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):

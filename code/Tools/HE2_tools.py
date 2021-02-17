@@ -1,5 +1,5 @@
-from HE2_Pipe import HE2_WaterPipe
-import HE2_Vertices as vrtxs
+from GraphEdges.HE2_Pipe import HE2_WaterPipe
+from GraphNodes import HE2_Vertices as vrtxs
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt

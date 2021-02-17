@@ -1,6 +1,5 @@
 from Hydraulics.Properties.Mishenko import Mishenko
-from uniflocpy.uPVT.BlackOil_model import Fluid
-from HE2_ABC import HE2_ABC_Fluid
+from Tools.HE2_ABC import HE2_ABC_Fluid
 
 class HE2_DummyWater(HE2_ABC_Fluid):
     def __init__(self):
@@ -87,7 +86,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         # Плотность газа
         self.GasDensity = 1
         # Динамическая вязкость сепарированной нефти
-        self.SepOilDynamicViscosity = 21
+        self.SepOilDynamicViscosity = 35
         # Обводненность нефти
         self.VolumeWater = VolumeWater
         # Объемный фактор нефти

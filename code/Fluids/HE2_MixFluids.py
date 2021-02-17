@@ -1,8 +1,6 @@
 import networkx as nx
 import numpy as np
-from HE2_ABC import Root
-import HE2_tools as tools
-from HE2_Solver import HE2_Solver
+from Tools.HE2_ABC import Root
 
 
 def evalute_network_fluids_wo_root(_G, x_dict):

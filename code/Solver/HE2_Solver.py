@@ -2,10 +2,10 @@ import numpy as np
 import networkx as nx
 import scipy.optimize as scop
 
-from HE2_SpecialEdges import HE2_MockEdge
-import HE2_Vertices as vrtxs
-import HE2_ABC as abc
-from HE2_ABC import Root
+from GraphEdges.HE2_SpecialEdges import HE2_MockEdge
+from GraphNodes import HE2_Vertices as vrtxs
+from Tools import HE2_ABC as abc
+from Tools.HE2_ABC import Root
 import pandas as pd
 
 class HE2_Solver():
