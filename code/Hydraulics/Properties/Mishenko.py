@@ -100,8 +100,8 @@ class Mishenko:
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
         # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / 86400
-        Qoil = Q * (1 - VolumeWater) / 86400
+        Q = oil_params["adkuLiquidDebit"]
+        Qoil = Q * (1 - VolumeWater)
         # Объемный фактор нефти
         OilVolumeCoeff = oil_params["VolumeOilCoeff"]
         # Плотность пластовой воды
@@ -233,8 +233,8 @@ class Mishenko:
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
         # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / 86400
-        Qoil =  Q * (1 - VolumeWater) / 86400
+        Q = oil_params["adkuLiquidDebit"]
+        Qoil =  Q * (1 - VolumeWater)
         # Объемный фактор нефти
         OilVolumeCoeff = oil_params["VolumeOilCoeff"]
         # Плотность пластовой воды
