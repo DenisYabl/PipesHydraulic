@@ -59,7 +59,7 @@ def calculate (mishenko, tubing):
     phi2 = mishenko.VolumeGas * (1 - (1 - kr) * (a - mishenko.VolumeGas) / (b - mishenko.VolumeGas))
     dens_true = mishenko.CurrentLiquidDensity
     # Коэффициент расширения потока
-    Ek = mishenko.VolumeGas * wm ** 2 * dens / mishenko.CurrentP
+    Ek = mishenko.VolumeGas * wm ** 2 * dens / mishenko.CurrentP if mishenko.CurrentP >=1 else mishenko.VolumeGas * wm ** 2 * dens
     # Коэффициент гидравлического сопротивления однофазного потока
     if Re < 2000:
         lambda0 = 64 / Re

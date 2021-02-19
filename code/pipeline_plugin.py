@@ -31,8 +31,12 @@ class Worker(Plugin):
         formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
         filehandler = logging.FileHandler(filename='run.log', mode='w')
         filehandler.setFormatter(formatter)
+        streamhandler = logging.StreamHandler(sys.stderr)
+        streamhandler.setFormatter(formatter)
+
         logger.addHandler(filehandler)
-        logger.setLevel(logging.DEBUG)
+        logger.addHandler(streamhandler)
+        logger.setLevel(logging.DEBUG.encode())
 
         dataset = self.dataset
         schema = self.schema
@@ -42,10 +46,10 @@ class Worker(Plugin):
         columns = [x.split(" ")[0][1:-1] for x in schema.split(", ")]
         df = pd.DataFrame.from_records(dataset).transpose()
         df.columns = columns
-        logger.debug("Pandas DF is created")
+        logger.debug("Pandas DF is created".encode())
 
         df_result = calculate_DF(df, logger=logger)
-        logger.debug("DF is calculated")
+        logger.debug("DF is calculated".encode())
         return (
             schema,
             [   df_result[column].values for column in df.columns
