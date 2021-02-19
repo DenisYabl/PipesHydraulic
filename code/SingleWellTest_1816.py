@@ -1,11 +1,11 @@
 import networkx as nx
 
-from HE2_Fluid import HE2_OilWater
-import HE2_Vertices as vrtxs
-from HE2_Pipe import HE2_OilPipe
-from HE2_Plast import HE2_Plast
-from HE2_WellPump import HE2_WellPump
-from HE2_Solver import HE2_Solver
+from Fluids.HE2_Fluid import HE2_OilWater
+from GraphNodes import HE2_Vertices as vrtxs
+from GraphEdges.HE2_Pipe import HE2_OilPipe
+from GraphEdges.HE2_Plast import HE2_Plast
+from GraphEdges.HE2_WellPump import HE2_WellPump
+from Solver.HE2_Solver import HE2_Solver
 import pandas as pd
 
 oil_params = {
@@ -20,11 +20,11 @@ oil_params = {
     "PlastWaterWeight": 1.025, #Плотность попутной воды, исходные данные
 }
 fluid = HE2_OilWater(oil_params)
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  380 * 890 / 86400))
+
 
 inlets = dict(PLAST_1816=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
 
-#outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q',  0 * 890 / 86400))
+outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q', 4))
 #outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 11))
 
 

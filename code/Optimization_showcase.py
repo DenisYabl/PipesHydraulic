@@ -1,7 +1,6 @@
-from HE2_Fluid import HE2_OilWater
+from Fluids.HE2_Fluid import HE2_OilWater
 from Optimization_test import model_DNS_2
 from Optimization_test import model_DNS_2_by_parts
-import HE2_tools as tools
 import pandas as pd
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -92,7 +91,7 @@ def full_test():
 
 
 def part_test():
-    Full_system_daily_debit = 15000
+    Full_system_daily_debit = 4750
     # well_list = ['PAD_49_well_1816']
     model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
 

@@ -1,6 +1,5 @@
 from Hydraulics.Properties.Mishenko import Mishenko
-from uniflocpy.uPVT.BlackOil_model import Fluid
-from HE2_ABC import HE2_ABC_Fluid
+from Tools.HE2_ABC import HE2_ABC_Fluid
 
 class HE2_DummyWater(HE2_ABC_Fluid):
     def __init__(self):
@@ -87,7 +86,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         # Плотность газа
         self.GasDensity = 1
         # Динамическая вязкость сепарированной нефти
-        self.SepOilDynamicViscosity = 21
+        self.SepOilDynamicViscosity = 35
         # Обводненность нефти
         self.VolumeWater = VolumeWater
         # Объемный фактор нефти
@@ -108,7 +107,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
             "wellopVolumeWater": self.VolumeWater,  # Обводненность нефти, исходные данные
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
-            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100),  # Дебит скважины, исходные данные
+            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * 1000 * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * 1000 * self.VolumeWater / 100),  # Дебит скважины, исходные данные
             "CurrentP": P_for_PVT,
             "CurrentT": T_C
         }

@@ -1,8 +1,7 @@
-import HE2_DateframeWrapper as model
+from DFOperations import HE2_DateframeWrapper as model
 import scipy.optimize as scop
-import pandas as pd
 import numpy as np
-from collections import namedtuple
+
 
 class HE2_PMNetwork_Model():
     def __init__(self, input_df, method=None, use_bounds=False, fit_version=None):

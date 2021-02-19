@@ -1,23 +1,18 @@
 import unittest
-from HE2_Pipe import HE2_WaterPipeSegment, HE2_OilPipeSegment
-from HE2_Pipe import HE2_WaterPipe
-import uniflocpy.uWell.uPipe as uPipe
+from GraphEdges.HE2_Pipe import HE2_WaterPipeSegment, HE2_OilPipeSegment
+from GraphEdges.HE2_Pipe import HE2_WaterPipe
 import uniflocpy.uTools.uconst as uc
 import Hydraulics.Methodics.Mukherjee_Brill as mb
 import Hydraulics.Properties.Mishenko as msch
-from HE2_Solver import HE2_Solver
-from HE2_Fluid import HE2_DummyWater
-import HE2_Vertices as vrtxs
+from Solver.HE2_Solver import HE2_Solver
+from GraphNodes import HE2_Vertices as vrtxs
 from itertools import product
-from functools import reduce
 import networkx as nx
 import numpy as np
-import HE2_tools as tools
 import pandas as pd
-import HE2_schema_maker as maker
-import HE2_MixFluids as mixer
-import HE2_Fit
-import HE2_Visualize as vis
+from Fluids import HE2_MixFluids as mixer
+from Solver import HE2_Fit
+from Tools import HE2_Visualize as vis, HE2_tools as tools
 
 
 class TestWaterPipe(unittest.TestCase):

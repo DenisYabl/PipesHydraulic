@@ -1,6 +1,5 @@
-import HE2_ABC as abc
-from HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
-from functools import reduce
+from Tools import HE2_ABC as abc
+from Fluids.HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
 import uniflocpy.uTools.uconst as uc
 import numpy as np
 

@@ -1,9 +1,7 @@
 import pandas as pd
-import HE2_schema_maker as sm
-import HE2_tools as tools
-from HE2_Solver import HE2_Solver
+from Tools import HE2_schema_maker as sm, HE2_tools as tools
+from Solver.HE2_Solver import HE2_Solver
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 def process_error():
