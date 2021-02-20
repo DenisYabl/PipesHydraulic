@@ -28,10 +28,12 @@ class HE2_Solver():
         self.mock_edges = []
         self.result_edges_mapping = dict()
         self.pt_on_chords_ends = None
+        self.pt_residual_vec = None
 
         self.imd_rez_df = None
         self.save_intermediate_results = False
         self.initial_edges_x = None
+        self.ready_for_solve = False
 
         self.derivatives = None
 
@@ -61,8 +63,7 @@ class HE2_Solver():
             x0[i] = self.initial_edges_x[c]
         return x0
 
-
-    def solve_wo_jacobian(self, save_intermediate_results=False):
+    def prepare_for_solve(self):
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
@@ -73,29 +74,35 @@ class HE2_Solver():
         self.A_tree, self.A_chordes = self.build_incidence_matrices()
         assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
         self.A_inv = np.linalg.inv(self.A_tree)
+        self.B = self.build_circuit_matrix()
         self.Q_static = self.build_static_Q_vec(self.graph)
-        self.save_intermediate_results = save_intermediate_results
+        self.ready_for_solve = True
 
-        def target(x_chordes):
-            # Q = np.ndarray(shape=(len(self.node_list)-1, 1), buffer=self.Q_static)
+    def target(self, x_chordes):
             Q = self.Q_static
             x = x_chordes.reshape((len(x_chordes), 1))
             Q_dynamic = np.matmul(self.A_chordes, x)
             Q = Q - Q_dynamic
             x_tree = np.matmul(self.A_inv, Q)
             self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
-            self.edges_x.update(dict(zip(self.chordes, x_chordes)))
+            self.edges_x.update(dict(zip(self.chordes, x_chordes.flatten())))
 
             # self.perform_self_test_for_1stCL()
 
             self.pt_on_tree = self.evalute_pressures_by_tree()
-            pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
-            rez = np.linalg.norm(pt_residual_vec)
+            self.pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
+            rez = np.linalg.norm(self.pt_residual_vec)
             if self.save_intermediate_results:
                 self.do_save_intermediate_results()
 
             return rez
 
+    # def solve(self):
+    def solve_wo_jacobian(self):
+        if not self.ready_for_solve:
+            self.prepare_for_solve()
+
+        target = lambda x: self.target(x)
         x0 = self.get_initial_approximation()
 
         # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
@@ -116,24 +123,12 @@ class HE2_Solver():
         self.attach_results_to_schema()
         return
 
+    # def solve_with_yacobian(self, save_intermediate_results=False, threshold=0.1):
     def solve(self, save_intermediate_results=False, threshold=0.1):
-        # def solve_with_jacobian(self, save_intermediate_results=False):
+        if not self.ready_for_solve:
+            self.prepare_for_solve()
 
-        self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
-        self.graph = self.add_root_to_graph(self.graph)
-        self.span_tree, self.chordes = self.split_graph(self.graph)
-        self.edge_list = self.span_tree + self.chordes
-        self.node_list = list(self.graph.nodes())
-        assert self.node_list[-1] == Root
-        self.tree_travers = self.build_tree_travers(self.span_tree, Root)
-        self.A_tree, self.A_chordes = self.build_incidence_matrices()
-        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
-        self.A_inv = np.linalg.inv(self.A_tree)
-        self.B = self.build_circuit_matrix()
-        self.Q_static = self.build_static_Q_vec(self.graph)
-        self.save_intermediate_results = save_intermediate_results
-
-        x = self.get_initial_approximation()
+        x_chordes = self.get_initial_approximation()
         y_best, x_best = 100500100500, None
         it_num = 0
         step = 1
@@ -141,36 +136,30 @@ class HE2_Solver():
         Bt = np.transpose(B)
         while True:
             it_num += 1
-            Q = self.Q_static
-            Q_dynamic = np.matmul(self.A_chordes, x)
-            Q = Q - Q_dynamic
-            x_tree = np.matmul(self.A_inv, Q)
-            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
-            self.edges_x.update(dict(zip(self.chordes, x.flatten())))
-            self.pt_on_tree = self.evalute_pressures_by_tree()
-            pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
-            y = np.linalg.norm(pt_residual_vec)
+            y = self.target(x_chordes)
+            print('   ', it_num, y)
             if y < y_best:
                 # print(np.log10(y))
                 y_best = y
-                x_best = x
+                x_best = x_chordes
 
             if y_best < threshold:
                 break
-            if it_num > 1000:
+            if it_num > 15:
                 break
 
             self.derivatives, der_vec = self.evaluate_derivatives_on_edges()
             F_ = np.diag(der_vec)
             B_F_Bt = np.dot(np.dot(B, F_), Bt)
-            p_residuals = pt_residual_vec[:,0]
+            p_residuals = self.pt_residual_vec[:,0]
             detB = np.linalg.det(B_F_Bt)
             if detB == 0:
                 break
             inv_B_F_Bt = np.linalg.inv(B_F_Bt)
             dx = -1 * np.matmul(inv_B_F_Bt, p_residuals)
             dx = dx.reshape((len(dx), 1))
-            x = x + step * dx
+
+            x_chordes = x_chordes + step * dx
 
         self.attach_results_to_schema()
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)

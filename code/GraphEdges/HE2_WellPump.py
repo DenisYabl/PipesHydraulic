@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 
-
+A_keff = 1
+B_keff = 1.4
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, IntDiameter = 0.12, frequency = 50):
@@ -34,10 +35,15 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
         self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
 
+        self.true_HRX_min_Q = self.true_HPX["debit"].min()
+        self.true_HRX_max_Q = self.true_HPX["debit"].max()
         zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
-        self.get_pressure_raise_1 = lambda x: zero_head
+        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
+
+        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
         self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
-        self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+        # self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
 
 
     def __str__(self):
@@ -76,7 +82,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
-        elif (self.true_HPX["debit"].min() < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HPX["debit"].max()) :
+        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HRX_max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
         else:
             get_pressure_raise = self.get_pressure_raise_3

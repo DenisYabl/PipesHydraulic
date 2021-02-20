@@ -100,8 +100,8 @@ class Mishenko:
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
         # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"]
-        Qoil = Q * (1 - VolumeWater)
+        Q = oil_params["adkuLiquidDebit"] / 86400
+        Qoil = Q * (1 - VolumeWater) / 86400
         # Объемный фактор нефти
         OilVolumeCoeff = oil_params["VolumeOilCoeff"]
         # Плотность пластовой воды
@@ -233,23 +233,24 @@ class Mishenko:
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
         # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"]
-        Qoil =  Q * (1 - VolumeWater)
+        Q = oil_params["adkuLiquidDebit"] / 86400
+        Qoil =  Q * (1 - VolumeWater) / 86400
         # Объемный фактор нефти
         OilVolumeCoeff = oil_params["VolumeOilCoeff"]
         # Плотность пластовой воды
         PlastWaterDensity = oil_params["PlastWaterWeight"] * 1000
         g = 9.81
+        we_know_gas_amount = (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount))
 
         # Давление насыщения при данной температуре
-        if (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount)):
+        if we_know_gas_amount:
             Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (
                     GasFactor * (CarbGasAmount - NonCarbGasAmount))
         else:
             Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
         # Количество растворенного в нефти газа
         # Вспомогательный коэффициент
-        if (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount)):
+        if we_know_gas_amount:
             t = 0.32 + 1 / (CarbGasAmount * NonCarbGasAmount + 1.567)
         else:
             t = 0.32 + 1 / 1.567
@@ -303,7 +304,7 @@ class Mishenko:
 
         # Плотность выделившегося из нефти свободного газа в рабочих условиях
 
-        if (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount)):
+        if we_know_gas_amount:
             densgc = (FreeGasDensity - 0.97 * NonCarbGasAmount) / CarbGasAmount
         else:
             densgc = (FreeGasDensity - 0.97 * 0.91) / 0.09
@@ -322,7 +323,7 @@ class Mishenko:
         else:
             zc = 1
 
-        if pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount):
+        if we_know_gas_amount:
             z = zc * CarbGasAmount + NonCarbGasAmount
         else:
             z = zc * 0.91 + 0.09

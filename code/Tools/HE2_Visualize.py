@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import networkx as nx
-import HE2_tools as tools
+from Tools import HE2_tools as tools
 import pandas as pd
 
 class PipelinesPlotter():

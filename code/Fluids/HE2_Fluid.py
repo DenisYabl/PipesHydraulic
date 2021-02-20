@@ -10,12 +10,6 @@ class HE2_DummyWater(HE2_ABC_Fluid):
         pass
 
 
-if __name__ == '__main__':
-    fl = HE2_DummyWater()
-    fl.calc(100, 100)
-    print(fl.rho_wat_kgm3)
-
-
 class HE2_OilWater(HE2_ABC_Fluid):
     def __init__(self, oil_params):
         #Давление насыщения
@@ -107,7 +101,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
             "wellopVolumeWater": self.VolumeWater,  # Обводненность нефти, исходные данные
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
-            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * 1000 * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * 1000 * self.VolumeWater / 100),  # Дебит скважины, исходные данные
+            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * 1000 * self.VolumeWater / 100),  # Дебит скважины, исходные данные
             "CurrentP": P_for_PVT,
             "CurrentT": T_C
         }
@@ -119,3 +113,9 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         self.Q_m3sec = temp_mishenko.Q
         #Return for pressure gradient calculation
         return temp_mishenko
+
+
+if __name__ == '__main__':
+    fl = HE2_DummyWater()
+    fl.calc(100, 100)
+    print(fl.rho_wat_kgm3)

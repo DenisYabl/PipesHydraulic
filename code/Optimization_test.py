@@ -1023,7 +1023,7 @@ def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = 
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
     solver.prepare_initial_approximation(G, inlets_Q)
-    solver.solve()
+    solver.solve(threshold=0.25)
     return G, inlets, juncs, outlets
 
 def cut_single_well_subgraph(G, pad_name, well):
