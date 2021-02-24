@@ -36,6 +36,8 @@ class HE2_Solver():
         self.ready_for_solve = False
 
         self.derivatives = None
+        self.forward_edge_functions = dict()
+        self.backward_edge_functions = dict()
 
     def prepare_initial_approximation(self, G, Q_dict):
         assert len(G.nodes) == len(G.edges)+1, 'It works only on a tree graph!'
@@ -76,6 +78,13 @@ class HE2_Solver():
         self.A_inv = np.linalg.inv(self.A_tree)
         self.B = self.build_circuit_matrix()
         self.Q_static = self.build_static_Q_vec(self.graph)
+        for (u, v) in self.edge_list:
+            obj = self.graph[u][v]['obj']
+            if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                assert False
+            self.forward_edge_functions[(u, v)] = obj.perform_calc_forward
+            self.backward_edge_functions[(u, v)] = obj.perform_calc_backward
+
         self.ready_for_solve = True
 
     def target(self, x_chordes):
@@ -173,9 +182,6 @@ class HE2_Solver():
             p, t = self.pt_on_tree[u]
             x = self.edges_x[(u, v)]
             dx = 1e-3
-            obj = self.graph[u][v]['obj']
-            if not isinstance(obj, abc.HE2_ABC_GraphEdge):
-                assert False
             if (u, v) in self.span_tree:
                 p_, t_ = self.pt_on_tree[v]
             elif (u, v) in self.chordes:
@@ -183,7 +189,8 @@ class HE2_Solver():
             else:
                 assert False
 
-            p__, t__ = obj.perform_calc_forward(p, t, x + dx)
+            edge_func = self.forward_edge_functions[(u, v)]
+            p__, t__ =  edge_func(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
             rez[(u, v)] = dpdx
             rez_vec[i] = dpdx
@@ -343,9 +350,10 @@ class HE2_Solver():
             p_kn, t_kn = pt[known]
             x = self.edges_x[(u, v)]
             if u == known:
-                p_unk, t_unk = obj.perform_calc_forward(p_kn, t_kn, x)
+                edge_func = self.forward_edge_functions[(u, v)]
             else:
-                p_unk, t_unk = obj.perform_calc_backward(p_kn, t_kn, x)
+                edge_func = self.backward_edge_functions[(u, v)]
+            p_unk, t_unk = edge_func(p_kn, t_kn, x)
             if np.isnan(p_unk):
                 print(u, v, obj)
             pt[unknown] = (p_unk, t_unk)
