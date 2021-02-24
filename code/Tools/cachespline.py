@@ -1,9 +1,11 @@
 import numpy as np
 from scipy.interpolate import interp2d
 from itertools import product
+from collections import Counter
 
 
-def create_lazy_spline_cache_f_wrapper(f, dx=0.1, dy=0.1, half_nx=4, half_ny=4, kind='cubic'):
+def create_lazy_spline_cache_f_wrapper(f, dx=0.1, dy=0.1, half_nx=4, half_ny=4, kind='cubic', err_control_rate=0.001):
+    info = Counter()
     nx = 2*half_nx
     ny = 2*half_ny
     grid_step_x = dx*(nx-1)
@@ -47,14 +49,23 @@ def create_lazy_spline_cache_f_wrapper(f, dx=0.1, dy=0.1, half_nx=4, half_ny=4, 
         return surface_piece
 
     def f_caller(x, y):
+        nonlocal info
         x_knot_idx, y_knot_idx = get_nearest_grid_knot_idxs(x, y)
         if not (x_knot_idx, y_knot_idx) in covered:
+            info['cache_miss'] += 1
             surface_piece_spline = build_spline_surface_over_knot(x_knot_idx, y_knot_idx)
             covered.add((x_knot_idx, y_knot_idx))
             surface_pieces[(x_knot_idx, y_knot_idx)] = surface_piece_spline
         else:
+            info['cache_hit'] += 1
             surface_piece_spline = surface_pieces[(x_knot_idx, y_knot_idx)]
-        z = surface_piece_spline(x, y)
+        z = surface_piece_spline(x, y)[0]
+        if np.random.uniform() < err_control_rate:
+            z_probe = f(x, y)
+            z_err = abs(z_probe - z)
+            bin = round(np.log2(z_err))
+            info[bin] += 1
         return z
+    f_caller.info = info
 
     return f_caller

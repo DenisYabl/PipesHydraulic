@@ -836,6 +836,7 @@ def test_63():
         for j, y in enumerate(ys):
             zs2[i, j] = f2(x, y)
 
+    print(f2.info)
     pass
 
 
