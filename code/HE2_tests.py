@@ -1,5 +1,5 @@
 import unittest
-from GraphEdges.HE2_Pipe import HE2_WaterPipeSegment, HE2_OilPipeSegment
+from GraphEdges.HE2_Pipe import HE2_WaterPipeSegment, HE2_OilPipeSegment, HE2_OilPipe
 from GraphEdges.HE2_Pipe import HE2_WaterPipe
 import uniflocpy.uTools.uconst as uc
 import Hydraulics.Methodics.Mukherjee_Brill as mb
@@ -11,9 +11,10 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from Fluids import HE2_MixFluids as mixer
+from Fluids.HE2_Fluid import HE2_OilWater
 from Solver import HE2_Fit
 from Tools import HE2_Visualize as vis, HE2_tools as tools
-
+from Tools.cachespline import create_lazy_spline_cache_f_wrapper
 
 class TestWaterPipe(unittest.TestCase):
     def setUp(self):
@@ -738,9 +739,106 @@ class TestOilNet(unittest.TestCase):
         self.assertAlmostEqual(p_back_uphill + p_fwd_downhill, 2*p0_bar, 3)
 
 
-class TestOilPipeDerivatives(unittest.TestCase):
+class TestLazyInterpolation(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_60(self):
+        oil_params = {
+            "OilSaturationP": 65.7,  # Давление насыщения нефти при стандартных условиях, исходные данные
+            "PlastT": 84.0,  # Пластовая температура, исходные данные
+            "GasFactor": 34.8,  # Газовый фактор нефти, исходные данные
+            "SepOilWeight": 0.8815,  # Плотность нефти, исходные данные
+            "GasDensity": 1.003,  # Плотность попутного газа, исходные данные
+            "SepOilDynamicViscosity": 43.03,  # Динамическая вязкость нефти, исходные данные
+            "wellopVolumeWater": 56,  # Обводненность нефти, исходные данные
+            "VolumeOilCoeff": 1.097,  # Объемный коэффициент нефти, исходные данные
+            "PlastWaterWeight": 1.015,  # Плотность попутной воды, исходные данные
+            "adkuLiquidDebit": 240,  # Дебит скважины, исходные данные
+            "CurrentP": 90,  # Текущее давление, меняем по необходимости
+            "CurrentT": 84.0,  # Текущая температура, меняем по необходисости
+        }
+        fluid = HE2_OilWater(oil_params)
+        pipe = HE2_OilPipe([1000], [-25], [0.05], [1e-5])
+        p,t = pipe.perform_calc_forward(10, 20, -1)
+        print(p-10)
+        p,t = pipe.perform_calc_forward(200, 20, -1)
+        print(p-200)
+
+    def test_61(self):
+        def f(x, y):
+            r = (x * x + y * y) ** 0.5
+            z = np.sin(r)
+            return x
+
+        xs = np.linspace(-5, 5, 101)
+        ys = np.linspace(-5, 5, 101)
+        zs = np.zeros((101, 101))
+        for i, x in enumerate(xs):
+            for j, y in enumerate(ys):
+                zs[i,j] = f(x,y)
+
+        f2 = create_lazy_spline_cache_f_wrapper(f, half_nx=3, half_ny=5)
+        xs = np.linspace(-5, 5, 101)
+        ys = np.linspace(-5, 5, 101)
+        zs = np.zeros((101, 101))
+        for i, x in enumerate(xs):
+            for j, y in enumerate(ys):
+                zs[i,j] = f2(x,y)
+
+
+def test_62():
+    def f(x, y):
+        r = (x * x + y * y) ** 0.5
+        z = np.sin(r)
+        return z
+
+    xs = np.linspace(-5, 5, 101)
+    ys = np.linspace(-5, 5, 101)
+    zs = np.zeros((101, 101))
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            zs[i,j] = f(x,y)
+
+    f2 = create_lazy_spline_cache_f_wrapper(f)
+    xs = np.linspace(-0.4, 0.4, 9)
+    ys = np.linspace(-0.4, 0.4, 9)
+    zs = np.zeros((9, 9))
+    zs2 = zs.copy()
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            zs[i,j] = f(x,y)
+
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            zs2[i, j] = f2(x, y)
+
     pass
 
+
+
+def test_63():
+    def f(x, y):
+        r = (x * x + y * y) ** 0.5
+        z = np.sin(r)
+        return z
+
+    f2 = create_lazy_spline_cache_f_wrapper(f)
+    xs = np.linspace(-3, 3, 61)
+    ys = np.linspace(-3, 3, 61)
+    zs = np.zeros((61, 61))
+    zs2 = zs.copy()
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            zs[i,j] = f(x,y)
+
+    for i, x in enumerate(xs):
+        for j, y in enumerate(ys):
+            zs2[i, j] = f2(x, y)
+
+    pass
+
+
 if __name__ == "__main__":
-    test = TestWaterNet()
-    test.test_12()
+    test = TestLazyInterpolation()
+    test_63()
