@@ -249,12 +249,12 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
 
 
 class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, dxs, dys, diams, rghs):
+    def __init__(self, dxs, dys, diams, rghs, fluids):
         self.segments = []
         self.intermediate_results = []
         self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
-        for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
-            seg = HE2_OilPipeSegment(fluid=None, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
+        for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs, fluids):
+            seg = HE2_OilPipeSegment(fluid=fluid, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
             seg.set_pipe_geometry(dx=dx, dy=dy)
             a = seg
             self.segments += [seg]

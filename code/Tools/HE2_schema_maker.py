@@ -1,19 +1,48 @@
 import networkx as nx
 import pandas as pd
 from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
+from GraphEdges.HE2_Plast import HE2_Plast
+from GraphEdges.HE2_WellPump import HE2_WellPump
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import HE2_DummyOil
 
 def make_oilpipe_schema_from_OT_dataset(dataset):
+    pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
     outlets = {}
     inlets = {}
     juncs = {}
     calc_df = dataset
-    inlets_df = dataset[dataset["startIsSource"]]
-    outletsdf = dataset[dataset["endIsOutlet"]]
+    ids_count =  pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
+    ids_count.rename('ids_count')
+    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_start', how='left')
+    calc_df = calc_df.rename(columns = {0:'start_id_count'})
+    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_end', how='left')
+    calc_df = calc_df.rename(columns = {0:'end_id_count'})
+
+    calc_df['sourceByCount'] = calc_df['start_id_count'] == 1
+    calc_df['outletByCount'] = calc_df['end_id_count'] == 1
+
+    calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
+    calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
+
+    calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
+    calc_df = calc_df[calc_df['sumOfCounts'] > 2]
+
+    mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes'])]
+
+    if not mistakes_df.empty :
+        print(f"Following nodes: {mistakes_df[~mistakes_df['sourceMistakes']]['node_id_start'].values} should be sources")
+        print(f"Following nodes: {mistakes_df[~mistakes_df['outletMistakes']]['node_id_start'].values} should be outlets")
+        assert False
+
+
+
+    inlets_df = calc_df[dataset["startIsSource"]]
+    outletsdf = calc_df[dataset["endIsOutlet"]]
     juncs_df = pd.concat((dataset["node_id_start"], dataset["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
-        inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"], HE2_DummyOil, row["startT"])})
+        volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"], HE2_DummyOil(volumewater), row["startT"])})
     for index, row in outletsdf.iterrows():
         outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
     for id in juncs_df:
@@ -25,16 +54,26 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
 
-    for index, row in dataset.iterrows():
+    for index, row in calc_df.iterrows():
         start = row["node_id_start"]
         end = row["node_id_end"]
-        L = row["L"]
-        uphill = row["uphillM"]
-        diam_coef = row["effectiveD"]
-        D = row["intD"]
-        roughness = row["roughness" ]
-        G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness]))
-
+        junctype = row["juncType"]
+        volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        if junctype == "pipe":
+            L = row["L"]
+            uphill = row["uphillM"]
+            diam_coef = row["effectiveD"]
+            D = row["intD"]
+            roughness = row["roughness" ]
+            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [HE2_DummyOil(volumewater)]))
+        elif junctype == "plast":
+            productivity = row["productivity" ]
+            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=HE2_DummyOil(volumewater)))
+        elif junctype == "wellpump":
+            model = row["model"]
+            frequency = row["frequency"]
+            G.add_edge(start, end, obj = HE2_WellPump(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater),
+                       IntDiameter=0.12, frequency=frequency))
     return G
 
 

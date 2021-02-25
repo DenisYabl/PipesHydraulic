@@ -4,7 +4,7 @@ import numpy as np
 
 
 class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, productivity = 0, fluid = HE2_DummyOil):
+    def __init__(self, productivity = 0, fluid = HE2_DummyOil(50)):
         self.Productivity = productivity
         self.fluid = fluid
         self.intermediate_results = []
