@@ -25,14 +25,31 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
     calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
 
+    calc_df['sourceValueIsFilled'] = pd.notna(calc_df['startValue'])
+    calc_df['outletValueIsFilled'] = pd.notna(calc_df['endValue'])
+
+    calc_df['sourceKindIsFilled'] = pd.notna(calc_df['startKind'])
+    calc_df['outletKindIsFilled'] = pd.notna(calc_df['endKind'])
+
+    calc_df['inletBoundaryMistakes'] = True
+    calc_df['outletBoundaryMistakes'] = True
+
+    calc_df.loc[calc_df["startIsSource"], 'inletBoundaryMistakes'] = calc_df[calc_df["startIsSource"]]['sourceValueIsFilled'] & calc_df[calc_df["startIsSource"]]['sourceKindIsFilled']
+
+    calc_df.loc[calc_df["endIsOutlet"], 'outletBoundaryMistakes'] = calc_df[calc_df["endIsOutlet"]]['outletValueIsFilled'] & calc_df[calc_df["endIsOutlet"]]['outletKindIsFilled']
+
+
+
     calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
     calc_df = calc_df[calc_df['sumOfCounts'] > 2]
 
-    mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes'])]
+    mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes']) | (~calc_df['inletBoundaryMistakes']) | (~calc_df['outletBoundaryMistakes'])]
 
     if not mistakes_df.empty :
         print(f"Following nodes: {mistakes_df[~mistakes_df['sourceMistakes']]['node_id_start'].values} should be sources")
         print(f"Following nodes: {mistakes_df[~mistakes_df['outletMistakes']]['node_id_start'].values} should be outlets")
+        print(f"Start kInd and value for following nodes: {mistakes_df[~mistakes_df['inletBoundaryMistakes']]['node_id_start'].values} should be filled")
+        print(f"End kInd and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
         assert False
 
 

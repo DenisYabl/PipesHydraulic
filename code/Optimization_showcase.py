@@ -1,7 +1,10 @@
 from Fluids.HE2_Fluid import HE2_OilWater
-from Optimization_test import model_DNS_2
+from Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
 from Optimization_test import model_DNS_2_by_parts
 import pandas as pd
+
+from Solver.HE2_Solver import HE2_Solver
+
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
 pressures - перечень пластовых давлений всех используемых в модели скважин
@@ -77,13 +80,45 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
            "WELL_4235" : ["ЭЦН5-80-2500", 50], "WELL_3117" : ["ЭЦН5А-250-2500", 50], "WELL_1493" : ["ЭЦН5А-160-2500", 50],
            "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 50], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
 }
-
+# Выходное условие заменено на выходное давление ДНС-2
 outputpressure = 4.8
-G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts, DNS_pressure=outputpressure, pump_curves=pump_curves, fluid=fluid)
+roughness = 1e-5
+real_diam_coefficient = 0.85
+
+#Получаем расчетный граф с заданными параметрами
+G, inlets, juncs, outlets = build_DNS2_graph(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
+                                             DNS_pressure = outputpressure)
+# Создаем солвер и решаем полученный расчетный граф
+solver = HE2_Solver(G)
+solver.solve()
+
 for n in inlets:
     print(n, G.nodes[n]["obj"].result)
 
 for n in outlets:
     print(n, G.nodes[n]["obj"].result)
 
+#Меняем давление на пласте скважины 1523 куста 5
 
+G.nodes["PAD_5_well_1523"]['obj'].value = 250
+
+
+solver.solve()
+print("\nРешение с измененным давлением")
+for n in inlets:
+    print(n, G.nodes[n]["obj"].result)
+
+for n in outlets:
+    print(n, G.nodes[n]["obj"].result)
+
+#Меняем частоту насоса скважины 1562 куста 5
+
+G.edges._adjdict["Pump_intake_1562"]['Pump_outlet_1562']['obj'].changeFrequency(55)
+
+solver.solve()
+print("\nРешение с измененной частотой насоса")
+for n in inlets:
+    print(n, G.nodes[n]["obj"].result)
+
+for n in outlets:
+    print(n, G.nodes[n]["obj"].result)
