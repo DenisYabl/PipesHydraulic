@@ -39,7 +39,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
 
 
     def calc(self, P_bar, T_C, Q_Liquid, IntDiameter):
-        P_for_PVT = abs(P_bar)
+        P_for_PVT = max(abs(P_bar), 0.75)
         oil_params = {
             "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
             "PlastT": self.PlastT,  # Пластовая температура, исходные данные
