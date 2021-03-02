@@ -99,13 +99,14 @@ class Mishenko:
         SepOilDynamicViscosity = oil_params["SepOilDynamicViscosity"] / 10
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
-        # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / 86400
-        Qoil = Q * (1 - VolumeWater) / 86400
-        # Объемный фактор нефти
-        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
         # Плотность пластовой воды
         PlastWaterDensity = oil_params["PlastWaterWeight"] * 1000
+        # Текущийй расход/дебит
+        Q = oil_params["adkuLiquidDebit"] / (SepOilDensity * (1 - VolumeWater) + PlastWaterDensity * (VolumeWater))
+        Qoil = Q * (1 - VolumeWater)
+        # Объемный фактор нефти
+        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
+
         g = 9.81
 
         Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
@@ -232,13 +233,16 @@ class Mishenko:
         SepOilDynamicViscosity = oil_params["SepOilDynamicViscosity"] / 10
         # Обводненность нефти
         VolumeWater = oil_params["wellopVolumeWater"] / 100
-        # Текущий й расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / 86400
-        Qoil =  Q * (1 - VolumeWater) / 86400
-        # Объемный фактор нефти
-        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
+
         # Плотность пластовой воды
         PlastWaterDensity = oil_params["PlastWaterWeight"] * 1000
+
+        # Текущий расход/дебит
+        Q = oil_params["adkuLiquidDebit"] / (SepOilDensity * (1 - VolumeWater) + PlastWaterDensity * (VolumeWater))
+        Qoil =  Q * (1 - VolumeWater)
+        # Объемный фактор нефти
+        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
+
         g = 9.81
         we_know_gas_amount = (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount))
 

@@ -24,7 +24,7 @@ fluid = HE2_OilWater(oil_params)
 
 inlets = dict(PLAST_1816=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
 
-outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q', 4))
+outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q', 3.5))
 #outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 11))
 
 
@@ -49,9 +49,9 @@ G.add_edge('PLAST_1816', 'ZABOI_ZONE', obj=HE2_Plast(productivity = 1.66, fluid=
 #Инклинометрия до устья
 
 G.add_edge('Pump_outlet', 'wellhead',
-           obj=HE2_OilPipe([61.69], [2508.31], [0.073 * real_diam_coefficient], [roughness]))
+           obj=HE2_OilPipe([61.69], [2508.31], [0.073 * real_diam_coefficient], [roughness], [fluid]))
 G.add_edge('ZABOI_ZONE', 'Pump_intake',
-           obj=HE2_OilPipe([668], [211.7], [0.143 * real_diam_coefficient], [5 * roughness]))
+           obj=HE2_OilPipe([668], [211.7], [0.143 * real_diam_coefficient], [5 * roughness], [fluid]))
 
 #Насос
 G.add_edge('Pump_intake', 'Pump_outlet',

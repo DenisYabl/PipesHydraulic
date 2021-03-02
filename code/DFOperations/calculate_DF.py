@@ -1,7 +1,20 @@
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
+import logging
+import sys
 
-def calculate_DF(dataframe, logger):
+def calculate_DF(dataframe, logger = None):
+    if logger is None:
+        logger = logging.getLogger('Python debug')
+        formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
+        filehandler = logging.FileHandler(filename='run.log', mode='w')
+        filehandler.setFormatter(formatter)
+        streamhandler = logging.StreamHandler(sys.stderr)
+        streamhandler.setFormatter(formatter)
+
+        logger.addHandler(filehandler)
+        logger.addHandler(streamhandler)
+
     G = make_oilpipe_schema_from_OT_dataset(dataframe)
     logger.debug("Graph schema is created".encode())
     solver = HE2_Solver(G)

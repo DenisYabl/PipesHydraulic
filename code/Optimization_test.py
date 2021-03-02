@@ -85,7 +85,7 @@ def gimme_DNS2_inlets_outlets_Q():
     return inlets_outlets_Q
 
 def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
-                fluid = None, roughness = 0.00001, real_diam_coefficient = 1):
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
     # Давления в источниках
     pressure_1523 = pressures["PAD_5"]["WELL_1523"]
     pressure_146 = pressures["PAD_5"]["WELL_146"]
@@ -469,7 +469,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
     q = daily_debit * fluid.calc(P_bar=20, T_C= 20, Q_Liquid = daily_debit , IntDiameter = 0.325).CurrentLiquidDensity / 86400
-    outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('Q', q))
+    outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed
     for k, v in {**inlets, **outlets, **juncs}.items():
@@ -1016,9 +1016,9 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
 
 
 def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
-                fluid = None, roughness = 0.00001, real_diam_coefficient = 1 ):
+                fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
 
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient, DNS_pressure = 4.8)
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
