@@ -6,6 +6,7 @@ from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
+from Tools.flowing_level_graph_prepare import remake_graph
 
 oil_params = {
     "OilSaturationP": 65.7, #Давление насыщения нефти при стандартных условиях, исходные данные
@@ -1114,3 +1115,13 @@ def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, daily_debit = 0, fluid = fl
     solver = HE2_Solver(G)
     solver.solve()
     return G
+
+def model_DNS2_with_flowing_levels(pressures: dict = {}, plasts: dict = {}, daily_debit=0, pumps=None, pump_curves=None,
+                fluid=None, roughness=0.00001, real_diam_coefficient=1, DNS_pressure=4.8):
+    G_orig, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid,
+                                                 roughness, real_diam_coefficient, DNS_pressure=4.8)
+    intake_nodes = [node_name for node_name in juncs if 'intake' in node_name]
+    # Создаем солвер и решаем полученный расчетный граф
+    G = remake_graph(G_orig, intake_nodes)
+    return G, inlets, juncs, outlets, intake_nodes
+
