@@ -46,6 +46,7 @@ def calculate (mishenko, tubing):
         math.radians(angle)) ** 2 + C4 * Lm ** 2) * (Lg ** C5 / Lw ** C6))
     except:
         phi1 = 1
+    phi1 = min(phi1, 1)
     # Число Фруда смеси
     Fr = count_Frud(mishenko, wm, tubing)
     # Объемные концентрации
