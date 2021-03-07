@@ -101,7 +101,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
             "wellopVolumeWater": self.VolumeWater,  # Обводненность нефти, исходные данные
             "VolumeOilCoeff": self.OilVolumeCoeff,  # Объемный коэффициент нефти, исходные данные
             "PlastWaterWeight": self.PlastWaterDensity,  # Плотность попутной воды, исходные данные
-            "adkuLiquidDebit": X_kgsec / (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * 1000 * self.VolumeWater / 100),  # Дебит скважины, исходные данные
+            "adkuLiquidDebit": X_kgsec,  # Дебит скважины, исходные данные
             "CurrentP": P_for_PVT,
             "CurrentT": T_C
         }
