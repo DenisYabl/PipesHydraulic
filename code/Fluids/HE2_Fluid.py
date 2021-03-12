@@ -1,5 +1,11 @@
 from Hydraulics.Properties.Mishenko import Mishenko
 from Tools.HE2_ABC import HE2_ABC_Fluid
+import logging
+import os
+
+logging.basicConfig(level=logging.DEBUG, filename=f'HE2 pid {os.getpid()}.log', format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
+logger = logging.getLogger(__name__)
+
 
 class HE2_DummyWater(HE2_ABC_Fluid):
     def __init__(self):
@@ -12,6 +18,9 @@ class HE2_DummyWater(HE2_ABC_Fluid):
 
 class HE2_OilWater(HE2_ABC_Fluid):
     def __init__(self, oil_params):
+        logger.debug('is started')
+        logger.info(f'oil_params = {oil_params}')
+
         #Давление насыщения
         self.SaturationPressure = oil_params["OilSaturationP"]
         # Пластовая температура
@@ -35,10 +44,12 @@ class HE2_OilWater(HE2_ABC_Fluid):
         # Плотность пластовой воды
         self.PlastWaterDensity = oil_params["PlastWaterWeight"]
         self.CurrentLiquidDensity = 1000 * (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100)
-
+        logger.debug('is finished')
 
 
     def calc(self, P_bar, T_C, Q_Liquid, IntDiameter):
+        logger.debug('is started')
+
         P_for_PVT = max(abs(P_bar), 0.75)
         oil_params = {
             "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
@@ -60,11 +71,18 @@ class HE2_OilWater(HE2_ABC_Fluid):
         self. CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
         self.CurrentOilViscosity = temp_mishenko.CurrentOilViscosity
         self.Q_m3sec = temp_mishenko.Q
+
+        # d = temp_mishenko.__dict__
+        # for k, v in d.items():
+        #     if np.isna(v) or
+        logger.debug('is finished')
         #Return for pressure gradient calculation
         return temp_mishenko
 
 class HE2_DummyOil(HE2_ABC_Fluid):
     def __init__(self, VolumeWater):
+        logger.debug('is started')
+
         #Давление насыщения
         self.SaturationPressure = 67
         # Пластовая температура
@@ -88,8 +106,12 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         # Плотность пластовой воды
         self.PlastWaterDensity = 1.015
         self.CurrentLiquidDensity = 1000 * (self.SepOilDensity * (1 - self.VolumeWater / 100) + self.PlastWaterDensity * self.VolumeWater / 100)
+        logger.debug('is finished')
+
 
     def calc(self, P_bar, T_C, X_kgsec, IntDiameter):
+        logger.debug('is started')
+
         P_for_PVT = abs(P_bar)
         oil_params = {
             "OilSaturationP": self.SaturationPressure,  # Давление насыщения нефти при стандартных условиях, исходные данные
@@ -112,6 +134,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         self.CurrentOilViscosity = temp_mishenko.CurrentOilViscosity
         self.Q_m3sec = temp_mishenko.Q
         #Return for pressure gradient calculation
+        logger.debug('is finished')
         return temp_mishenko
 
 

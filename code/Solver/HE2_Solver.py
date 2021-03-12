@@ -8,8 +8,9 @@ from Tools import HE2_ABC as abc
 from Tools.HE2_ABC import Root
 import pandas as pd
 import logging
+import os
 
-logging.basicConfig(level=logging.DEBUG, filename='HE2.log', format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
+logging.basicConfig(level=logging.DEBUG, filename=f'HE2 pid {os.getpid()}.log', format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
 logger = logging.getLogger(__name__)
 
 class HE2_Solver():
@@ -60,7 +61,7 @@ class HE2_Solver():
             if node in Q_dict:
                 q_vec[i] = Q_dict[node]
 
-        logger.info(f'q_vec = {q_vec}')
+        logger.info(f'q_vec = {q_vec.flatten()}')
         A_truncated = A_full[:-1]
         A_inv = np.linalg.inv(A_truncated)
         x_tree = np.matmul(A_inv, q_vec)
@@ -215,7 +216,17 @@ class HE2_Solver():
             if detB == 0:
                 logger.error(f'Cannot find jacobian, BFBt-matrix is singular!')
                 break
+            logger.info(f'det B = {detB}')
+
             inv_B_F_Bt = np.linalg.inv(B_F_Bt)
+            if np.isnan(inv_B_F_Bt).any():
+                logger.warning(f'There is NaN in gradient! inv_B_F_Bt = {inv_B_F_Bt}')
+                break
+
+            if np.isnan(p_residuals).any():
+                logger.warning(f'There is NaN in 2ndCL residuals! p_residuals = {p_residuals}')
+                break
+
             dx = -1 * np.matmul(inv_B_F_Bt, p_residuals)
             dx = dx.reshape((len(dx), 1))
             if np.isnan(dx).any():
