@@ -236,7 +236,7 @@ class HE2_Solver():
 
         self.attach_results_to_schema()
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
-        logger.info('Gradient descent result is', self.op_result)
+        logger.info(f'Gradient descent result is {self.op_result}')
         logger.debug('is finished')
 
 
