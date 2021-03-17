@@ -154,6 +154,7 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
             self.intermediate_results += [(p, t)]
@@ -161,6 +162,7 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments[::-1]:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
             self.intermediate_results += [(p, t)]
@@ -293,6 +295,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
             self.intermediate_results += [(p, t)]
@@ -300,6 +303,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments[::-1]:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
             self.intermediate_results += [(p, t)]
