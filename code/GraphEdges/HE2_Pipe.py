@@ -5,6 +5,8 @@ import numpy as np
 
 import Hydraulics.Methodics.Mukherjee_Brill as mb
 from functools import lru_cache
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
 
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
@@ -15,8 +17,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     Поэтому она умеет считать в обе стороны, но интерфейс для этого отличается, здесь используется calc_direction in [-1,+1]
     '''
     def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
-        if fluid is None:
-            fluid = HE2_DummyWater()
+        fluid = HE2_DummyWater()
         self.fluid = fluid
         self.inner_diam_m = inner_diam_m
         self.roughness_m = roughness_m
