@@ -19,7 +19,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.IntDiameter = IntDiameter
         self.frequency = frequency
         self._printstr = self.base_HPX.to_string()
-        visc_approx = self.fluid.calc(30, 20, 1, 0.12).CurrentOilViscosity
+        visc_approx = self.fluid.calc(30, 20, 1, 0.12).CurrentOilViscosity_Pa_s
         self.true_HPX = self.base_HPX.copy()
         self.true_HPX["pseudo"] = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
         self.true_HPX["Cq"] = 0.9873 * (self.true_HPX["pseudo"] ** 0) + 0.009019 * (self.true_HPX["pseudo"] ** 1) - 0.0016233 * (self.true_HPX["pseudo"] ** 2) + 0.00007233 * (self.true_HPX["pseudo"] ** 3) - 0.0000020258 * (
@@ -37,11 +37,13 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
         self.true_HRX_min_Q = self.true_HPX["debit"].min()
         self.true_HRX_max_Q = self.true_HPX["debit"].max()
+        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
 
-        self.get_pressure_raise_1 = None
-        self.get_pressure_raise_2 = None
-        self.get_pressure_raise_3 = None
-        self.make_extrapolators()
+        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
+        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
+        # self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
 
 
     def __str__(self):
@@ -76,16 +78,16 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
         #Определяем направления расчета
-        liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity
+        liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
-        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HRX_max_Q) :
+        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.true_HRX_max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
         else:
             get_pressure_raise = self.get_pressure_raise_3
 
-        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity)
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
         T_rez_C = T_C
 
         return P_rez_bar, T_rez_C
@@ -110,17 +112,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         t_sign = calc_direction
         return grav_sign, fric_sign, t_sign
 
-    def make_extrapolators(self):
-        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
-        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
-        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
-        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
-        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
-
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
         self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
         self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
 
-        self.make_extrapolators()
-
+        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+        self.get_pressure_raise_1 = lambda x: zero_head
+        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
+        self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
