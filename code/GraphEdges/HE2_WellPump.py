@@ -37,13 +37,11 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
         self.true_HRX_min_Q = self.true_HPX["debit"].min()
         self.true_HRX_max_Q = self.true_HPX["debit"].max()
-        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
-        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
 
-        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
-        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
-        # self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
-        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
+        self.get_pressure_raise_1 = None
+        self.get_pressure_raise_2 = None
+        self.get_pressure_raise_3 = None
+        self.make_extrapolators()
 
 
     def __str__(self):
@@ -112,12 +110,17 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         t_sign = calc_direction
         return grav_sign, fric_sign, t_sign
 
+    def make_extrapolators(self):
+        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
+        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
+        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
+        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
+        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
+
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
         self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
         self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
 
-        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
-        self.get_pressure_raise_1 = lambda x: zero_head
-        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
-        self.get_pressure_raise_3 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="cubic", fill_value="extrapolate")
+        self.make_extrapolators()
+
