@@ -96,7 +96,10 @@ def test_with_change_graph_ont_the_fly():
     G, inlets, juncs, outlets = build_DNS2_graph(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
                                                  DNS_pressure = outputpressure)
     # Создаем солвер и решаем полученный расчетный граф
+    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
+    solver.prepare_initial_approximation(G, inlets_Q)
     solver.solve()
 
     for n in inlets:
