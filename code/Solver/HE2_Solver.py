@@ -179,6 +179,8 @@ class HE2_Solver():
     def solve(self, save_intermediate_results=False, threshold=0.1):
         logger.debug('is started')
 
+        # df = pd.DataFrame(columns=['it_num', 'x', 'y'])
+
         if not self.ready_for_solve:
             self.prepare_for_solve()
 
@@ -232,8 +234,15 @@ class HE2_Solver():
             if np.isnan(dx).any():
                 logger.warning(f'There is NaN in step vector! dx = {dx.flatten()}')
 
+            # for i in range(50):
+            #     x = x_chordes + i/40 * dx
+            #     yy = self.target(x)
+            #     row = dict(it_num=it_num, x=i, y=yy)
+            #     df = df.append(row, ignore_index=True)
+
             x_chordes = x_chordes + step * dx
 
+        # df.to_csv(r'c:\tmp\123.csv')
         self.attach_results_to_schema()
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
