@@ -76,16 +76,16 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
         #Определяем направления расчета
-        liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity
+        liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
-        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity < self.true_HRX_max_Q) :
+        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.true_HRX_max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
         else:
             get_pressure_raise = self.get_pressure_raise_3
 
-        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity)
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
         T_rez_C = T_C
 
         return P_rez_bar, T_rez_C

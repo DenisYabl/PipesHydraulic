@@ -6,21 +6,10 @@ from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
+from Fluids.oil_params import oil_params
 
-oil_params = {
-    "OilSaturationP": 65.7, #Давление насыщения нефти при стандартных условиях, исходные данные
-    "PlastT": 84.0, #Пластовая температура, исходные данные
-    "GasFactor": 34.8, #Газовый фактор нефти, исходные данные
-    "SepOilWeight": 0.8815, #Плотность нефти, исходные данные
-    "GasDensity": 1.003, #Плотность попутного газа, исходные данные
-    "SepOilDynamicViscosity": 43.03, #Динамическая вязкость нефти, исходные данные
-    "wellopVolumeWater": 56, #Обводненность нефти, исходные данные
-    "VolumeOilCoeff": 1.097, #Объемный коэффициент нефти, исходные данные
-    "PlastWaterWeight": 1.015, #Плотность попутной воды, исходные данные
-    "adkuLiquidDebit": 240, #Дебит скважины, исходные данные
-    "CurrentP": 90, #Текущее давление, меняем по необходимости
-    "CurrentT": 84.0, #Текущая температура, меняем по необходисости
-}
+oil_params = oil_params(dailyQ=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
+                 waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
 fluid = HE2_OilWater(oil_params)
 
 
@@ -468,7 +457,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  UDR_2=vrtxs.HE2_ABC_GraphVertex(),
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
-    q = daily_debit * fluid.calc(P_bar=20, T_C= 20, Q_Liquid = daily_debit , IntDiameter = 0.325).CurrentLiquidDensity / 86400
+    q = daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = 0 , IntDiameter = 0.325).CurrentLiquidDensity_kg_m3 / 86400
     outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed
