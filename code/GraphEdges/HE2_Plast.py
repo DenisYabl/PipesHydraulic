@@ -45,7 +45,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
         fl =  self.fluid
         liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
-        liq_dens = liq.CurrentLiquidDensity
+        liq_dens = liq.CurrentLiquidDensity_kg_m3
         P_rez_bar = P_bar - calc_direction * (X_kgsec * 86400 /  liq_dens) / self.Productivity
         T_rez_C = T_C
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)

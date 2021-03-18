@@ -239,7 +239,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign, grav_sign, calc_direction):
         #Уточнить про X_kgsec
         if X_kgsec == 0:
-            return 0, self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity * 9.81
+            return 0, self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity_kg_m3 * 9.81
         # Fluid.calc will be optimized at lower level. So we will call it every time
         current_mishenko = self.fluid.calc(P_bar, T_C,abs(X_kgsec), self.inner_diam_m)
         #Определяем угол в зависимости от fric_sign
