@@ -73,6 +73,4 @@ def calculate (mishenko, tubing):
         lambda0 = (1.74 - 2 * math.log10(2 * tubing["Roughness"] / (tubing["IntDiameter"] ** 2) + 18.7 / (Re * (lambda0 ** 0.5)))) ** -2
     #Локальный градиент давления
     dP_fric, dP_grav = count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, Lg, Lm, wm)
-
-
     return dP_fric, dP_grav

@@ -141,7 +141,7 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         tauo = lambdao * mishenko.SaturatedOilDensity_kg_m3 * wo ** 2 * 0.5 / mishenko.g
         taug = lambdag * mishenko.FreeGasDensity_kg_m3 * wg ** 2 * 0.5 / mishenko.g
         dP_fric = -(tauo * Perimo + taug * Perimg) / mishenko.GasFactor
-        dP_grav = (mishenko.CurrentLiquidDensity_kg_m3 * phi1 - mishenko.CurrentFreeGasDensity_kg_m3 * phi2) * mishenko.g
+        dP_grav = dens_true * mishenko.g
     return dP_fric, dP_grav
 
 
