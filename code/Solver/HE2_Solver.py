@@ -206,12 +206,9 @@ class HE2_Solver():
                 check_for_nan(dx=dx)
 
             self.attach_results_to_schema()
-        except np.linalg.LinAlgError:
-            logger.error('B_F_Bt is singular')
-        except ValueError:
-            pass
-        else:
-            pass
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
 
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
