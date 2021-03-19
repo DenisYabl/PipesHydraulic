@@ -6,6 +6,8 @@ import uniflocpy.uTools.uconst as uc
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
 
 A_keff = 1
 B_keff = 1.4
@@ -75,6 +77,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         return p, t
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
+        check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
         #Определяем направления расчета
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
@@ -87,6 +90,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
         T_rez_C = T_C
+        check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
 
         return P_rez_bar, T_rez_C
 

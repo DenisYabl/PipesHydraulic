@@ -2,6 +2,7 @@ import pandas as pd
 import math
 from Hydraulics.Formulas import get_dens_freegas
 from Fluids.oil_params import oil_params, dummy_oil_params
+from Tools.HE2_Logger import check_for_nan, getLogger
 
 class Mishenko:
     """
@@ -9,6 +10,7 @@ class Mishenko:
     """
 
     def __init__(self, **kwargs):
+        check_for_nan(**kwargs)
         self.GasFactor = kwargs.pop('GasFactor')
         self.VolumeWater_fraction = kwargs.pop('VolumeWater')
         self.Q_m3_s = kwargs.pop("Q")

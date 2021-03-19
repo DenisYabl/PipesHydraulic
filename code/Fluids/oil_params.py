@@ -10,6 +10,8 @@ oil_params = {
     "PlastWaterWeight": 1.015, #Плотность попутной воды, исходные данные
 }
 
+#TODO implemets oil_params as named tuple
+#TODO make oil_params checkable for nans
 
 class oil_params():
     def __init__(self, dailyQ=None, saturationPressure=None, plastT=None, gasFactor=None, oilDensity=None,
