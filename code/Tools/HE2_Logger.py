@@ -12,6 +12,6 @@ def getLogger(name):
 def check_for_nan(**kwargs):
     arr = np.array([v for v in kwargs.values()], dtype=float)
     if np.isnan(arr).any():
-        msg = ', '.join([f'{k} = {v}' for k, v in kwargs])
+        msg = ', '.join([f'{k} = {v}' for k, v in kwargs.items()])
         raise ValueError(msg)
 

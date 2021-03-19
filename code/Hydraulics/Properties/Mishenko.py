@@ -4,6 +4,8 @@ from Hydraulics.Formulas import get_dens_freegas
 from Fluids.oil_params import oil_params, dummy_oil_params
 from Tools.HE2_Logger import check_for_nan, getLogger
 
+
+
 class Mishenko:
     """
     Уточненный расчет физических свойств нефтегазовой смеси в текущих условиях давления и температуры
@@ -201,7 +203,7 @@ class Mishenko:
                         SaturatedOilDensity=SepOilDensity,
                         CurrentWaterDensity=PlastWaterDensity, CurrentOilViscosity=CurrentOilViscosity,
                         CurrentWaterViscosity=CurrentWaterViscosity,
-                        RelativePressure=None, RelativeTemperature=None,
+                        RelativePressure=-100500, RelativeTemperature=-100500,
                         CurrentFreeGasDensity=0,
                         CurrentFreeGasViscosity=0, CurrentLiquidDensity=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
@@ -365,6 +367,7 @@ class Mishenko:
         # Объемное расходное газосодержание
         VolumeGas = Q2 / Qc if Qc!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
+# TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
         return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
                         DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity=FreeGasDensity,
