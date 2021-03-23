@@ -130,6 +130,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         check_for_nan(P_fric_grad_Pam=check_for_nan)
         return P_rez_bar, 20
 
+
 class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
         self.segments = []

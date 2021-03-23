@@ -63,6 +63,28 @@ def dict_to_pipesegment(obj_dict):
     rez = get_class[class_alias](fluid, **obj_dict)
     return rez
 
+def pipe_to_dict(pipe):
+    class_alias = get_alias[str(pipe.__class__)]
+    if not class_alias in ['OilPipe', 'WaterPipe']:
+        return None
+    rez = dict(class_alias=class_alias)
+    seg_list = []
+    for seg in pipe.segments:
+        seg_dict = pipesegment_to_dict(seg)
+        seg_list += [seg_dict]
+    rez.update(segments=seg_list)
+    return rez
+
+def dict_to_pipe(obj_dict):
+    seg_list = obj_dict['segments']
+    class_alias = obj_dict.pop('class_alias')
+    rez = get_class[class_alias]([], [], [], [])
+    for seg_dict in seg_list:
+        segment = dict_to_pipesegment(seg_dict)
+        rez.segments += [segment]
+    return rez
+
+
 def test1():
     pseg = he2_pipe.HE2_OilPipeSegment(None, 0.5, 1e-5, 100, 10)
     d = pipesegment_to_dict(pseg)
@@ -77,6 +99,14 @@ def test2():
     pseg2 = dict_to_pipesegment(d)
     print(pseg, pseg2)
 
+def test3():
+    op = oil_params.dummy_oil_params(10, 50)
+    fluid = he2_fluid.HE2_OilWater(op)
+    pipe = he2_pipe.HE2_OilPipe([100, 200], [-10, 20], [0.3, 0.4], [1e-5, 1e-5], [fluid, fluid])
+    d = pipe_to_dict(pipe)
+    pipe2 = dict_to_pipe(d)
+    print(pipe, pipe2)
+
 
 if __name__ == '__main__':
-    test2()
+    test3()
