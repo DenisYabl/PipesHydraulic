@@ -14,7 +14,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
     def __init__(self, oil_params):
         # check_for_nan(**oil_params)
         self.oil_params = oil_params
-        self.oil_params.currentliquiddensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
+        self.oil_params.CurrentLiquidDensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
                                                       self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
 
 
@@ -35,7 +35,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
 class HE2_DummyOil(HE2_ABC_Fluid):
     def __init__(self, daily_Q=100, VolumeWater=50):
         self.oil_params = dummy_oil_params(dailyQ=daily_Q, volumeWater=VolumeWater)
-        self.oil_params.currentliquiddensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
+        self.oil_params.CurrentLiquidDensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
                                                       self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
 
 
@@ -44,7 +44,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         calc_params = self.oil_params
         calc_params.currentP_bar = P_for_PVT
         calc_params.currentT_C = T_C
-        calc_params.Q_m3_sec =  X_kgsec / self.oil_params.currentliquiddensity_kg_m3
+        calc_params.Q_m3_sec =  X_kgsec / self.oil_params.CurrentLiquidDensity_kg_m3
 
         tubing = {"IntDiameter": IntDiameter}
         temp_mishenko = Mishenko.from_oil_params(calc_params=calc_params, tubing=tubing)
