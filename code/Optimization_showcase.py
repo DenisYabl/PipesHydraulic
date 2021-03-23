@@ -17,8 +17,8 @@ plasts - описание свойств пласта используемых �
 
 pumps - описание насосов скважин, задается моделью насоса и частотой работы
 """
-oil_params = oil_params(dailyQ=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
-                 waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
+oil_params = oil_params(Q_m3_day=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
+                        waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
 

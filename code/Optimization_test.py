@@ -8,8 +8,8 @@ from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
 from Fluids.oil_params import oil_params
 
-oil_params = oil_params(dailyQ=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
-                 waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
+oil_params = oil_params(Q_m3_day=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
+                        waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
 fluid = HE2_OilWater(oil_params)
 
 
