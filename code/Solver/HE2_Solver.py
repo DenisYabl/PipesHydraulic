@@ -205,10 +205,11 @@ class HE2_Solver():
                 dx = -1 * np.matmul(inv_B_F_Bt, p_residuals).reshape((len(dx), 1))
                 check_for_nan(dx=dx)
 
+
+            self.attach_results_to_schema()
         except Exception as e:
             logger.error(e, exc_info=True)
 
-        self.attach_results_to_schema()
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
 
@@ -458,6 +459,10 @@ class HE2_Solver():
         return pt_residual_vec, d
 
     def attach_results_to_schema(self):
+        if self.pt_on_tree is None:
+            logger.warning('Cannot get results after solve')
+            return
+
         for u, pt in self.pt_on_tree.items():
             if u in self.mock_nodes:
                 continue
