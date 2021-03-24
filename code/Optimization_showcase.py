@@ -134,7 +134,59 @@ def test_with_change_graph_ont_the_fly():
         print(n, G.nodes[n]["obj"].result)
 
 
+import shame_on_me
+
+def test_2pads_with_change_graph():
+    # Урезаная модель, ост ДНС2 оставили только 2 куста, к.33 и к.34
+    # Выходное условие заменено на выходное давление ДНС-2
+    outputpressure = 4.8
+    roughness = 1e-5
+    real_diam_coefficient = 0.85
+
+    #Получаем расчетный граф с заданными параметрами
+    G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
+                                                 DNS_pressure = outputpressure)
+    # Создаем солвер и решаем полученный расчетный граф
+    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    #Создаем солвер и решаем полученный расчетный граф
+    solver = HE2_Solver(G)
+    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.solve()
+
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    #Меняем давление на пласте скважины 1523 куста 5
+
+    G.nodes["PAD_33_well_1385"]['obj'].value = 250
+
+
+    solver.solve()
+    print("\nРешение с измененным давлением")
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    #Меняем частоту насоса скважины 1562 куста 5
+
+    G.edges._adjdict["Pump_intake_725"]['Pump_outlet_725']['obj'].changeFrequency(55)
+
+    solver.solve()
+    print("\nРешение с измененной частотой насоса")
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+
 if __name__ == '__main__':
-    test_with_change_graph_ont_the_fly()
+    test_2pads_with_change_graph()
+    # test_with_change_graph_ont_the_fly()
     #full_test
     #part_test()
