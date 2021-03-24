@@ -4,7 +4,10 @@ from Hydraulics.Formulas import get_dens_freegas
 from Fluids.oil_params import oil_params, dummy_oil_params
 from Tools.HE2_Logger import check_for_nan, getLogger
 
-
+# TODO: Диаметр трубы нужен для уточнения вязкости смеси при движении по трубе, больше ни для чего
+# Поэтому надо разделить расчет на две части - когда поток идет по трубе, и когда нет (например через насос)
+# В первом случае мы считаем вязкость через режим течения и проскальзывание
+# Во втором либо линейной интерполяцией, либо инверсией фаз
 
 class Mishenko:
     """
@@ -64,7 +67,7 @@ class Mishenko:
 
 
     @staticmethod
-    def from_oil_params(calc_params:oil_params, tubing):
+    def from_oil_params(calc_params:oil_params, tubing=None):
         SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
         CurrentP = calc_params.currentP_bar * 101325 * 1e-6
         PlastT = calc_params.plastT_C + 273
@@ -77,7 +80,7 @@ class Mishenko:
             return Mishenko.three_phase_flow(calc_params)
 
     @staticmethod
-    def two_phase_flow(calc_params:oil_params, tubing):
+    def two_phase_flow(calc_params:oil_params, tubing=None):
         """
         :param oil_params: Параметры нефти
         """
@@ -123,13 +126,13 @@ class Mishenko:
         VolumeWater = VolumeWater / (VolumeWater + OilVolumeCoeff * (1 - VolumeWater))
 
         #Скорость смеси
-        wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-        wo = Qoil * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-        ww = (Q - Qoil) * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-
-        #Критическая скорость смеси
-        wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
-        structure = "drop" if wm<wkr else "emulsion"
+        structure = 'emulsion'
+        if tubing:
+            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+            #Критическая скорость смеси
+            wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
+            if wm < wkr:
+                structure = "drop"
 
         #Поверхностное натяжение нефть-газ
         TensionOilGas = 10 ** -(1.58 + 0.05 * CurrentP) - 72e-6 * (CurrentT - 303)
@@ -148,8 +151,8 @@ class Mishenko:
 
         vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-        С = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
-        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** С
+        C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
         A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
         B = 1 + 0.0017 * vzgr - 0.0228 * vzgr ** 0.667
@@ -160,42 +163,27 @@ class Mishenko:
 
         CurrentWaterViscosity = 0.00178 / (1 + 0.037 * (CurrentT - 273) + 0.00022 * (CurrentT - 273) ** 2)
 
-
+        VolumeOil = 1 - VolumeWater
+        CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
 
         if structure == "drop":
             mixture_type = "oil_water" if VolumeWater > 0.5 else "water_oil"
             if mixture_type == "water_oil":
-                VolumeOil = 1 - VolumeWater
                 CurrentOilViscosity = CurrentOilViscosity
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
             else:
-                VolumeOil = 1 - VolumeWater
                 CurrentOilViscosity = CurrentWaterViscosity
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
-        else:
+
+        elif structure == 'emulsion' and tubing:
+            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+            shiftvelocity = 8 * wm / tubing["IntDiameter"]
+            A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
+            B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
             if VolumeWater > 0.5:
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + (1 - VolumeWater) * SepOilDensity
-                mixture_type = "oil_water"
-                shiftvelocity = 8 * wm / tubing["IntDiameter"]
-                A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
-                B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
-                if VolumeWater < 1:
-                    CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
-            else:
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + (1 - VolumeWater) * SepOilDensity
-                mixture_type = "oil_water"
-                shiftvelocity = 8 * wm / tubing["IntDiameter"]
-                A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
-                B = CurrentOilViscosity if A <= 1 else A * CurrentOilViscosity
-                CurrentOilViscosity = CurrentOilViscosity
+                CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
+        else:
+            assert tubing is None
 
         CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
-
-
-
-
-
-
 
         return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
@@ -296,8 +284,8 @@ class Mishenko:
 
         vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-        С = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
-        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** С
+        C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
         A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
         B = 1 + 0.0017 * vzgr - 0.0228 * vzgr ** 0.667

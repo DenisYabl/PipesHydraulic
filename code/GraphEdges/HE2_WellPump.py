@@ -12,13 +12,21 @@ logger = getLogger(__name__)
 A_keff = 1
 B_keff = 1.4
 
+# TODO Нужно сузить класс HE2_WellPump. Не надо таскать в него датафрейм. Нужно создавать его от трех векторов Q, H, Eff
+# И рядом сделать конструктор, который берет уже датафрейм, выделяет из него три вектора и создает объект HE2_WellPump
+
+# def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, IntDiameter = 0.12, frequency = 50):
+#     pass
+
+# class HE2_WellPump(abc.HE2_ABC_GraphEdge):
+#     def __init__(self, Q_P_N_table=None, fluid = HE2_DummyOil, frequency = 50):
+
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, IntDiameter = 0.12, frequency = 50):
+    def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, frequency = 50):
         self.base_HPX = full_HPX[full_HPX["pumpModel"] == model]
         self.fluid = fluid
         self.model = model
         self.intermediate_results = []
-        self.IntDiameter = IntDiameter
         self.frequency = frequency
         self._printstr = self.base_HPX.to_string()
         visc_approx = self.fluid.calc(30, 20, 1, 0.12).CurrentOilViscosity_Pa_s

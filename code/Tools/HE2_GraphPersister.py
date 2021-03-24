@@ -1,15 +1,17 @@
 import Tools.HE2_ABC as abc
 import GraphEdges.HE2_Pipe as he2_pipe
 from GraphEdges.HE2_Plast import HE2_Plast
-import GraphEdges.HE2_WellPump
+from GraphEdges.HE2_WellPump import HE2_WellPump
 import Fluids.HE2_Fluid as he2_fluid
 import Fluids.oil_params as oil_params
 import GraphNodes.HE2_Vertices
 
-class_aliases = ['OilPipeSegment', 'WaterPipeSegment', 'OilPipe', 'WaterPipe', 'DummyWater', 'DummyOil', 'OilWater', 'Plast']
+class_aliases = ['OilPipeSegment', 'WaterPipeSegment', 'OilPipe', 'WaterPipe']
+class_aliases += ['DummyWater', 'DummyOil', 'OilWater', 'Plast', 'WellPump']
 
 classes = [he2_pipe.HE2_OilPipeSegment, he2_pipe.HE2_WaterPipeSegment, he2_pipe.HE2_OilPipe, he2_pipe.HE2_WaterPipe]
-classes += [he2_fluid.HE2_DummyWater, he2_fluid.HE2_DummyOil, he2_fluid.HE2_OilWater, HE2_Plast]
+classes += [he2_fluid.HE2_DummyWater, he2_fluid.HE2_DummyOil, he2_fluid.HE2_OilWater, HE2_Plast, HE2_WellPump]
+
 get_alias = dict(zip(map(str, classes), class_aliases))
 get_class = dict(zip(class_aliases, classes))
 
@@ -103,10 +105,14 @@ def dict_to_plast(obj_dict):
     rez = get_class[class_alias](productivity, fluid)
     return rez
 
-def plast_to_wellpump(plast):
-    pass
+def wellpump_to_dict(wellpump):
+    class_alias = get_alias[str(wellpump.__class__)]
+    if not class_alias in ['WellPump']:
+        return None
+    rez = dict(class_alias=class_alias)
 
-def wellpump_to_plast(obj_dict):
+
+def dict_to_wellpump(obj_dict):
     pass
 
 
