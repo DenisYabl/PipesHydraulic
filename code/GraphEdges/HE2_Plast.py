@@ -10,8 +10,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             raise ValueError(f'Productivity = {productivity}')
         self.Productivity = productivity
         self.fluid = fluid
-        self.intermediate_results = []
-        self._printstr = ';\n '.join(f"Productivity coefficient: {self.Productivity}")
+        self._printstr = f"Productivity coefficient: {self.Productivity}"
 
 
     def __str__(self):
@@ -29,13 +28,11 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1)
-        self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1)
-        self.intermediate_results += [(p, t)]
         return p, t
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
