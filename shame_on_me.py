@@ -1,5 +1,4 @@
 import networkx as nx
-
 from Fluids.HE2_Fluid import HE2_OilWater
 from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
@@ -7,14 +6,21 @@ from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
 from Fluids.oil_params import oil_params
+import json
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
+
 
 oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
                         waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 fluid = HE2_OilWater(oil_params)
 
 
-def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, daily_debit=0, pumps=None, pump_curves=None,
-                     fluid=None, roughness=0.00001, real_diam_coefficient=1, DNS_pressure=4.8):
+def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, DNS_daily_debit=0, pumps=None, pump_curves=None,
+                               fluid=None, roughness=0.00001, real_diam_coefficient=1, DNS_pressure=4.8):
+    json_str = json.dumps(pumps)
+    logger.info(f'Pumps: {json_str}')
+
     # Давления в источниках
     pressure_1385 = pressures["PAD_33"]["WELL_1385"]
     pressure_736 = pressures["PAD_33"]["WELL_736"]
@@ -181,7 +187,7 @@ def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, daily_de
                  UDR_2=vrtxs.HE2_ABC_GraphVertex(),
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
-    q = daily_debit * fluid.calc(P_bar=20, T_C=20, X_kgsec=0, IntDiameter=0.325).CurrentLiquidDensity_kg_m3 / 86400
+    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C=20, X_kgsec=0, IntDiameter=0.325).CurrentLiquidDensity_kg_m3 / 86400
     outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed
