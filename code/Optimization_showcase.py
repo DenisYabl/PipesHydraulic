@@ -4,6 +4,7 @@ from Optimization_test import model_DNS_2_by_parts
 import pandas as pd
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
+from Tools.HE2_tools import check_solution
 
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -134,7 +135,8 @@ def full_test():
 def part_test():
     Full_system_daily_debit = 4750
     # well_list = ['PAD_49_well_1816']
-    model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, DNS_daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+    model_DNS_2_by_parts(pressures=pressures, plasts=plasts, pumps=pumps, pump_curves=pump_curves, fluid=fluid,
+                         DNS_daily_debit=Full_system_daily_debit)
 
 def test_with_change_graph_ont_the_fly():
     # Выходное условие заменено на выходное давление ДНС-2
@@ -143,14 +145,19 @@ def test_with_change_graph_ont_the_fly():
     real_diam_coefficient = 0.85
 
     #Получаем расчетный граф с заданными параметрами
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
-                                                 DNS_pressure = outputpressure)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures=pressures, plasts=plasts, pumps=pumps,
+                                                 pump_curves=pump_curves, fluid=fluid, roughness=roughness,
+                                                 real_diam_coefficient=real_diam_coefficient,
+                                                 DNS_pressure=outputpressure)
     # Создаем солвер и решаем полученный расчетный граф
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
     solver.prepare_initial_approximation(G, inlets_Q)
     solver.solve()
+
+    validity = check_solution(G)
+    print(validity)
 
     for n in inlets:
         print(n, G.nodes[n]["obj"].result)
@@ -194,8 +201,11 @@ def test_2pads_with_change_graph():
     real_diam_coefficient = 0.85
 
     #Получаем расчетный граф с заданными параметрами
-    G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
-                                                 DNS_pressure = outputpressure)
+    G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(pressures=pressures, plasts=plasts, pumps=pumps,
+                                                                       pump_curves=pump_curves, fluid=fluid,
+                                                                       roughness=roughness,
+                                                                       real_diam_coefficient=real_diam_coefficient,
+                                                                       DNS_pressure=outputpressure)
     # Создаем солвер и решаем полученный расчетный граф
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
@@ -236,7 +246,7 @@ def test_2pads_with_change_graph():
 
 
 if __name__ == '__main__':
-    test_2pads_with_change_graph()
-    # test_with_change_graph_ont_the_fly()
-    #full_test
+    # test_2pads_with_change_graph()
+    test_with_change_graph_ont_the_fly()
+    full_test()
     #part_test()

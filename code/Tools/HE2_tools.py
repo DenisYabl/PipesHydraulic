@@ -1,9 +1,14 @@
 from GraphEdges.HE2_Pipe import HE2_WaterPipe
+from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_Plast import HE2_Plast
 from GraphNodes import HE2_Vertices as vrtxs
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import namedtuple
+
+CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow'])
 
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
                            randseed=None):
@@ -256,10 +261,46 @@ def evaluate_2ndCL_residual(graph):
         residual += abs(p - p_v)
     return residual
 
+def evalute_pressures_below_zero(graph, P_threshold_bar = 0):
+    G = nx.MultiDiGraph(graph)
+    rez = 0
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        P = obj.result['P_bar']
+        if P < P_threshold_bar:
+            rez += P_threshold_bar - P
+    return rez
+
+def check_directions(graph):
+    violations_count = 0
+    violations_flow_sum = 0
+    G = nx.MultiDiGraph(graph)
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.is_source:
+            Q = obj.result['Q']
+            if Q < 0:
+                violations_flow_sum += abs(Q)
+                violations_count += 1
+
+    for (u, v, k) in G.edges:
+        edge_obj = G[u][v][k]['obj']
+        if isinstance(edge_obj, HE2_Plast) or isinstance(edge_obj, HE2_WellPump):
+            x = edge_obj.result['x']
+            if x < 0:
+                violations_flow_sum += abs(x)
+                violations_count += 1
+
+    return violations_flow_sum, violations_count
+
+
 def check_solution(G):
     res1 = evaluate_1stCL_residual(G)
     res2 = evaluate_2ndCL_residual(G)
-    return res1, res2
+    res3 = evalute_pressures_below_zero(G)
+    res4, res5 = check_directions(G)
+    rez = CheckSolutionResults(res1, res2, res3, res4, res5)
+    return rez
 
 def check_fluid_mixation(G, x_dict, cocktails, sources):
     S = len(sources)

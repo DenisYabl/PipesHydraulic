@@ -16,8 +16,8 @@ oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, o
 fluid = HE2_OilWater(oil_params)
 
 
-def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, DNS_daily_debit=0, pumps=None, pump_curves=None,
-                               fluid=None, roughness=0.00001, real_diam_coefficient=1, DNS_pressure=4.8):
+def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
+                               roughness=0.00001, real_diam_coefficient=1, DNS_daily_debit=0, DNS_pressure=4.8):
     json_str = json.dumps(pumps)
     logger.info(f'Pumps: {json_str}')
 
