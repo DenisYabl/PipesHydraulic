@@ -460,7 +460,7 @@ def build_DNS2_graph(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0,
                  UDR_2=vrtxs.HE2_ABC_GraphVertex(),
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
-    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = 0, IntDiameter = 0.325).CurrentLiquidDensity_kg_m3 / 86400
+    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = 0).CurrentLiquidDensity_kg_m3 / 86400
     outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed

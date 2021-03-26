@@ -29,7 +29,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.intermediate_results = []
         self.frequency = frequency
         self._printstr = self.base_HPX.to_string()
-        visc_approx = self.fluid.calc(30, 20, 1, 0.12).CurrentOilViscosity_Pa_s
+        visc_approx = self.fluid.calc(30, 20).CurrentOilViscosity_Pa_s
         self.true_HPX = self.base_HPX.copy()
         self.true_HPX["pseudo"] = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
         self.true_HPX["Cq"] = 0.9873 * (self.true_HPX["pseudo"] ** 0) + 0.009019 * (self.true_HPX["pseudo"] ** 1) - 0.0016233 * (self.true_HPX["pseudo"] ** 2) + 0.00007233 * (self.true_HPX["pseudo"] ** 3) - 0.0000020258 * (
@@ -71,7 +71,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-        fl = self.fluid.calc(P_bar, T_C, X_kgsec, 0.12)
+        fl = self.fluid.calc(P_bar, T_C, X_kgsec)
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1, fl)
         self.intermediate_results += [(p, t)]
         return p, t
@@ -79,7 +79,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
 
-        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1, self.fluid.calc(P_bar, T_C, X_kgsec, self.IntDiameter))
+        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1, self.fluid.calc(P_bar, T_C, X_kgsec))
 
         self.intermediate_results += [(p, t)]
         return p, t

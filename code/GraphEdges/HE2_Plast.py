@@ -41,7 +41,7 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
 
         fl =  self.fluid
-        liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
+        liq = fl.calc(P_bar, T_C, X_kgsec)
         liq_dens = liq.CurrentLiquidDensity_kg_m3
         P_rez_bar = P_bar - calc_direction * (X_kgsec * 86400 /  liq_dens) / self.Productivity
         T_rez_C = T_C

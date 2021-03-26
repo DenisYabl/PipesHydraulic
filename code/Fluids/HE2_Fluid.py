@@ -18,13 +18,13 @@ class HE2_OilWater(HE2_ABC_Fluid):
                                                       self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
 
 
-    def calc(self, P_bar, T_C, X_kgsec, IntDiameter):
+    def calc(self, P_bar, T_C, X_kgsec, IntDiameter=None):
         P_for_PVT = max(abs(P_bar), 0.75)
         calc_params = self.oil_params
         calc_params.currentP_bar = P_for_PVT
         calc_params.currentT_C = T_C
 
-        tubing = {"IntDiameter": IntDiameter}
+        tubing = {"IntDiameter": IntDiameter} if IntDiameter else None
         temp_mishenko = Mishenko.from_oil_params(calc_params=calc_params, tubing=tubing)
         #Side effects
         self.CurrentLiquidDensity_kg_m3 = temp_mishenko.CurrentLiquidDensity_kg_m3
@@ -39,14 +39,14 @@ class HE2_DummyOil(HE2_ABC_Fluid):
                                                       self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
 
 
-    def calc(self, P_bar, T_C, X_kgsec, IntDiameter):
+    def calc(self, P_bar, T_C, X_kgsec, IntDiameter=None):
         P_for_PVT = max(abs(P_bar), 0.75)
         calc_params = self.oil_params
         calc_params.currentP_bar = P_for_PVT
         calc_params.currentT_C = T_C
         calc_params.Q_m3_sec =  X_kgsec / self.oil_params.CurrentLiquidDensity_kg_m3
 
-        tubing = {"IntDiameter": IntDiameter}
+        tubing = {"IntDiameter": IntDiameter} if IntDiameter else None
         temp_mishenko = Mishenko.from_oil_params(calc_params=calc_params, tubing=tubing)
         #Side effects
         self.CurrentLiquidDensity_kg_m3 = temp_mishenko.CurrentLiquidDensity_kg_m3
