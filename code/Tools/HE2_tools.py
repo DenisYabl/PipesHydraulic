@@ -10,6 +10,7 @@ from collections import namedtuple
 
 CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow'])
 
+
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
                            randseed=None):
     '''
@@ -295,6 +296,18 @@ def check_directions(graph):
 
 
 def check_solution(G):
+    '''
+    :param G: HE2 graph with results
+    :return: CheckSolutionResults named tuple
+    This method checks solution to violate physics and technical constraints, like as negative pressures and misdirected flows
+    CheckSolutionResults contains next fields:
+        first_CL_resd: this is residual of 1st Kirchhoff law. Expected value - very small positive number, 1e-6. 0.1 is very strong violation
+        second_CL_resd: this is residual of 2nd Kirchhoff law. You can ignore this value, and use solver.op_result.succes and solver.op_result.fun instead
+        negative_P: Solver looks for solution in negative pressure area, cause get solution with negative pressures can be much useful than no solution without any additional info.
+            So, negative_P field is sum of abs() of all negative pressures at graph nodes.
+        bad_directions: Some edges and nodes on graph, like plast or pump, have obvious flow directions, that really cannot be violated. So this field just counts nodes and edges with violated direction.
+        misdirected_flow: This field sum all flows on all nodes and edges with violated directions
+    '''
     res1 = evaluate_1stCL_residual(G)
     res2 = evaluate_2ndCL_residual(G)
     res3 = evalute_pressures_below_zero(G)
