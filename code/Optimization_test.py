@@ -7,9 +7,12 @@ from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
 from Fluids.oil_params import oil_params
+import json
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
 
-oil_params = oil_params(dailyQ=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
-                 waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
+oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
+                        waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 fluid = HE2_OilWater(oil_params)
 
 
@@ -73,8 +76,12 @@ def gimme_DNS2_inlets_outlets_Q():
     inlets_outlets_Q.update(DNS_2=-total_q)
     return inlets_outlets_Q
 
-def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
-                fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
+def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
+                     roughness=0.00001, real_diam_coefficient=1, DNS_daily_debit=0, DNS_pressure=4.8):
+
+    json_str = json.dumps(pumps)
+    logger.info(f'Pumps: {json_str}')
+
     # Давления в источниках
     pressure_1523 = pressures["PAD_5"]["WELL_1523"]
     pressure_146 = pressures["PAD_5"]["WELL_146"]
@@ -236,6 +243,11 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  Pump_outlet_738=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_738=vrtxs.HE2_ABC_GraphVertex(),
 
+                 Zaboi_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_intake_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_outlet_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Wellhead_725=vrtxs.HE2_ABC_GraphVertex(),
+
                  Zaboi_731=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_731=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_outlet_731=vrtxs.HE2_ABC_GraphVertex(),
@@ -296,10 +308,6 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  Pump_outlet_148=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_148=vrtxs.HE2_ABC_GraphVertex(),
 
-                 Zaboi_725=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_intake_725=vrtxs.HE2_ABC_GraphVertex(),
-                 Pump_outlet_725=vrtxs.HE2_ABC_GraphVertex(),
-                 Wellhead_725=vrtxs.HE2_ABC_GraphVertex(),
 
                  Zaboi_3552=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_3552=vrtxs.HE2_ABC_GraphVertex(),
@@ -457,7 +465,7 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
                  UDR_2=vrtxs.HE2_ABC_GraphVertex(),
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
-    q = daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = daily_debit , IntDiameter = 0.325).CurrentLiquidDensity_kg_m3 / 86400
+    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = 0).CurrentLiquidDensity_kg_m3 / 86400
     outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed
@@ -652,110 +660,110 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     
     #Куст 5
     G.add_edge('Pump_intake_1523', 'Pump_outlet_1523',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1523[0], fluid=fluid,
-                                                             IntDiameter=0.12, frequency=pump_1523[1]))
+                                                             frequency=pump_1523[1]))
     G.add_edge('Pump_intake_146', 'Pump_outlet_146',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_146[0], fluid=fluid,
-                                                             IntDiameter=0.12, frequency=pump_146[1]))
+                                                             frequency=pump_146[1]))
     G.add_edge('Pump_intake_142', 'Pump_outlet_142',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_142[0], fluid=fluid,
-                                                             IntDiameter=0.12, frequency=pump_142[1]))
+                                                             frequency=pump_142[1]))
     G.add_edge('Pump_intake_1562', 'Pump_outlet_1562',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1562[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1562[1]))
+                                frequency=pump_1562[1]))
     #Куст 33
     G.add_edge('Pump_intake_1385', 'Pump_outlet_1385',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1385[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1385[1]))
+                                frequency=pump_1385[1]))
     G.add_edge('Pump_intake_736', 'Pump_outlet_736',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_736[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_736[1]))
+                                frequency=pump_736[1]))
     G.add_edge('Pump_intake_739', 'Pump_outlet_739',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_739[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_739[1]))
+                                frequency=pump_739[1]))
     G.add_edge('Pump_intake_1383', 'Pump_outlet_1383',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1383[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1383[1]))
+                                frequency=pump_1383[1]))
     G.add_edge('Pump_intake_738', 'Pump_outlet_738',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_738[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_738[1]))
+                                frequency=pump_738[1]))
     G.add_edge('Pump_intake_725', 'Pump_outlet_725',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_725[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_725[1]))
+                                frequency=pump_725[1]))
 
     #Куст 34
     G.add_edge('Pump_intake_731', 'Pump_outlet_731',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_731[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_731[1]))
+                                frequency=pump_731[1]))
     G.add_edge('Pump_intake_196', 'Pump_outlet_196',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_196[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_196[1]))
+                                frequency=pump_196[1]))
     G.add_edge('Pump_intake_734', 'Pump_outlet_734',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_734[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_734[1]))
+                                frequency=pump_734[1]))
     G.add_edge('Pump_intake_198', 'Pump_outlet_198',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_198[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_198[1]))
+                                frequency=pump_198[1]))
     G.add_edge('Pump_intake_199', 'Pump_outlet_199',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_199[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_199[1]))
+                                frequency=pump_199[1]))
     G.add_edge('Pump_intake_197', 'Pump_outlet_197',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_197[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_197[1]))
+                                frequency=pump_197[1]))
     G.add_edge('Pump_intake_195', 'Pump_outlet_195',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_195[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_195[1]))
+                                frequency=pump_195[1]))
     G.add_edge('Pump_intake_191', 'Pump_outlet_191',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_191[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_191[1]))
+                                frequency=pump_191[1]))
     G.add_edge('Pump_intake_729', 'Pump_outlet_729',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_729[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_729[1]))
+                                frequency=pump_729[1]))
     G.add_edge('Pump_intake_730', 'Pump_outlet_730',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_730[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_730[1]))
+                                frequency=pump_730[1]))
     G.add_edge('Pump_intake_192', 'Pump_outlet_192',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_192[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_192[1]))
+                                frequency=pump_192[1]))
     G.add_edge('Pump_intake_148', 'Pump_outlet_148',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_148[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_148[1]))
+                                frequency=pump_148[1]))
 
     #Куст 39
     G.add_edge('Pump_intake_3552', 'Pump_outlet_3552',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3552[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3552[1]))
+                                frequency=pump_3552[1]))
     G.add_edge('Pump_intake_617', 'Pump_outlet_617',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_617[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_617[1]))
+                                frequency=pump_617[1]))
     G.add_edge('Pump_intake_567', 'Pump_outlet_567',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_567[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_567[1]))
+                                frequency=pump_567[1]))
     G.add_edge('Pump_intake_614', 'Pump_outlet_614',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_614[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_614[1]))
+                                frequency=pump_614[1]))
     G.add_edge('Pump_intake_619', 'Pump_outlet_619',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_619[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_619[1]))
+                                frequency=pump_619[1]))
     G.add_edge('Pump_intake_609', 'Pump_outlet_609',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_609[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_609[1]))
+                                frequency=pump_609[1]))
     
     # Куст 49
     G.add_edge('Pump_intake_1816', 'Pump_outlet_1816',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,IntDiameter=0.12, frequency=pump_1816[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1816[0], fluid=fluid,frequency=pump_1816[1]))
     G.add_edge('Pump_intake_2630', 'Pump_outlet_2630',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2630[0], fluid=fluid, IntDiameter=0.12, frequency=pump_2630[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2630[0], fluid=fluid, frequency=pump_2630[1]))
     G.add_edge('Pump_intake_1815', 'Pump_outlet_1815',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1815[0], fluid=fluid, IntDiameter=0.12, frequency=pump_1815[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1815[0], fluid=fluid, frequency=pump_1815[1]))
     G.add_edge('Pump_intake_676', 'Pump_outlet_676',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_676[0], fluid=fluid,IntDiameter=0.12, frequency=pump_676[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_676[0], fluid=fluid,frequency=pump_676[1]))
     G.add_edge('Pump_intake_3270', 'Pump_outlet_3270',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, IntDiameter=0.12, frequency=pump_3270[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, frequency=pump_3270[1]))
     G.add_edge('Pump_intake_3266', 'Pump_outlet_3266',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3266[0], fluid=fluid,IntDiameter=0.12, frequency=pump_3266[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3266[0], fluid=fluid,frequency=pump_3266[1]))
     G.add_edge('Pump_intake_1814', 'Pump_outlet_1814',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1814[0], fluid=fluid, IntDiameter=0.12, frequency=pump_1814[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1814[0], fluid=fluid, frequency=pump_1814[1]))
     G.add_edge('Pump_intake_1817', 'Pump_outlet_1817',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1817[0], fluid=fluid, IntDiameter=0.12, frequency=pump_1817[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1817[0], fluid=fluid, frequency=pump_1817[1]))
     G.add_edge('Pump_intake_4532', 'Pump_outlet_4532',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_4532[0], fluid=fluid,IntDiameter=0.12, frequency=pump_4532[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_4532[0], fluid=fluid,frequency=pump_4532[1]))
     G.add_edge('Pump_intake_2631', 'Pump_outlet_2631',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2631[0], fluid=fluid, IntDiameter=0.12, frequency=pump_2631[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_2631[0], fluid=fluid, frequency=pump_2631[1]))
     G.add_edge('Pump_intake_677', 'Pump_outlet_677',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_677[0], fluid=fluid, IntDiameter=0.12, frequency=pump_677[1]))
+               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_677[0], fluid=fluid, frequency=pump_677[1]))
 
     # Куст 57
     G.add_edge('Pump_intake_3113', 'Pump_outlet_3113',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3113[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3113[1]))
+                                frequency=pump_3113[1]))
     G.add_edge('Pump_intake_3118', 'Pump_outlet_3118',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3118[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3118[1]))
+                                frequency=pump_3118[1]))
     G.add_edge('Pump_intake_3112', 'Pump_outlet_3112',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3112[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3112[1]))
+                                frequency=pump_3112[1]))
     G.add_edge('Pump_intake_4235', 'Pump_outlet_4235',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_4235[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_4235[1]))
+                                frequency=pump_4235[1]))
     G.add_edge('Pump_intake_3117', 'Pump_outlet_3117',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3117[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3117[1]))
+                                frequency=pump_3117[1]))
     G.add_edge('Pump_intake_1493', 'Pump_outlet_1493',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1493[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1493[1]))
+                                frequency=pump_1493[1]))
     G.add_edge('Pump_intake_1574', 'Pump_outlet_1574',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1574[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1574[1]))
+                                frequency=pump_1574[1]))
     G.add_edge('Pump_intake_1579', 'Pump_outlet_1579',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1579[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_1579[1]))
+                                frequency=pump_1579[1]))
     G.add_edge('Pump_intake_3116', 'Pump_outlet_3116',obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3116[0], fluid=fluid,
-                                IntDiameter=0.12, frequency=pump_3116[1]))
+                                frequency=pump_3116[1]))
     
     #Инклинометрия скважин
     #Куст 5
@@ -1004,10 +1012,11 @@ def build_DNS2_graph(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pum
     return G, inlets, juncs, outlets
 
 
-def model_DNS_2(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
+def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pumps = None, pump_curves = None,
                 fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
 
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient, DNS_pressure = 4.8)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, roughness,
+                                                 real_diam_coefficient, DNS_daily_debit, DNS_pressure=4.8)
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
@@ -1044,10 +1053,11 @@ def cut_single_well_subgraph(G, pad_name, well):
 # Это плохой паттерн. Если аргумент функции по умолчанию имеет изменяемое значение (словарь, список), то вызовы функции могут приводить к затейливым спецэффектам
 # Содержимое аргумента при выполнении тела функции, может быть разным, при вызове с одной и той же строкой параметров. Начинает зависеть от того с какими аргументами вызывалась функция раньше.
 # Вот и PyCharm это подчеркивает
-def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0, pumps = None, pump_curves = None,
-                fluid = None, roughness = 0.00001, real_diam_coefficient = 1, well_list = None ):
+def model_DNS_2_by_parts(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
+                         roughness=0.00001, real_diam_coefficient=1, well_list=None, DNS_daily_debit=0):
 
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, roughness,
+                                                 real_diam_coefficient, DNS_daily_debit)
     wells = inlets
     if well_list:
         wells = list(set(well_list) & set(inlets))
@@ -1077,7 +1087,8 @@ def model_DNS_2_by_parts(pressures:dict = {},plasts:dict = {},  daily_debit = 0,
     return None
 
 
-def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, daily_debit = 0, fluid = fluid, roughness = 3.5, real_diam_coefficient = 0.85 ):
+def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, real_diam_coefficient=0.85,
+                DNS_daily_debit=0):
     inlets = dict(PAD_88=vrtxs.HE2_Source_Vertex('P', pressure_88, fluid, 20),
                   PAD_55=vrtxs.HE2_Source_Vertex('Q', daily_debit_55 * fluid.SepOilDensity * 1000 / 86400, fluid = fluid, T = 20))
                   #PAD_55=vrtxs.HE2_Source_Vertex('P', pressure_55, fluid, 20))
@@ -1087,7 +1098,7 @@ def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, daily_debit = 0, fluid = fl
                  intake_pad_43=vrtxs.HE2_ABC_GraphVertex(),
                  intake_pad_44=vrtxs.HE2_ABC_GraphVertex())
 
-    outlets = dict(DNS_3=vrtxs.HE2_Boundary_Vertex('Q', daily_debit * fluid.SepOilDensity * 1000 / 86400))
+    outlets = dict(DNS_3=vrtxs.HE2_Boundary_Vertex('Q', DNS_daily_debit * fluid.SepOilDensity * 1000 / 86400))
 
     G = nx.DiGraph()  # Di = directed
     for k, v in {**inlets, **outlets, **juncs}.items():

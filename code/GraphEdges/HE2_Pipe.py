@@ -5,6 +5,8 @@ import numpy as np
 
 import Hydraulics.Methodics.Mukherjee_Brill as mb
 from functools import lru_cache
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
 
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
@@ -15,8 +17,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     Поэтому она умеет считать в обе стороны, но интерфейс для этого отличается, здесь используется calc_direction in [-1,+1]
     '''
     def __init__(self, fluid=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
-        if fluid is None:
-            fluid = HE2_DummyWater()
+        fluid = HE2_DummyWater()
         self.fluid = fluid
         self.inner_diam_m = inner_diam_m
         self.roughness_m = roughness_m
@@ -32,11 +33,14 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         elif L is not None and angle is not None:
             dy = L * np.sin(uc.grad2rad(angle))
         elif L is not None and dx is not None:
-            assert False, 'Cannot define sign of dY'
+            logger.error(f'This way to set up pipe geometry is undefined, L={L}, dx={dx}')
+            raise ValueError('Undefined sign of dY')
         elif L is not None and dy is not None:
             pass
         elif dx is not None and angle is not None:
-            assert dx > 0
+            if dx <= 0:
+                logger.error(f'This way to set up pipe geometry is undefined, angle={angle}, dx={dx}')
+                raise ValueError('')
             dy = dx * np.tan(uc.grad2rad(angle))
             L = (dx * dx + dy * dy) ** 0.5
         elif dy is not None and angle is not None:
@@ -44,10 +48,13 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         else:
             return
 
+        angle_dgr = uc.rad2grad(np.arcsin(dy / L))
+        dx_m = (L * L - dy * dy) ** 0.5
         self.L_m = L
         self.uphill_m = dy
-        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
-        self.dx_m = (L*L - dy*dy) ** 0.5
+        self.angle_dgr = angle_dgr
+        self.dx_m = dx_m
+        check_for_nan(L_m = L, uphill_m = dy, angle_dgr = angle_dgr, dx_m = dx_m)
 
     @lru_cache(maxsize=None)
     def decode_direction(self, flow, calc_direction, unifloc_direction):
@@ -78,7 +85,8 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         return grav_sign, fric_sign, t_sign
 
     def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec):
-        assert X_kgsec >= 0
+        if X_kgsec < 0:
+            raise ValueError(f'X_kgsec = {X_kgsec}')
         if X_kgsec == 0:
             return 0
         # Fluid.calc will be optimized at lower level. So we will call it every time
@@ -115,10 +123,13 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
 
 
     def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         dP_fric_Pa = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec)) * self.L_m
         P_rez_bar = P_bar - uc.Pa2bar(grav_sign * self.fluid.rho_wat_kgm3 * uc.g * self.uphill_m + fric_sign * dP_fric_Pa)
+        check_for_nan(P_fric_grad_Pam=check_for_nan)
         return P_rez_bar, 20
+
 
 class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs):
@@ -144,6 +155,7 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
             self.intermediate_results += [(p, t)]
@@ -151,6 +163,7 @@ class HE2_WaterPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments[::-1]:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
             self.intermediate_results += [(p, t)]
@@ -181,11 +194,14 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         elif L is not None and angle is not None:
             dy = L * np.sin(uc.grad2rad(angle))
         elif L is not None and dx is not None:
-            assert False, 'Cannot define sign of dY'
+            logger.error(f'This way to set up pipe geometry is undefined, L={L}, dx={dx}')
+            raise ValueError('Undefined sign of dY')
         elif L is not None and dy is not None:
             pass
         elif dx is not None and angle is not None:
-            assert dx > 0
+            if dx <= 0:
+                logger.error(f'This way to set up pipe geometry is undefined, angle={angle}, dx={dx}')
+                raise ValueError()
             dy = dx * np.tan(uc.grad2rad(angle))
             L = (dx * dx + dy * dy) ** 0.5
         elif dy is not None and angle is not None:
@@ -193,10 +209,13 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         else:
             return
 
+        angle_dgr = uc.rad2grad(np.arcsin(dy / L))
+        dx_m = (L * L - dy * dy) ** 0.5
         self.L_m = L
         self.uphill_m = dy
-        self.angle_dgr = uc.rad2grad(np.arcsin(dy / L))
-        self.dx_m = (L*L - dy*dy) ** 0.5
+        self.angle_dgr = angle_dgr
+        self.dx_m = dx_m
+        check_for_nan(L_m = L, uphill_m = dy, angle_dgr = angle_dgr, dx_m = dx_m)
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):
         '''
@@ -233,6 +252,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         return 0
 
     def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
         #Определяем направления расчета
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         #Считаем локальный градиент давления по M_B
@@ -245,6 +265,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         P_rez_bar = P_bar - P_drop_bar #temp solution
         T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
+        check_for_nan(P_rez_bar = P_rez_bar, T_rez_C = T_rez_C)
         return P_rez_bar, T_rez_C
 
 
@@ -275,6 +296,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
             self.intermediate_results += [(p, t)]
@@ -282,6 +304,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
+        self.intermediate_results = []
         for seg in self.segments[::-1]:
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
             self.intermediate_results += [(p, t)]

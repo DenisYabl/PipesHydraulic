@@ -4,6 +4,7 @@ from Optimization_test import model_DNS_2_by_parts
 import pandas as pd
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
+from Tools.HE2_tools import check_solution
 
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -17,8 +18,8 @@ plasts - описание свойств пласта используемых �
 
 pumps - описание насосов скважин, задается моделью насоса и частотой работы
 """
-oil_params = oil_params(dailyQ=500, saturationPressure=67, plastT=84, gasFactor=36, oilDensity=826,
-                 waterDensity=1015, gasDensity=1, oilViscosity=35e-3, volumeWater=50, volumeoilcoeff=1.017)
+oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
+                        waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
 
@@ -69,11 +70,61 @@ pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60
            "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 50], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
 }
 
+inclination = {
+    '1523': (32.6, 2561, 0.125, 267.3, 202.7, 0.143),
+    '146': (47.569, 2575.43, 0.125, 161.39, 210.56, 0.143),
+    '142': (324.89, 2511.1, 0.125, 242.24, 249.7599, 0.143),
+    '1562':(549.92, 2392.08, 0.125, 36.4499, 325.55, 0.143),
+    '1385': (395.8, 2139.2, 0.125, 80, 584, 0.143),
+    '736': (216, 2532, 0.125, 448, 155, 0.143),
+    '739': (323.45, 2356.55, 0.125, 396.35, 290.6, 0.143),
+    '1383': (526, 2353.99, 0.125, 30.16, 377.84, 0.143),
+    '738': (243.83, 2128.17, 0.125, 402.45, 526.85, 0.143),
+    '725': (495.76, 2329.24, 0.125, 28.7, 384.3, 0.143),
+    '731': (285.7, 2414.27, 0.125, 13.5, 330, 0.143),
+    '196': (172.6, 2504.43, 0.125, 7.38, 245.12, 0.143),
+    '734': (32.21, 2362.8, 0.125, 282, 286.88, 0.143),
+    '198': (244, 2586, 0.125, 4.82, 169.18, 0.143),
+    '199': (228.11, 2520.89, 0.125, 198.34, 241.56, 0.143),
+    '197': (668.11, 2345.89, 0.125, 52.91, 403.09, 0.143),
+    '195': (610.82, 2372.96, 0.125, 50.06, 357.93, 0.143),
+    '191': (254.37, 2585.63, 0.125, 251.19, 166.221, 0.143),
+    '729': (92.78, 2345.22, 0.125, 247.95, 399.048, 0.143),
+    '730': (75.76, 2218.24, 0.125, 99.72, 532.78, 0.143),
+    '192': (337.39, 2177.61, 0.125, 255.33, 531.87, 0.143),
+    '148': (337.39, 2177.61, 0.125, 255.33, 531.87, 0.143),
+    '3552': (130.37, 2169.63, 0.125, 155.83, 687.06, 0.143),
+    '617': (461.4, 2409.6, 0.125, 8, 333, 0.143),
+    '567': (674.06, 2165.94, 0.125, 112.83, 554.17, 0.143),
+    '614': (128.89, 2529.07, 0.125, 156.93, 215.51, 0.143),
+    '619': (269.27, 2343.73, 0.125, 110.95, 384.75, 0.143),
+    '609': (117.42, 2291.58, 0.125, 202.87, 535.23, 0.143),
+    '1816': (61.69, 2508.31, 0.125, 811.92, 67.67, 0.143),
+    '2630': (419.86, 2370.14, 0.125, 570.43, 310.38, 0.143),
+    '1815': (113.77, 2516.23, 0.125, 482.82, 333.82, 0.143),
+    '676': (248.29, 2433.71, 0.125, 537.87, 336.76, 0.143),
+    '3270': (310.83, 2080.17, 0.125, 315.89, 637.11, 0.143),
+    '3266': (119.76, 2500.24, 0.125, 280.05, 489.3, 0.143),
+    '1814': (205.63, 2455.37, 0.125, 186, 600.24, 0.143),
+    '1817': (324.58, 2443.42, 0.125, 690.26, 244.53, 0.143),
+    '4532': (363.75, 2482.25, 0.125, 403.62, 509.5, 0.143),
+    '2631': (67.5, 2394.5, 0.125, 626.2, 278.96, 0.143),
+    '677': (248.2, 2351.8, 0.125, 728.15, 217.82, 0.143),
+    '3113': (382.13, 2367.87, 0.125, 652.87, 230.96, 0.143),
+    '3118': (152.43, 2458.57, 0.125, 670.7, 109, 0.143),
+    '3112': (55.74, 2481.26, 0.125, 753.03, -3, 0.143),
+    '4235': (351.06, 2514.94, 0.125, 511.21, 253.89, 0.143),
+    '3117': (117.8, 2477.2, 0.125, 527.58, 255.96, 0.143),
+    '1493': (403.96, 2442.04, 0.125, 409.48, 399.746, 0.143),
+    '1574': (130.42, 2514.58, 0.125, 679.53, -18.46, 0.143),
+    '1579': (425.39, 2494.6, 0.125, 345.25, 281.16, 0.143),
+    '3116': (167.57, 2453.43, 0.125, 715.74, 81.184, 0.143)
+}
 
 def full_test():
     Full_system_daily_debit = 5200
     G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
-                                            daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+                                            DNS_daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
     for n in inlets:
         print(n, G.nodes[n]["obj"].result)
 
@@ -84,20 +135,29 @@ def full_test():
 def part_test():
     Full_system_daily_debit = 4750
     # well_list = ['PAD_49_well_1816']
-    model_DNS_2_by_parts(pressures=pressures, pumps = pumps, plasts= plasts, daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
+    model_DNS_2_by_parts(pressures=pressures, plasts=plasts, pumps=pumps, pump_curves=pump_curves, fluid=fluid,
+                         DNS_daily_debit=Full_system_daily_debit)
 
 def test_with_change_graph_ont_the_fly():
     # Выходное условие заменено на выходное давление ДНС-2
-    outputpressure =4.8
+    outputpressure = 4.8
     roughness = 1e-5
     real_diam_coefficient = 0.85
 
     #Получаем расчетный граф с заданными параметрами
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
-                                                 DNS_pressure = outputpressure)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures=pressures, plasts=plasts, pumps=pumps,
+                                                 pump_curves=pump_curves, fluid=fluid, roughness=roughness,
+                                                 real_diam_coefficient=real_diam_coefficient,
+                                                 DNS_pressure=outputpressure)
     # Создаем солвер и решаем полученный расчетный граф
+    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
+    solver.prepare_initial_approximation(G, inlets_Q)
     solver.solve()
+
+    validity = check_solution(G)
+    print(validity)
 
     for n in inlets:
         print(n, G.nodes[n]["obj"].result)
@@ -131,7 +191,62 @@ def test_with_change_graph_ont_the_fly():
         print(n, G.nodes[n]["obj"].result)
 
 
+import shame_on_me
+
+def test_2pads_with_change_graph():
+    # Урезаная модель, ост ДНС2 оставили только 2 куста, к.33 и к.34
+    # Выходное условие заменено на выходное давление ДНС-2
+    outputpressure = 4.8
+    roughness = 1e-5
+    real_diam_coefficient = 0.85
+
+    #Получаем расчетный граф с заданными параметрами
+    G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(pressures=pressures, plasts=plasts, pumps=pumps,
+                                                                       pump_curves=pump_curves, fluid=fluid,
+                                                                       roughness=roughness,
+                                                                       real_diam_coefficient=real_diam_coefficient,
+                                                                       DNS_pressure=outputpressure)
+    # Создаем солвер и решаем полученный расчетный граф
+    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    #Создаем солвер и решаем полученный расчетный граф
+    solver = HE2_Solver(G)
+    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.solve()
+
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    #Меняем давление на пласте скважины 1523 куста 5
+
+    G.nodes["PAD_33_well_1385"]['obj'].value = 250
+
+
+    solver.solve()
+    print("\nРешение с измененным давлением")
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    #Меняем частоту насоса скважины 1562 куста 5
+
+    G.edges._adjdict["Pump_intake_725"]['Pump_outlet_725']['obj'].changeFrequency(55)
+
+    solver.solve()
+    print("\nРешение с измененной частотой насоса")
+    for n in inlets:
+        print(n, G.nodes[n]["obj"].result)
+
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
+
 if __name__ == '__main__':
+    # test_2pads_with_change_graph()
     test_with_change_graph_ont_the_fly()
-    #full_test
+    full_test()
     #part_test()
