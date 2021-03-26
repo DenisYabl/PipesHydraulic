@@ -417,8 +417,6 @@ class HE2_Solver():
                 edge_func = self.forward_edge_functions[(u, v)]
             else:
                 edge_func = self.backward_edge_functions[(u, v)]
-            # if known == 'PAD_39' and unknown == 'intake_pad_59':
-            #     print(x, p_kn, end=' ')
             p_unk, t_unk = edge_func(p_kn, t_kn, x)
 
             # row = dict(known=known, unknown=unknown, x=x, p_known=p_kn, p_unknown=p_unk)
