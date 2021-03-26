@@ -29,7 +29,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.intermediate_results = []
         self.frequency = frequency
         self._printstr = self.base_HPX.to_string()
-        visc_approx = self.fluid.calc(30, 20).CurrentOilViscosity_Pa_s
+        visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
         self.true_HPX = self.base_HPX.copy()
         self.true_HPX["pseudo"] = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
         self.true_HPX["Cq"] = 0.9873 * (self.true_HPX["pseudo"] ** 0) + 0.009019 * (self.true_HPX["pseudo"] ** 1) - 0.0016233 * (self.true_HPX["pseudo"] ** 2) + 0.00007233 * (self.true_HPX["pseudo"] ** 3) - 0.0000020258 * (
