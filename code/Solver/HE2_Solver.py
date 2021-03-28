@@ -161,7 +161,7 @@ class HE2_Solver():
 
         self.attach_results_to_schema()
 
-    def solve(self, save_intermediate_results=False, threshold=0.2, it_limit = 100, step = 1):
+    def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
         logger.info('is started')
         y_best, x_best, it_num = 100500100500, None, 0
         try:
@@ -180,8 +180,10 @@ class HE2_Solver():
                     logger.info(f'y {y} is better than y_best {y_best}')
                     y_best = y
                     x_best = x_chordes
-                else:
+                elif step > 0.1:
                     step = step/2
+                else:
+                    step = np.random.uniform(0.1, 0.5)
 
                 if y_best < threshold:
                     logger.info(f'Solution is found, cause threshold {threshold} is touched')
@@ -204,7 +206,6 @@ class HE2_Solver():
 
                 dx = -1 * np.matmul(inv_B_F_Bt, p_residuals).reshape((len(dx), 1))
                 check_for_nan(dx=dx)
-
 
             self.attach_results_to_schema()
         except Exception as e:
