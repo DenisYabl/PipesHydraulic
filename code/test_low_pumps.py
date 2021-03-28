@@ -79,6 +79,47 @@ def test1():
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
+import json
+def test2():
+    outputpressure = 4.8
+    roughness = 1e-5
+    real_diam_coefficient = 0.85
+
+    fn = r'pumps.txt'
+    f = open(fn, 'r')
+    succ, total = 0, 0
+    l = list(f)
+    for i, s in enumerate(l):
+    # for i in [519, 665, 689]:
+    #     s = l[i]
+
+        if i%10 == 0:
+            print(f'{i}/{len(l)}')
+        pumps = json.loads(s)
+
+        graph_params = dict(
+            pressures=pressures,
+            plasts=plasts,
+            pumps=pumps,
+            pump_curves=pump_curves,
+            fluid=fluid,
+            roughness=roughness,
+            real_diam_coefficient=real_diam_coefficient,
+            DNS_pressure=outputpressure
+        )
+
+        G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(**graph_params)
+        solver = HE2_Solver(G)
+        inlets_Q = gimme_DNS2_inlets_outlets_Q()
+        solver.prepare_initial_approximation(G, inlets_Q)
+        solver.solve(threshold=0.05)
+        if not solver.op_result.success:
+            print(i, solver.op_result.fun)
+        succ += solver.op_result.success
+        total += 1
+
+    print(f'succ/total: {succ}/{total}')
+
 
 if __name__ == '__main__':
-    test1()
+    test2()
