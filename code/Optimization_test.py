@@ -76,8 +76,8 @@ def gimme_DNS2_inlets_outlets_Q():
     inlets_outlets_Q.update(DNS_2=-total_q)
     return inlets_outlets_Q
 
-def build_DNS2_graph(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pumps = None, pump_curves = None,
-                     fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
+def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
+                     roughness=0.00001, real_diam_coefficient=1, DNS_daily_debit=0, DNS_pressure=4.8):
 
     json_str = json.dumps(pumps)
     logger.info(f'Pumps: {json_str}')
@@ -242,6 +242,11 @@ def build_DNS2_graph(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0,
                  Pump_intake_738=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_outlet_738=vrtxs.HE2_ABC_GraphVertex(),
                  Wellhead_738=vrtxs.HE2_ABC_GraphVertex(),
+
+                 Zaboi_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_intake_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Pump_outlet_725=vrtxs.HE2_ABC_GraphVertex(),
+                 Wellhead_725=vrtxs.HE2_ABC_GraphVertex(),
 
                  Zaboi_731=vrtxs.HE2_ABC_GraphVertex(),
                  Pump_intake_731=vrtxs.HE2_ABC_GraphVertex(),
@@ -1010,7 +1015,8 @@ def build_DNS2_graph(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0,
 def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pumps = None, pump_curves = None,
                 fluid = None, roughness = 0.00001, real_diam_coefficient = 1, DNS_pressure = 4.8):
 
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, DNS_daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient, DNS_pressure = 4.8)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, roughness,
+                                                 real_diam_coefficient, DNS_daily_debit, DNS_pressure=4.8)
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
@@ -1047,10 +1053,11 @@ def cut_single_well_subgraph(G, pad_name, well):
 # Это плохой паттерн. Если аргумент функции по умолчанию имеет изменяемое значение (словарь, список), то вызовы функции могут приводить к затейливым спецэффектам
 # Содержимое аргумента при выполнении тела функции, может быть разным, при вызове с одной и той же строкой параметров. Начинает зависеть от того с какими аргументами вызывалась функция раньше.
 # Вот и PyCharm это подчеркивает
-def model_DNS_2_by_parts(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pumps = None, pump_curves = None,
-                         fluid = None, roughness = 0.00001, real_diam_coefficient = 1, well_list = None):
+def model_DNS_2_by_parts(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
+                         roughness=0.00001, real_diam_coefficient=1, well_list=None, DNS_daily_debit=0):
 
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, DNS_daily_debit, pumps, pump_curves, fluid, roughness, real_diam_coefficient)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, roughness,
+                                                 real_diam_coefficient, DNS_daily_debit)
     wells = inlets
     if well_list:
         wells = list(set(well_list) & set(inlets))
@@ -1080,7 +1087,8 @@ def model_DNS_2_by_parts(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit 
     return None
 
 
-def model_DNS_3(daily_debit_55 = 0, pressure_88 = 0, DNS_daily_debit = 0, fluid = fluid, roughness = 3.5, real_diam_coefficient = 0.85):
+def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, real_diam_coefficient=0.85,
+                DNS_daily_debit=0):
     inlets = dict(PAD_88=vrtxs.HE2_Source_Vertex('P', pressure_88, fluid, 20),
                   PAD_55=vrtxs.HE2_Source_Vertex('Q', daily_debit_55 * fluid.SepOilDensity * 1000 / 86400, fluid = fluid, T = 20))
                   #PAD_55=vrtxs.HE2_Source_Vertex('P', pressure_55, fluid, 20))

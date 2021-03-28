@@ -10,6 +10,7 @@ class HE2_DummyWater(HE2_ABC_Fluid):
     def calc(self, P_bar, T_C):
         pass
 
+
 class HE2_OilWater(HE2_ABC_Fluid):
     def __init__(self, oil_params):
         # check_for_nan(**oil_params)

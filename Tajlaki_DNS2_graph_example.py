@@ -57,8 +57,8 @@ def build_pad_graph(G, pad_node, pad_name, well_names, pressures, plasts, pumps,
     return G, inlets
 
 
-def build_DNS2_graph_by_pad_set(use_pads, pressures, plasts, daily_debit=0, pumps=None, pump_curves=None,
-                     fluid=None, roughness=0.00001, real_diam_coefficient=1, DNS_pressure=4.8):
+def build_DNS2_graph_by_pad_set(use_pads, pressures, plasts, pumps=None, pump_curves=None, fluid=None,
+                                roughness=0.00001, real_diam_coefficient=1, daily_debit=0, DNS_pressure=4.8):
     json_str = json.dumps(pumps)
     logger.info(f'Pumps: {json_str}')
 

@@ -163,9 +163,26 @@ class Mishenko:
 
         CurrentWaterViscosity = 0.00178 / (1 + 0.037 * (CurrentT - 273) + 0.00022 * (CurrentT - 273) ** 2)
 
-        VolumeOil = 1 - VolumeWater
-        CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
+        # Вспомогательные коэффициенты
+        a1 = 1 + 0.0054 * (CurrentT - 303)
+        a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure_MPa), 10)) - 1)  # !!!!!!!!!!!
+        a3 = SepOilDensity * GasFactor * 1e-3 - 186
+        a4 = (3.083 - 2.638e-3 * GasDensity) * 1e-3
 
+        FreeGasDensity = get_dens_freegas(GasDensity, a1, a2, a3)
+        # Плотность газонасыщенной нефти
+        m = 1 + 0.029 * (CurrentT - 303) * (SepOilDensity * FreeGasDensity * 1e-3 - 0.7966)
+        # Относительная плотность растворенного в нефти свободного газа
+        if CurrentP < 0:
+            DissolvedGasDensity = 0
+        else:
+            DissolvedGasDensity = GasFactor * (a1 * m * GasDensity) / GasFactor
+
+        SaturatedOilDensity = SepOilDensity * (1 + 1.293e-3 * DissolvedGasDensity * GasFactor /
+                                                 (a1 * m)) / OilVolumeCoeff
+        VolumeOil = 1 - VolumeWater
+        #CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
+        CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
         if structure == "drop":
             mixture_type = "oil_water" if VolumeWater > 0.5 else "water_oil"
             if mixture_type == "water_oil":
