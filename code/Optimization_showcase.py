@@ -131,6 +131,10 @@ def full_test():
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
+    validity = check_solution(G)
+    print(validity)
+
+
 
 def part_test():
     Full_system_daily_debit = 4750
@@ -247,6 +251,6 @@ def test_2pads_with_change_graph():
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
-    test_with_change_graph_ont_the_fly()
+    # test_with_change_graph_ont_the_fly()
     full_test()
     #part_test()
