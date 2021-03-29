@@ -1,6 +1,6 @@
 from Fluids.HE2_Fluid import HE2_OilWater
-from Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
-from Optimization_test import model_DNS_2_by_parts
+from Tests.Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
+from Tests.Optimization_test import model_DNS_2_by_parts, print_wells_pressures
 import pandas as pd
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
@@ -125,11 +125,13 @@ def full_test():
     Full_system_daily_debit = 5200
     G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
                                             DNS_daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
+    # for n in inlets:
+    #     print(n, G.nodes[n]["obj"].result)
+    #
+    # for n in outlets:
+    #     print(n, G.nodes[n]["obj"].result)
 
-    for n in outlets:
-        print(n, G.nodes[n]["obj"].result)
+    print_wells_pressures(G, inlets)
 
     validity = check_solution(G)
     print(validity)

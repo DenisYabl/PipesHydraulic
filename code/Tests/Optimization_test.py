@@ -8,6 +8,8 @@ from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump
 from Fluids.oil_params import oil_params
 import json
+import colorama
+from colorama import Fore, Back, Style
 from Tools.HE2_Logger import check_for_nan, getLogger
 logger = getLogger(__name__)
 
@@ -1045,7 +1047,7 @@ def cut_single_well_subgraph(G, pad_name, well):
         edge_objs[(u, v)] = obj
     nx.set_node_attributes(rez, name='obj', values=node_objs)
     nx.set_edge_attributes(rez, name='obj', values=edge_objs)
-    return rez
+    return rez, nodelist
 
 
 # Review:
@@ -1065,7 +1067,7 @@ def model_DNS_2_by_parts(pressures: dict = {}, plasts: dict = {}, pumps=None, pu
     good_cnt, bad_cnt = 0, 0
     for well in wells:
         l = well.split('_')
-        subG = cut_single_well_subgraph(G, l[1], l[3])
+        subG, well_node_list = cut_single_well_subgraph(G, l[1], l[3])
         solver = HE2_Solver(subG)
         solver.solve()
         op_result = solver.op_result
@@ -1114,3 +1116,19 @@ def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, rea
     solver = HE2_Solver(G)
     solver.solve()
     return G
+
+def print_wells_pressures(G, wells):
+    colorama.init()
+    for pad_well in wells:
+        l = pad_well.split('_')
+        pad, well = l[1], l[3]
+        well_subgraph, well_nodes = cut_single_well_subgraph(G, pad, well)
+        header = f' pad {pad} '[-7:] + f'   well {well}, from plast:   '[-25:]
+        print(header, end=' ')
+        for n in well_nodes:
+            P = G.nodes[n]['obj'].result['P_bar']
+            prefix = Back.RED if P <= 1 else Style.RESET_ALL
+            print(prefix + f'{P:8.3f}', end= ' ')
+        print('   up to pad collector')
+
+

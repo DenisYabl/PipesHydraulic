@@ -1,6 +1,6 @@
 from Fluids.HE2_Fluid import HE2_OilWater
 import pandas as pd
-from Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
+from Tests.Optimization_test import gimme_DNS2_inlets_outlets_Q
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
 import shame_on_me
