@@ -1123,6 +1123,8 @@ def print_wells_pressures(G, wells):
     print(table_header)
     for pad_well in wells:
         l = pad_well.split('_')
+        if len(l) < 4:
+            continue
         pad, well = l[1], l[3]
         well_subgraph, well_nodes = cut_single_well_subgraph(G, pad, well)
         row_header = 'pad ' + f' {pad}'[-2:] + ' well ' + f'  {well}'[-4:] + ', from plast:   '
