@@ -1119,12 +1119,14 @@ def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, rea
 
 def print_wells_pressures(G, wells):
     colorama.init()
+    table_header = '                                            bottom   intake   outlet  wellhead'
+    print(table_header)
     for pad_well in wells:
         l = pad_well.split('_')
         pad, well = l[1], l[3]
         well_subgraph, well_nodes = cut_single_well_subgraph(G, pad, well)
-        header = f' pad {pad} '[-7:] + f'   well {well}, from plast:   '[-25:]
-        print(header, end=' ')
+        row_header = 'pad ' + f' {pad}'[-2:] + ' well ' + f'  {well}'[-4:] + ', from plast:   '
+        print(row_header, end=' ')
         for n in well_nodes:
             P = G.nodes[n]['obj'].result['P_bar']
             prefix = Back.RED if P <= 1 else Style.RESET_ALL
