@@ -163,7 +163,7 @@ class HE2_Solver():
 
     def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
         logger.info('is started')
-        y_best, x_best, it_num = 100500100500, None, 0
+        y_best, x_best, it_num, rnd_seed = 100500100500, None, 0, 42
         try:
             if not self.ready_for_solve:
                 self.prepare_for_solve()
@@ -183,7 +183,7 @@ class HE2_Solver():
                 elif step > 0.1:
                     step = step/2
                 else:
-                    step = np.random.uniform(0.1, 0.5)
+                    step = self.gimme_random_step(rnd_seed)
 
                 if y_best < threshold:
                     logger.info(f'Solution is found, cause threshold {threshold} is touched')
@@ -197,8 +197,10 @@ class HE2_Solver():
 
                 F_ = np.diag(der_vec)
                 B_F_Bt = np.dot(np.dot(self.B, F_), self.Bt)
+                det_B_F_Bt = np.linalg.det(B_F_Bt)
+                rnd_seed = int(det_B_F_Bt) % 65536
                 p_residuals = self.pt_residual_vec[:,0]
-                logger.debug(f'det B = {np.linalg.det(B_F_Bt)}')
+                logger.debug(f'det B = {det_B_F_Bt}')
 
                 inv_B_F_Bt = np.linalg.inv(B_F_Bt)
                 check_for_nan(inv_B_F_Bt=inv_B_F_Bt)
@@ -529,3 +531,8 @@ class HE2_Solver():
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
             residual += abs(p - p_v)
         return residual
+
+    def gimme_random_step(self, rand_seed):
+        logger.info(f'randseed is {rand_seed}')
+        np.random.seed(rand_seed)
+        return np.random.uniform(0.1, 0.5)
