@@ -80,7 +80,7 @@ def get_coefs_MB(params, flow):
     coefs = [(-0.380113, 0.129875, -0.119788, 2.343227, 0.475686, 0.288657),
              (-1.330283, 4.808139, 4.171584, 56.262268, 0.079951, 0.504887),
              (-0.516644, 0.789805, 0.551627, 15.519214, 0.371771, 0.393952)]
-    if params["angle"] > 0:
+    if params["angle"] >= 0:
         return coefs[0]
     elif flow == "stratified":
         return coefs[1]
@@ -129,19 +129,19 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         Perimg = (1 - 0.5 * delta / math.pi) * Perim
         Perimo = Perim - Perimg
         wo = mishenko.OilVolumeCoeff * wm / phi1
-        wg = mishenko.VolumeGas * wm / phi2
-        Re1 = mishenko.SaturatedOilDensity * wo * Dhg / mishenko.CurrentOilViscosity
-        Re2 = mishenko.CurrentFreeGasDensity * wg * Dhl / mishenko.CurrentFreeGasViscosity
+        wg = mishenko.VolumeGas_fraction * wm / phi2
+        Re1 = mishenko.SaturatedOilDensity_kg_m3 * wo * Dhg / mishenko.CurrentOilViscosity_Pa_s
+        Re2 = mishenko.CurrentFreeGasDensity_kg_m3 * wg * Dhl / mishenko.CurrentFreeGasViscosity_Pa_s
         # Коэффициенты гидравлического сопротивления
         lambdao = 64 / Re1 if Re1 <= 2100 else 1.325 / (
             math.log(tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) + 5.74 / Re1 ** 0.9)) ** 2
         lambdag = 64 / Re2 if Re2 <= 2100 else 1.325 / (
             math.log(tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) + 5.74 / Re2 ** 0.9)) ** 2
         # Касательные напряжения на стенке трубы
-        tauo = lambdao * mishenko.SaturatedOilDensity * wo ** 2 * 0.5 / mishenko.g
-        taug = lambdag * mishenko.FreeGasDensity * wg ** 2 * 0.5 / mishenko.g
+        tauo = lambdao * mishenko.SaturatedOilDensity_kg_m3 * wo ** 2 * 0.5 / mishenko.g
+        taug = lambdag * mishenko.FreeGasDensity_kg_m3 * wg ** 2 * 0.5 / mishenko.g
         dP_fric = -(tauo * Perimo + taug * Perimg) / mishenko.GasFactor
-        dP_grav = (mishenko.CurrentLiquidDensity * phi1 - mishenko.CurrentFreeGasDensity * phi2) * mishenko.g
+        dP_grav = dens_true * mishenko.g
     return dP_fric, dP_grav
 
 

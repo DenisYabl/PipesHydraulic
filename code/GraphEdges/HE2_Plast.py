@@ -1,14 +1,16 @@
 from Tools import HE2_ABC as abc
 from Fluids.HE2_Fluid import HE2_DummyOil
 import numpy as np
-
+from Tools.HE2_Logger import check_for_nan, getLogger
+logger = getLogger(__name__)
 
 class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, productivity = 0, fluid = HE2_DummyOil(50)):
+        if productivity <= 0:
+            raise ValueError(f'Productivity = {productivity}')
         self.Productivity = productivity
         self.fluid = fluid
-        self.intermediate_results = []
-        self._printstr = ';\n '.join(f"Productivity coefficient: {self.Productivity}")
+        self._printstr = f"Productivity coefficient: {self.Productivity}"
 
 
     def __str__(self):
@@ -26,24 +28,24 @@ class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def perform_calc_forward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1)
-        self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1)
-        self.intermediate_results += [(p, t)]
         return p, t
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
         #Определяем направления расчета
         fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
 
         fl =  self.fluid
-        liq = fl.calc(P_bar, T_C, X_kgsec, 1.5)
-        liq_dens = liq.CurrentLiquidDensity
+        liq = fl.calc(P_bar, T_C, X_kgsec)
+        liq_dens = liq.CurrentLiquidDensity_kg_m3
         P_rez_bar = P_bar - calc_direction * (X_kgsec * 86400 /  liq_dens) / self.Productivity
         T_rez_C = T_C
+        check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
         return P_rez_bar, T_rez_C
 
     def decode_direction(self, flow, calc_direction, unifloc_direction):

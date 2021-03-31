@@ -7,9 +7,13 @@ from GraphNodes import HE2_Vertices as vrtxs
 from Tools import HE2_ABC as abc
 from Tools.HE2_ABC import Root
 import pandas as pd
+from Tools.HE2_Logger import check_for_nan, getLogger
+
+logger = getLogger(__name__)
 
 class HE2_Solver():
     def __init__(self, schema):
+        logger.debug('New solver instance created')
         self.schema = schema
         self.graph = None
         self.op_result = None
@@ -39,8 +43,11 @@ class HE2_Solver():
         self.forward_edge_functions = dict()
         self.backward_edge_functions = dict()
 
+
     def prepare_initial_approximation(self, G, Q_dict):
-        assert len(G.nodes) == len(G.edges)+1, 'It works only on a tree graph!'
+        if len(G.nodes) != len(G.edges)+1:
+            logger.error('This way works only on a tree graph')
+            assert False
         nodelist = [n for n in G.nodes()]
         edgelist = [(u, v) for (u, v) in G.edges()]
         A_full = nx.incidence_matrix(G, nodelist=nodelist, edgelist=edgelist, oriented=True)
@@ -50,33 +57,43 @@ class HE2_Solver():
             if node in Q_dict:
                 q_vec[i] = Q_dict[node]
 
+        logger.debug(f'q_vec = {q_vec.flatten()}')
         A_truncated = A_full[:-1]
         A_inv = np.linalg.inv(A_truncated)
         x_tree = np.matmul(A_inv, q_vec)
         self.initial_edges_x = dict(zip(edgelist, x_tree.flatten()))
-        pass
+        logger.debug(f'initial_edges_x = {self.initial_edges_x}')
 
     def get_initial_approximation(self):
         x0 = np.zeros((len(self.chordes), 1))
         if self.initial_edges_x is None:
+            logger.info('is finished. Graph is a tree')
             return x0
 
         for i, c in enumerate(self.chordes):
             x0[i] = self.initial_edges_x[c]
+
+        logger.debug(f'x0 = {x0}')
         return x0
 
     def prepare_for_solve(self):
+        logger.debug('is started')
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
         self.edge_list = self.span_tree + self.chordes
         self.node_list = list(self.graph.nodes())
-        assert self.node_list[-1] == Root
+        if self.node_list[-1] != Root:
+            logger.error(f'Something wrong with graph restructure, Root shoold be last node in node_list')
+            assert False
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree, self.A_chordes = self.build_incidence_matrices()
-        assert self.A_tree.shape == (len(self.node_list)-1, len(self.node_list)-1), f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.'
+        if self.A_tree.shape != (len(self.node_list)-1, len(self.node_list)-1):
+            logger.error(f'Invalid spanning tree, inc.matrix shape is {self.A_tree.shape}, check graph structure.')
+            assert False
         self.A_inv = np.linalg.inv(self.A_tree)
         self.B = self.build_circuit_matrix()
+        self.Bt = np.transpose(self.B)
         self.Q_static = self.build_static_Q_vec(self.graph)
         for (u, v) in self.edge_list:
             obj = self.graph[u][v]['obj']
@@ -88,26 +105,36 @@ class HE2_Solver():
         self.ready_for_solve = True
 
     def target(self, x_chordes):
-            Q = self.Q_static
-            x = x_chordes.reshape((len(x_chordes), 1))
-            Q_dynamic = np.matmul(self.A_chordes, x)
-            Q = Q - Q_dynamic
-            x_tree = np.matmul(self.A_inv, Q)
-            self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
-            self.edges_x.update(dict(zip(self.chordes, x_chordes.flatten())))
+        logger.debug(f'X = {x_chordes.flatten()}')
+        check_for_nan(x_chordes=x_chordes)
 
-            # self.perform_self_test_for_1stCL()
+        Q = self.Q_static
+        check_for_nan(Q_static=Q)
 
-            self.pt_on_tree = self.evalute_pressures_by_tree()
-            self.pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
-            rez = np.linalg.norm(self.pt_residual_vec)
-            if self.save_intermediate_results:
-                self.do_save_intermediate_results()
+        x = x_chordes.reshape((len(x_chordes), 1))
+        Q_dynamic = np.matmul(self.A_chordes, x)
+        Q = Q - Q_dynamic
+        check_for_nan(Q_dynamic=Q)
 
-            return rez
+        x_tree = np.matmul(self.A_inv, Q)
+        self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
+        self.edges_x.update(dict(zip(self.chordes, x_chordes.flatten())))
+
+        self.pt_on_tree = self.evalute_pressures_by_tree()
+        self.pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
+        check_for_nan(chordes_pt_residual_vec=self.pt_residual_vec)
+
+        rez = np.linalg.norm(self.pt_residual_vec)
+        if self.save_intermediate_results:
+            self.do_save_intermediate_results()
+
+        logger.info(f'Y = {rez}')
+        return rez
 
     # def solve(self):
     def solve_wo_jacobian(self):
+        logger.debug('is started')
+
         if not self.ready_for_solve:
             self.prepare_for_solve()
 
@@ -125,54 +152,69 @@ class HE2_Solver():
         # TNC             bullshit
         # COBYLA          bullshit
         if self.chordes:
+            logger.debug('Scipy minimization is starting now')
             self.op_result = scop.minimize(target, x0, method='Powell')
+            logger.debug('Scipy minimization completed')
             x0 = self.op_result.x
+            logger.info('Optimization result is', self.op_result)
         target(x0)
 
         self.attach_results_to_schema()
-        return
 
-    # def solve_with_yacobian(self, save_intermediate_results=False, threshold=0.1):
-    def solve(self, save_intermediate_results=False, threshold=0.1):
-        if not self.ready_for_solve:
-            self.prepare_for_solve()
+    def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
+        logger.info('is started')
+        y_best, x_best, it_num, rnd_seed = 100500100500, None, 0, 42
+        try:
+            if not self.ready_for_solve:
+                self.prepare_for_solve()
 
-        x_chordes = self.get_initial_approximation()
-        y_best, x_best = 100500100500, None
-        it_num = 0
-        step = 1
-        B = self.B
-        Bt = np.transpose(B)
-        while True:
-            it_num += 1
-            y = self.target(x_chordes)
-            # print('   ', it_num, y)
-            if y < y_best:
-                # print(np.log10(y))
-                y_best = y
-                x_best = x_chordes
+            x_chordes = self.get_initial_approximation()
+            dx = np.zeros(x_chordes.shape)
+            while True:
+                it_num += 1
+                x_chordes = x_chordes + step * dx
+                y = self.target(x_chordes)
 
-            if y_best < threshold:
-                break
-            if it_num > 15:
-                break
+                logger.info(f'it_num = {it_num}, y = {y}, step = {step}')
+                if y < y_best:
+                    logger.info(f'y {y} is better than y_best {y_best}')
+                    y_best = y
+                    x_best = x_chordes
+                elif step > 0.1:
+                    step = step/2
+                else:
+                    step = self.gimme_random_step(rnd_seed)
 
-            self.derivatives, der_vec = self.evaluate_derivatives_on_edges()
-            F_ = np.diag(der_vec)
-            B_F_Bt = np.dot(np.dot(B, F_), Bt)
-            p_residuals = self.pt_residual_vec[:,0]
-            detB = np.linalg.det(B_F_Bt)
-            if detB == 0:
-                break
-            inv_B_F_Bt = np.linalg.inv(B_F_Bt)
-            dx = -1 * np.matmul(inv_B_F_Bt, p_residuals)
-            dx = dx.reshape((len(dx), 1))
+                if y_best < threshold:
+                    logger.info(f'Solution is found, cause threshold {threshold} is touched')
+                    break
+                if it_num > it_limit:
+                    logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
+                    break
 
-            x_chordes = x_chordes + step * dx
+                self.derivatives, der_vec = self.evaluate_derivatives_on_edges()
+                check_for_nan(der_vec=der_vec)
 
-        self.attach_results_to_schema()
+                F_ = np.diag(der_vec)
+                B_F_Bt = np.dot(np.dot(self.B, F_), self.Bt)
+                det_B_F_Bt = np.linalg.det(B_F_Bt)
+                rnd_seed = int(det_B_F_Bt) % 65536
+                p_residuals = self.pt_residual_vec[:,0]
+                logger.debug(f'det B = {det_B_F_Bt}')
+
+                inv_B_F_Bt = np.linalg.inv(B_F_Bt)
+                check_for_nan(inv_B_F_Bt=inv_B_F_Bt)
+                check_for_nan(p_residuals=p_residuals)
+
+                dx = -1 * np.matmul(inv_B_F_Bt, p_residuals).reshape((len(dx), 1))
+                check_for_nan(dx=dx)
+
+            self.attach_results_to_schema()
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
-        return
+        logger.info(f'Gradient descent result is {self.op_result}')
 
 
     def evaluate_derivatives_on_edges(self):
@@ -187,6 +229,7 @@ class HE2_Solver():
             elif (u, v) in self.chordes:
                 p_, t_ = self.pt_on_chords_ends[(u, v)]
             else:
+                logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
                 assert False
 
             edge_func = self.forward_edge_functions[(u, v)]
@@ -207,13 +250,18 @@ class HE2_Solver():
     def perform_self_test_for_1stCL(self):
         resd_1stCL = self.evaluate_1stCL_residual()
         x_sum = sum(map(abs, self.edges_x.values()))
+        if np.isnan(x_sum).any():
+            logger.error(f'We cant check 1stCL cause edge flows vec contains NaN! edges_x = {self.edges_x}')
+
         if abs(resd_1stCL) > 1e-7 * x_sum:
+            logger.error(f"Solution violates Kirchhoff''s first law, residual = {resd_1stCL}")
             assert False
 
     def build_circuit_matrix(self):
         # just for remember self.edge_list = self.span_tree + self.chordes
         c = len(self.chordes)
         if c==0:
+            logger.debug('is finished, graph is a tree')
             return None
         m = len(self.edge_list)
         B = np.zeros((c, m))
@@ -222,6 +270,10 @@ class HE2_Solver():
         B_tree_transp = -1 * np.dot(A_tree_inv, self.A_chordes)
         B_tree = np.transpose(B_tree_transp)
         B[:,:m-c] = B_tree
+        if np.isnan(B).any():
+            logger.error(f'Something is wrong! Circuit matrix contains NaN! B = {B}')
+            assert False
+
         return B
 
     def build_tree_travers(self, di_tree, root):
@@ -232,7 +284,9 @@ class HE2_Solver():
             if (u, v) in di_edges:
                 tree_travers += [(u, v, 1)]
             else:
-                assert (v, u) in di_edges
+                if not (v, u) in di_edges:
+                    logger.error(f'Cannot find edge ({u}, {v}) in the tree')
+                    assert False
                 tree_travers += [(v, u, -1)]
         return tree_travers
 
@@ -250,8 +304,9 @@ class HE2_Solver():
             else:
                 cl += [e]
 
-        assert len(tl) == len(G.nodes)-1
-        assert len(tl) + len(cl) == len(G.edges)
+        if (len(tl) != len(G.nodes)-1) or (len(tl) + len(cl) != len(G.edges)):
+            logger.error(f'Cannot split graph! Tree edges = {len(tl)}, chordes = {cl}, G.nodes = {len(G.nodes)}, G.edges = {len(G.edges)}')
+            assert False
         return tl, cl
 
     def transform_multi_di_graph_to_equal_di_graph(self, zzzz):
@@ -308,7 +363,11 @@ class HE2_Solver():
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
                 self.mock_edges += [(Root, n)]
                 p_node_found = True
-        assert p_node_found, 'There must be a node with constrained pressure'
+        if not p_node_found:
+            logger.error('There must be a a node with constrained pressure! Solve cannot be performed')
+            assert False
+
+        logger.debug('is finished')
         return G
 
     def build_static_Q_vec(self, G):
@@ -318,6 +377,7 @@ class HE2_Solver():
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex):
                 assert obj.kind == 'Q'
                 q_vec[i] = obj.value if obj.is_source else -obj.value
+        logger.debug('is finished')
         return q_vec
 
     def build_incidence_matrices(self):
@@ -332,6 +392,7 @@ class HE2_Solver():
         A_chordes_full = nx.incidence_matrix(self.chordes, nodelist=nodelist, edgelist=chordes_edgelist, oriented=True)
         A_chordes_full = -1 * A_chordes_full.toarray()
         A_chordes_truncated = A_chordes_full[:-1]
+        logger.debug('is finished')
         return A_truncated, A_chordes_truncated
 
     def evalute_pressures_by_tree(self):
@@ -341,21 +402,34 @@ class HE2_Solver():
         for u, v, direction in self.tree_travers:
             obj = self.graph[u][v]['obj']
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                logger.error(f'({u}, {v}) graph edge cannot evaluate its pressure drop, so we cannot evaluate pressures on the tree')
                 assert False
             known, unknown = u, v
             if v in pt:
                 known, unknown = v, u
 
-            assert not (unknown in pt)
+            if (unknown in pt):
+                logger.error(f'We dont know pressure in {unknown} node, so we cannot propagate pressure down by the tree')
+
             p_kn, t_kn = pt[known]
+            if np.isnan(p_kn):
+                logger.warning(f'P_known is NaN! Edge is ({u}, {v}), known is {known}')
+
             x = self.edges_x[(u, v)]
             if u == known:
                 edge_func = self.forward_edge_functions[(u, v)]
             else:
                 edge_func = self.backward_edge_functions[(u, v)]
             p_unk, t_unk = edge_func(p_kn, t_kn, x)
+
+            # row = dict(known=known, unknown=unknown, x=x, p_known=p_kn, p_unknown=p_unk)
+            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
+            # if known == 'PAD_39' and unknown == 'intake_pad_59':
+            #     print(x, p_kn, p_unk)
+
             if np.isnan(p_unk):
-                print(u, v, obj)
+                logger.warning(f'edge_func returns NaN! Edge is ({u}, {v}), known is {known}')
+
             pt[unknown] = (p_unk, t_unk)
         return pt
 
@@ -369,9 +443,14 @@ class HE2_Solver():
             x = self.edges_x[(u, v)]
             obj = self.graph[u][v]['obj']
             if not isinstance(obj, abc.HE2_ABC_GraphEdge):
+                logger.error(f'{obj} on ({u}, {v}) graph edge cannot evaluate its pressure drop, so we cannot evaluate pressures on the tree')
                 assert False
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
+
+            # row = dict(known=u, unknown=v, x=x, p_known=p_u, p_unknown=p_v)
+            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
+
             pt_v1[i,0] = p_v
             pt_v1[i,1] = t_v
             pt_v2[i,0] = self.pt_on_tree[v][0]
@@ -381,6 +460,10 @@ class HE2_Solver():
         return pt_residual_vec, d
 
     def attach_results_to_schema(self):
+        if self.pt_on_tree is None:
+            logger.warning('Cannot get results after solve')
+            return
+
         for u, pt in self.pt_on_tree.items():
             if u in self.mock_nodes:
                 continue
@@ -405,6 +488,7 @@ class HE2_Solver():
                 _u, _v = self.result_edges_mapping[(u, v, k)]
                 x = self.edges_x[(_u, _v)]
                 obj.result = dict(x=x)
+        logger.debug('is finished')
 
 
     def evaluate_1stCL_residual(self):
@@ -447,3 +531,8 @@ class HE2_Solver():
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
             residual += abs(p - p_v)
         return residual
+
+    def gimme_random_step(self, rand_seed):
+        logger.info(f'randseed is {rand_seed}')
+        np.random.seed(rand_seed)
+        return np.random.uniform(0.1, 0.5)

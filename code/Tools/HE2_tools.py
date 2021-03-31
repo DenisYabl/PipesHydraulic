@@ -1,9 +1,15 @@
 from GraphEdges.HE2_Pipe import HE2_WaterPipe
+from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_Plast import HE2_Plast
 from GraphNodes import HE2_Vertices as vrtxs
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import namedtuple
+
+CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow'])
+
 
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
                            randseed=None):
@@ -256,10 +262,58 @@ def evaluate_2ndCL_residual(graph):
         residual += abs(p - p_v)
     return residual
 
+def evalute_pressures_below_zero(graph, P_threshold_bar = 0):
+    G = nx.MultiDiGraph(graph)
+    rez = 0
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        P = obj.result['P_bar']
+        if P < P_threshold_bar:
+            rez += P_threshold_bar - P
+    return rez
+
+def check_directions(graph):
+    violations_count = 0
+    violations_flow_sum = 0
+    G = nx.MultiDiGraph(graph)
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.is_source:
+            Q = obj.result['Q']
+            if Q < 0:
+                violations_flow_sum += abs(Q)
+                violations_count += 1
+
+    for (u, v, k) in G.edges:
+        edge_obj = G[u][v][k]['obj']
+        if isinstance(edge_obj, HE2_Plast) or isinstance(edge_obj, HE2_WellPump):
+            x = edge_obj.result['x']
+            if x < 0:
+                violations_flow_sum += abs(x)
+                violations_count += 1
+
+    return violations_flow_sum, violations_count
+
+
 def check_solution(G):
+    '''
+    :param G: HE2 graph with results
+    :return: CheckSolutionResults named tuple
+    This method checks solution to violate physics and technical constraints, like as negative pressures and misdirected flows
+    CheckSolutionResults contains next fields:
+        first_CL_resd: this is residual of 1st Kirchhoff law. Expected value - very small positive number, 1e-6. 0.1 is very strong violation
+        second_CL_resd: this is residual of 2nd Kirchhoff law. You can ignore this value, and use solver.op_result.succes and solver.op_result.fun instead
+        negative_P: Solver looks for solution in negative pressure area, cause get solution with negative pressures can be much useful than no solution without any additional info.
+            So, negative_P field is sum of abs() of all negative pressures at graph nodes.
+        bad_directions: Some edges and nodes on graph, like plast or pump, have obvious flow directions, that really cannot be violated. So this field just counts nodes and edges with violated direction.
+        misdirected_flow: This field sum all flows on all nodes and edges with violated directions
+    '''
     res1 = evaluate_1stCL_residual(G)
     res2 = evaluate_2ndCL_residual(G)
-    return res1, res2
+    res3 = evalute_pressures_below_zero(G)
+    res4, res5 = check_directions(G)
+    rez = CheckSolutionResults(res1, res2, res3, res4, res5)
+    return rez
 
 def check_fluid_mixation(G, x_dict, cocktails, sources):
     S = len(sources)

@@ -1,7 +1,13 @@
 import pandas as pd
 import math
 from Hydraulics.Formulas import get_dens_freegas
+from Fluids.oil_params import oil_params, dummy_oil_params
+from Tools.HE2_Logger import check_for_nan, getLogger
 
+# TODO: Диаметр трубы нужен для уточнения вязкости смеси при движении по трубе, больше ни для чего
+# Поэтому надо разделить расчет на две части - когда поток идет по трубе, и когда нет (например через насос)
+# В первом случае мы считаем вязкость через режим течения и проскальзывание
+# Во втором либо линейной интерполяцией, либо инверсией фаз
 
 class Mishenko:
     """
@@ -9,38 +15,39 @@ class Mishenko:
     """
 
     def __init__(self, **kwargs):
+        check_for_nan(**kwargs)
         self.GasFactor = kwargs.pop('GasFactor')
-        self.VolumeWater = kwargs.pop('VolumeWater')
-        self.Q = kwargs.pop("Q")
+        self.VolumeWater_fraction = kwargs.pop('VolumeWater')
+        self.Q_m3_s = kwargs.pop("Q")
         self.OilVolumeCoeff = kwargs.pop("OilVolumeCoeff")
         self.g = kwargs.pop("g")
-        self.SaturationPressure = kwargs.pop('SaturationPressure')
-        self.CurrentP = kwargs.pop('CurrentP')
-        self.CurrentT = kwargs.pop('CurrentT')
+        self.SaturationPressure_MPa = kwargs.pop('SaturationPressure_MPa')
+        self.CurrentP_MPa = kwargs.pop('CurrentP')
+        self.CurrentT_K = kwargs.pop('CurrentT')
         self.DissolvedGasAmount = kwargs.pop("DissolvedGasAmount")
-        self.FreeGasDensity = kwargs.pop('FreeGasDensity')
-        self.SaturatedOilDensity = kwargs.pop('SaturatedOilDensity')
-        self.CurrentWaterDensity = kwargs.pop('CurrentWaterDensity')
-        self.CurrentOilViscosity = kwargs.pop('CurrentOilViscosity')
-        self.CurrentWaterViscosity = kwargs.pop('CurrentWaterViscosity')
+        self.FreeGasDensity_kg_m3 = kwargs.pop('FreeGasDensity')
+        self.SaturatedOilDensity_kg_m3 = kwargs.pop('SaturatedOilDensity')
+        self.CurrentWaterDensity_kg_m3 = kwargs.pop('CurrentWaterDensity')
+        self.CurrentOilViscosity_Pa_s = kwargs.pop('CurrentOilViscosity')
+        self.CurrentWaterViscosity_Pa_s = kwargs.pop('CurrentWaterViscosity')
         self.RelativePressure = kwargs.pop('RelativePressure')
         self.RelativeTemperature = kwargs.pop('RelativeTemperature')
-        self.CurrentFreeGasDensity = kwargs.pop('CurrentFreeGasDensity')
-        self.CurrentFreeGasViscosity = kwargs.pop('CurrentFreeGasViscosity')
-        self.CurrentLiquidDensity = kwargs.pop('CurrentLiquidDensity')
+        self.CurrentFreeGasDensity_kg_m3 = kwargs.pop('CurrentFreeGasDensity')
+        self.CurrentFreeGasViscosity_Pa_s = kwargs.pop('CurrentFreeGasViscosity')
+        self.CurrentLiquidDensity_kg_m3 = kwargs.pop('CurrentLiquidDensity')
         self.TensionOilGas = kwargs.pop('TensionOilGas')
         self.TensionWaterGas = kwargs.pop('TensionWaterGas')
         self.TensionOilWater = kwargs.pop('TensionOilWater')
-        self.Q2 = kwargs.pop('Q2')
-        self.Qc = kwargs.pop('Qc')
-        self.VolumeGas = kwargs.pop('VolumeGas')
+        self.Q2_m3_s = kwargs.pop('Q2')
+        self.Qc_m3_s = kwargs.pop('Qc')
+        self.VolumeGas_fraction = kwargs.pop('VolumeGas')
 
     def print(self):
         print(f"""Газовый фактор self.GasFactor= {self.GasFactor}
 Обводненность self.VolumeWater =  {self.VolumeWater}
 Дебит self.Q =  {self.Q}
 Объемный фактор нефти self.OilVolumeCoeff {self.OilVolumeCoeff}
-Текущее давление насыщения self.SaturationPressure = {self.SaturationPressure}
+Текущее давление насыщения self.SaturationPressure_MPa = {self.SaturationPressure_MPa}
 Текущее давление self.CurrentP = {self.CurrentP}
 Текущая температуры self.CurrentT = {self.CurrentT}
 Удельный объем растворенного газа self.DissolvedGasAmount = {self.DissolvedGasAmount}
@@ -60,56 +67,56 @@ class Mishenko:
 
 
     @staticmethod
-    def from_oil_params(oil_params, tubing):
-        SaturationPressure = oil_params["OilSaturationP"] * 101325 * 1e-6
-        CurrentP = oil_params["CurrentP"] * 101325 * 1e-6
-        PlastT = oil_params["PlastT"] + 273
-        CurrentT = oil_params["CurrentT"] + 273
-        GasFactor = oil_params["GasFactor"]
-        Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
-        if (CurrentP >= Saturation_pressure) | (oil_params['wellopVolumeWater'] == 100):
-            return Mishenko.two_phase_flow(oil_params, tubing)
+    def from_oil_params(calc_params:oil_params, tubing=None):
+        SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
+        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
+        PlastT = calc_params.plastT_C + 273
+        CurrentT = calc_params.currentT_C + 273
+        GasFactor = calc_params.gasFactor
+        Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
+        if (CurrentP >= Saturation_pressure) | (calc_params.volumewater_percent == 100):
+            return Mishenko.two_phase_flow(calc_params, tubing)
         else:
-            return Mishenko.three_phase_flow(oil_params)
+            return Mishenko.three_phase_flow(calc_params)
 
     @staticmethod
-    def two_phase_flow(oil_params, tubing):
+    def two_phase_flow(calc_params:oil_params, tubing=None):
         """
         :param oil_params: Параметры нефти
         """
         # Давление насыщения нефти попутным газом
-        SaturationPressure = oil_params["OilSaturationP"] * 101325 * 1e-6
+        SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
         # Текущее давление
-        CurrentP = oil_params["CurrentP"] * 101325 * 1e-6
+        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
         # Пластовая температура
-        PlastT = oil_params["PlastT"] + 273
+        PlastT = calc_params.plastT_C + 273
         # Температура в текущей точке
-        CurrentT = oil_params["CurrentT"] + 273
+        CurrentT = calc_params.currentT_C + 273
         # Газовый фактор нефти
-        GasFactor = oil_params["GasFactor"]
+        GasFactor = calc_params.gasFactor
         # Доля углеводородных газов
         CarbGasAmount = 0.91  # Нет в данных
         # Доля неуглеводородных газов
         NonCarbGasAmount = 0.09  # Нет в данных
         # Плотность дегазированной нефти
-        SepOilDensity = oil_params["SepOilWeight"] * 1000
+        SepOilDensity = calc_params.oildensity_kg_m3
         # Плотность газа
-        GasDensity = oil_params["GasDensity"]
+        GasDensity = calc_params.gasdensity_kg_m3
         # Динамическая вязкость сепарированной нефти
-        SepOilDynamicViscosity = oil_params["SepOilDynamicViscosity"] / 10
+        SepOilDynamicViscosity = calc_params.oilviscosity_Pa_s
         # Обводненность нефти
-        VolumeWater = oil_params["wellopVolumeWater"] / 100
+        VolumeWater = calc_params.volumewater_percent / 100
         # Плотность пластовой воды
-        PlastWaterDensity = oil_params["PlastWaterWeight"] * 1000
+        PlastWaterDensity = calc_params.waterdensity_kg_m3
         # Текущийй расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / (SepOilDensity * (1 - VolumeWater) + PlastWaterDensity * (VolumeWater))
+        Q = calc_params.Q_m3_sec
         Qoil = Q * (1 - VolumeWater)
         # Объемный фактор нефти
-        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
+        OilVolumeCoeff = calc_params.volumeoilcoeff
 
         g = 9.81
 
-        Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
+        Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
 
         #Объемные расходы воды и нефти
         Qo = Q * OilVolumeCoeff * (1 - VolumeWater)
@@ -119,13 +126,13 @@ class Mishenko:
         VolumeWater = VolumeWater / (VolumeWater + OilVolumeCoeff * (1 - VolumeWater))
 
         #Скорость смеси
-        wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-        wo = Qoil * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-        ww = (Q - Qoil) * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-
-        #Критическая скорость смеси
-        wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
-        structure = "drop" if wm<wkr else "emulsion"
+        structure = 'emulsion'
+        if tubing:
+            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+            #Критическая скорость смеси
+            wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
+            if wm < wkr:
+                structure = "drop"
 
         #Поверхностное натяжение нефть-газ
         TensionOilGas = 10 ** -(1.58 + 0.05 * CurrentP) - 72e-6 * (CurrentT - 303)
@@ -144,8 +151,8 @@ class Mishenko:
 
         vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-        С = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
-        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** С
+        C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
         A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
         B = 1 + 0.0017 * vzgr - 0.0228 * vzgr ** 0.667
@@ -156,102 +163,102 @@ class Mishenko:
 
         CurrentWaterViscosity = 0.00178 / (1 + 0.037 * (CurrentT - 273) + 0.00022 * (CurrentT - 273) ** 2)
 
+        # Вспомогательные коэффициенты
+        a1 = 1 + 0.0054 * (CurrentT - 303)
+        a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure_MPa), 10)) - 1)  # !!!!!!!!!!!
+        a3 = SepOilDensity * GasFactor * 1e-3 - 186
+        a4 = (3.083 - 2.638e-3 * GasDensity) * 1e-3
 
+        FreeGasDensity = get_dens_freegas(GasDensity, a1, a2, a3)
+        # Плотность газонасыщенной нефти
+        m = 1 + 0.029 * (CurrentT - 303) * (SepOilDensity * FreeGasDensity * 1e-3 - 0.7966)
+        # Относительная плотность растворенного в нефти свободного газа
+        if CurrentP < 0:
+            DissolvedGasDensity = 0
+        else:
+            DissolvedGasDensity = GasFactor * (a1 * m * GasDensity) / GasFactor
 
+        SaturatedOilDensity = SepOilDensity * (1 + 1.293e-3 * DissolvedGasDensity * GasFactor /
+                                                 (a1 * m)) / OilVolumeCoeff
+        VolumeOil = 1 - VolumeWater
+        #CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
+        CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
         if structure == "drop":
             mixture_type = "oil_water" if VolumeWater > 0.5 else "water_oil"
             if mixture_type == "water_oil":
-                VolumeOil = 1 - VolumeWater
                 CurrentOilViscosity = CurrentOilViscosity
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
             else:
-                VolumeOil = 1 - VolumeWater
                 CurrentOilViscosity = CurrentWaterViscosity
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SepOilDensity
-        else:
+
+        elif structure == 'emulsion' and tubing:
+            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+            shiftvelocity = 8 * wm / tubing["IntDiameter"]
+            A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
+            B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
             if VolumeWater > 0.5:
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + (1 - VolumeWater) * SepOilDensity
-                mixture_type = "oil_water"
-                shiftvelocity = 8 * wm / tubing["IntDiameter"]
-                A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
-                B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
-                if VolumeWater < 1:
-                    CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
-            else:
-                CurrentLiquidDensity = VolumeWater * PlastWaterDensity + (1 - VolumeWater) * SepOilDensity
-                mixture_type = "oil_water"
-                shiftvelocity = 8 * wm / tubing["IntDiameter"]
-                A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
-                B = CurrentOilViscosity if A <= 1 else A * CurrentOilViscosity
-                CurrentOilViscosity = CurrentOilViscosity
+                CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
+        else:
+            assert tubing is None
 
         CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
 
-
-
-
-
-
-
         return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
-                        OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure=Saturation_pressure,
+                        OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
                         DissolvedGasAmount=1, FreeGasDensity=0,
                         SaturatedOilDensity=SepOilDensity,
                         CurrentWaterDensity=PlastWaterDensity, CurrentOilViscosity=CurrentOilViscosity,
                         CurrentWaterViscosity=CurrentWaterViscosity,
-                        RelativePressure=None, RelativeTemperature=None,
+                        RelativePressure=-100500, RelativeTemperature=-100500,
                         CurrentFreeGasDensity=0,
                         CurrentFreeGasViscosity=0, CurrentLiquidDensity=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
-                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=0, Qc=0,
+                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=0, Qc=Q,
                         VolumeGas=0)
 
     @staticmethod
-    def three_phase_flow(oil_params):
+    def three_phase_flow(calc_params):
         """
         :param oil_params: Параметры нефти
         """
         # Давление насыщения нефти попутным газом
-        SaturationPressure = oil_params["OilSaturationP"] * 101325 * 1e-6
+        SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
         # Текущее давление
-        CurrentP = oil_params["CurrentP"] * 101325 * 1e-6
+        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
         # Пластовая температура
-        PlastT = oil_params["PlastT"] + 273
+        PlastT = calc_params.plastT_C + 273
         # Температура в текущей точке
-        CurrentT = oil_params["CurrentT"] + 273
+        CurrentT = calc_params.currentT_C + 273
         # Газовый фактор нефти
-        GasFactor = oil_params["GasFactor"]
+        GasFactor = calc_params.gasFactor
         # Доля углеводородных газов
         CarbGasAmount = 0.91  # Нет в данных
         # Доля неуглеводородных газов
         NonCarbGasAmount = 0.09  # Нет в данных
         # Плотность дегазированной нефти
-        SepOilDensity = oil_params["SepOilWeight"] * 1000
+        SepOilDensity = calc_params.oildensity_kg_m3
         # Плотность газа
-        GasDensity = oil_params["GasDensity"]
+        GasDensity = calc_params.gasdensity_kg_m3
         # Динамическая вязкость сепарированной нефти
-        SepOilDynamicViscosity = oil_params["SepOilDynamicViscosity"] / 10
+        SepOilDynamicViscosity = calc_params.oilviscosity_Pa_s
         # Обводненность нефти
-        VolumeWater = oil_params["wellopVolumeWater"] / 100
-
+        VolumeWater = calc_params.volumewater_percent / 100
         # Плотность пластовой воды
-        PlastWaterDensity = oil_params["PlastWaterWeight"] * 1000
-
-        # Текущий расход/дебит
-        Q = oil_params["adkuLiquidDebit"] / (SepOilDensity * (1 - VolumeWater) + PlastWaterDensity * (VolumeWater))
-        Qoil =  Q * (1 - VolumeWater)
+        PlastWaterDensity = calc_params.waterdensity_kg_m3
+        # Текущийй расход/дебит
+        Q = calc_params.Q_m3_sec
+        Qoil = Q * (1 - VolumeWater)
         # Объемный фактор нефти
-        OilVolumeCoeff = oil_params["VolumeOilCoeff"]
+        OilVolumeCoeff = calc_params.volumeoilcoeff
 
         g = 9.81
         we_know_gas_amount = (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount))
 
         # Давление насыщения при данной температуре
         if we_know_gas_amount:
-            Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (
+            Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (
                     GasFactor * (CarbGasAmount - NonCarbGasAmount))
         else:
-            Saturation_pressure = SaturationPressure - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
+            Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
         # Количество растворенного в нефти газа
         # Вспомогательный коэффициент
         if we_know_gas_amount:
@@ -267,7 +274,7 @@ class Mishenko:
         # Относительная плотность выделившегося из нефти свободного газа
         # Вспомогательные коэффициенты
         a1 = 1 + 0.0054 * (CurrentT - 303)
-        a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure), 10)) - 1)  # !!!!!!!!!!!
+        a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure_MPa), 10)) - 1)  # !!!!!!!!!!!
         a3 = SepOilDensity * GasFactor * 1e-3 - 186
         a4 = (3.083 - 2.638e-3 * GasDensity) * 1e-3
 
@@ -294,8 +301,8 @@ class Mishenko:
 
         vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-        С = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
-        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** С
+        C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+        Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
         A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
         B = 1 + 0.0017 * vzgr - 0.0228 * vzgr ** 0.667
@@ -363,10 +370,11 @@ class Mishenko:
         Qc = Q + Q2
 
         # Объемное расходное газосодержание
-        VolumeGas = Q2 / Qc if Qc!=0 else 0  # if CurrentP < SaturationPressure else 0
+        VolumeGas = Q2 / Qc if Qc!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
+# TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
         return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
-                        OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure=Saturation_pressure,
+                        OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
                         DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity=FreeGasDensity,
                         SaturatedOilDensity=SaturatedOilDensity,
                         CurrentWaterDensity=CurrentWaterDensity, CurrentOilViscosity=CurrentOilViscosity,
