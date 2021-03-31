@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append("/home/rsv/work/PipesHydraulic/code/")
 from Hydraulics.Properties.Mishenko import Mishenko
 from Tools.HE2_ABC import HE2_ABC_Fluid
 
@@ -57,7 +60,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
         tubing = {"IntDiameter": IntDiameter}
         temp_mishenko = Mishenko.from_oil_params(oil_params=oil_params, tubing=tubing)
         #Side effects
-        self. CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
+        self.CurrentLiquidDensity = temp_mishenko.CurrentLiquidDensity
         self.CurrentOilViscosity = temp_mishenko.CurrentOilViscosity
         self.Q_m3sec = temp_mishenko.Q
         #Return for pressure gradient calculation

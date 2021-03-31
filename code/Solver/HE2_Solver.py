@@ -146,7 +146,7 @@ class HE2_Solver():
         while True:
             it_num += 1
             y = self.target(x_chordes)
-            print('   ', it_num, y)
+            # print('   ', it_num, y)
             if y < y_best:
                 # print(np.log10(y))
                 y_best = y

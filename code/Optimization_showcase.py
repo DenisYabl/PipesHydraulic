@@ -105,8 +105,10 @@ def test_with_change_graph_ont_the_fly():
     real_diam_coefficient = 0.85
 
     #Получаем расчетный граф с заданными параметрами
-    G, inlets, juncs, outlets = build_DNS2_graph(pressures = pressures, plasts = plasts, pumps = pumps, pump_curves = pump_curves, fluid = fluid, roughness = roughness, real_diam_coefficient = real_diam_coefficient,
-                                                 DNS_pressure = outputpressure)
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures=pressures, plasts=plasts, pumps=pumps,
+                                                 pump_curves=pump_curves, fluid=fluid, roughness=roughness,
+                                                 real_diam_coefficient=real_diam_coefficient,
+                                                 DNS_pressure=outputpressure)
     # Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
     solver.solve()
