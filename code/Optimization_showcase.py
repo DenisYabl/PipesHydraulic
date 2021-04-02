@@ -5,6 +5,7 @@ import pandas as pd
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_tools import check_solution
+from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
 
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -167,9 +168,7 @@ def test_with_change_graph_on_the_fly():
     validity = check_solution(G)
     print(validity)
 
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
-
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
@@ -180,23 +179,35 @@ def test_with_change_graph_on_the_fly():
 
     solver.solve()
     print("\nРешение с измененным давлением")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
     #Меняем частоту насоса скважины 1562 куста 5
 
-    G.edges._adjdict["Pump_intake_1562"]['Pump_outlet_1562']['obj'].changeFrequency(55)
+    G["Pump_intake_1562"]['Pump_outlet_1562']['obj'].changeFrequency(55)
 
     solver.solve()
     print("\nРешение с измененной частотой насоса")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
+
+    #Меняем модель насоса скважины 1562 куста 5
+    edge = G['Pump_intake_1562']['Pump_outlet_1562']
+    new_pump = create_HE2_WellPump_instance_from_dataframe(pump_curves, 'ЭЦН5-45-2500', fluid, 50)
+    edge['obj'] = new_pump
+    solver.ready_for_solve = False # Иначе солвер не обновит внутренние edge_func
+
+    solver.solve()
+    print("\nРешение с измененной частотой насоса")
+
+    print_wells_pressures(G, inlets)
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+
 
 
 import shame_on_me
