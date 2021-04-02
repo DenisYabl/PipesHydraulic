@@ -146,7 +146,7 @@ def part_test():
     model_DNS_2_by_parts(pressures=pressures, plasts=plasts, pumps=pumps, pump_curves=pump_curves, fluid=fluid,
                          DNS_daily_debit=Full_system_daily_debit)
 
-def test_with_change_graph_ont_the_fly():
+def test_with_change_graph_on_the_fly():
     # Выходное условие заменено на выходное давление ДНС-2
     outputpressure = 4.8
     roughness = 1e-5
@@ -252,6 +252,6 @@ def test_2pads_with_change_graph():
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
-    # test_with_change_graph_ont_the_fly()
-    full_test()
+    test_with_change_graph_on_the_fly()
+    # full_test()
     #part_test()
