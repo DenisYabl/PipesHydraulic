@@ -15,38 +15,46 @@ B_keff = 1.4
 # TODO Нужно сузить класс HE2_WellPump. Не надо таскать в него датафрейм. Нужно создавать его от трех векторов Q, H, Eff
 # И рядом сделать конструктор, который берет уже датафрейм, выделяет из него три вектора и создает объект HE2_WellPump
 
-# def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, IntDiameter = 0.12, frequency = 50):
-#     pass
+def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
+    base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
+    base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
+    p_vec = base_HPX["pressure"].values
+    q_vec = base_HPX["debit"].values
+    n_vec = base_HPX["power"].values
+    eff_vec = base_HPX["eff"].values
+    pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+    return pump
 
-# class HE2_WellPump(abc.HE2_ABC_GraphEdge):
-#     def __init__(self, Q_P_N_table=None, fluid = HE2_DummyOil, frequency = 50):
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, frequency = 50):
-        self.base_HPX = full_HPX[full_HPX["pumpModel"] == model]
+    def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50):
+        if fluid is None:
+            fluid = HE2_DummyOil()
         self.fluid = fluid
         self.model = model
-        self.intermediate_results = []
         self.frequency = frequency
-        self._printstr = self.base_HPX.to_string()
+        self._printstr = self.model
+        self.base_q = q_vec # self.base_* - НРХ насоса по воде
+        self.base_p = p_vec
+        self.base_n = n_vec
+        self.base_eff = eff_vec
+
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
-        self.true_HPX = self.base_HPX.copy()
-        self.true_HPX["pseudo"] = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((self.true_HPX["pressure"] / 0.3048) ** 0.25739) * (((self.true_HPX["debit"] / 0.227) ** 0.5) ** 0.5)
-        self.true_HPX["Cq"] = 0.9873 * (self.true_HPX["pseudo"] ** 0) + 0.009019 * (self.true_HPX["pseudo"] ** 1) - 0.0016233 * (self.true_HPX["pseudo"] ** 2) + 0.00007233 * (self.true_HPX["pseudo"] ** 3) - 0.0000020258 * (
-        self.true_HPX["pseudo"] ** 4) + 0.000000021009 * (self.true_HPX["pseudo"] ** 5)
-        self.true_HPX["Ch"] = 1.0045 * (self.true_HPX["pseudo"] ** 0) - 0.002664 * (self.true_HPX["pseudo"] ** 1) - 0.00068292 * (self.true_HPX["pseudo"] ** 2) + 0.000049706 * (self.true_HPX["pseudo"] ** 3) - 0.0000016522 * (
-        self.true_HPX["pseudo"] ** 4) + 0.000000019172 * (self.true_HPX["pseudo"] ** 5)
-        self.true_HPX["Ceff"] = 1.0522 * (self.true_HPX["pseudo"] ** 0) - 0.03512 * (self.true_HPX["pseudo"] ** 1) - 0.00090394 * (self.true_HPX["pseudo"] ** 2) + 0.00022218 * (self.true_HPX["pseudo"] ** 3) - 0.00001198 * (
-        self.true_HPX["pseudo"] ** 4) + 0.00000019895 * (self.true_HPX["pseudo"] ** 5)
+        # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)
+        pseudo_vec = 1.95 * 0.04739 * visc_approx**0.5 * (p_vec / 0.3048)**0.25739 * (q_vec / 0.227)**0.25
+        Cq_vec = np.polyval([0.9873, 0.009019, -0.0016233, 0.00007233, -0.0000020258, 0.000000021009][::-1], pseudo_vec)
+        Cp_vec = np.polyval([1.0045, -0.002664, -0.00068292, 0.000049706, -0.0000016522, 0.000000019172][::-1], pseudo_vec)
+        Ceff_vec = np.polyval([1.0522, -0.03512, -0.00090394, 0.00022218, -0.00001198, 0.00000019895][::-1], pseudo_vec)
 
-        self.true_HPX["debit"] = self.true_HPX["debit"] * self.true_HPX["Cq"]
-        self.true_HPX["pressure"] = self.true_HPX["pressure"] * self.true_HPX["Ch"]
-        self.true_HPX["eff"] = self.true_HPX["eff"] * self.true_HPX["Ceff"]
-        self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
-        self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
+        self.q_vec = self.base_q * Cq_vec
+        self.p_vec_50hz = self.base_p * Cp_vec
+        self.eff_vec = eff_vec * Ceff_vec
+        self.n_vec_50hz = (self.q_vec * 9.81 * 1000 / 86400) * self.p_vec_50hz / (self.eff_vec/100)
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
 
-        self.true_HRX_min_Q = self.true_HPX["debit"].min()
-        self.true_HRX_max_Q = self.true_HPX["debit"].max()
+        self.min_Q = self.q_vec.min()
+        self.max_Q = self.q_vec.max()
 
         self.get_pressure_raise_1 = None
         self.get_pressure_raise_2 = None
@@ -62,8 +70,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
 
-
-
         if calc_direction == 1:
             return self.perform_calc_forward(P_bar, T_C, X_kgsec)
         else:
@@ -73,15 +79,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         p, t = P_bar, T_C
         fl = self.fluid.calc(P_bar, T_C, X_kgsec)
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1, fl)
-        self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
         p, t = P_bar, T_C
-
-        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1, self.fluid.calc(P_bar, T_C, X_kgsec))
-
-        self.intermediate_results += [(p, t)]
+        fl = self.fluid.calc(P_bar, T_C, X_kgsec)
+        p, t = self.calculate_pressure_differrence(p, t, X_kgsec, -1, fl)
         return p, t
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
@@ -91,7 +94,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
-        elif (self.true_HRX_min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.true_HRX_max_Q) :
+        elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
         else:
             get_pressure_raise = self.get_pressure_raise_3
@@ -123,16 +126,15 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         return grav_sign, fric_sign, t_sign
 
     def make_extrapolators(self):
-        zero_head = self.true_HPX[self.true_HPX["debit"] == 0]["pressure"].iloc[0]
-        last_head = self.true_HPX[self.true_HPX["debit"] == self.true_HRX_max_Q]["pressure"].iloc[0]
+        zero_head = self.p_vec[0]
+        last_head = self.p_vec[-1]
         self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
-        self.get_pressure_raise_2 = interp1d(self.true_HPX["debit"], self.true_HPX["pressure"], kind="quadratic")
-        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.true_HRX_max_Q) ** B_keff
+        self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
+        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
 
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
-        self.true_HPX["pressure"] = self.true_HPX["pressure"] * (self.frequency / 50) ** 2
-        self.true_HPX["power"] = (self.true_HPX["debit"] * self.true_HPX["pressure"] * 9.81 * 1000) / (3960 * self.true_HPX["eff"])
-
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 
