@@ -207,6 +207,7 @@ def test_with_change_graph_on_the_fly():
     print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
+    print(f'Well 1562 pump power is {new_pump.power} Wt')
 
 
 

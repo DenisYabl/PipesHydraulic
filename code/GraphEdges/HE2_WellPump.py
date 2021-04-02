@@ -55,10 +55,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
         self.min_Q = self.q_vec.min()
         self.max_Q = self.q_vec.max()
+        self.power = 0
 
         self.get_pressure_raise_1 = None
         self.get_pressure_raise_2 = None
         self.get_pressure_raise_3 = None
+        self.n_interpolator = None
         self.make_extrapolators()
 
 
@@ -92,10 +94,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         #Определяем направления расчета
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
+        self.power = 0
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
         elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
+            self.power = self.n_interpolator(liquid_debit)
         else:
             get_pressure_raise = self.get_pressure_raise_3
 
@@ -131,6 +135,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
         self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
         self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
+        self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
 
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
