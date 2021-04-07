@@ -264,6 +264,6 @@ def test_2pads_with_change_graph():
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
-    test_with_change_graph_on_the_fly()
-    # full_test()
+    # test_with_change_graph_on_the_fly()
+    full_test()
     #part_test()
