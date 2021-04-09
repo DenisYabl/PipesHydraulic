@@ -67,31 +67,31 @@ class Mishenko:
 
 
     @staticmethod
-    def from_oil_params(calc_params:oil_params, tubing=None):
+    def from_oil_params(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
         SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
-        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
+        CurrentP = P_bar * 101325 * 1e-6
         PlastT = calc_params.plastT_C + 273
-        CurrentT = calc_params.currentT_C + 273
+        CurrentT = T_C + 273
         GasFactor = calc_params.gasFactor
         Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
         if (CurrentP >= Saturation_pressure) | (calc_params.volumewater_percent == 100):
-            return Mishenko.two_phase_flow(calc_params, tubing)
+            return Mishenko.two_phase_flow(P_bar, T_C, calc_params, tubing)
         else:
-            return Mishenko.three_phase_flow(calc_params)
+            return Mishenko.three_phase_flow(P_bar, T_C, calc_params)
 
     @staticmethod
-    def two_phase_flow(calc_params:oil_params, tubing=None):
+    def two_phase_flow(P_bar, T_C, calc_params:oil_params, tubing=None):
         """
         :param oil_params: Параметры нефти
         """
         # Давление насыщения нефти попутным газом
         SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
         # Текущее давление
-        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
+        CurrentP = P_bar * 101325 * 1e-6
         # Пластовая температура
         PlastT = calc_params.plastT_C + 273
         # Температура в текущей точке
-        CurrentT = calc_params.currentT_C + 273
+        CurrentT = T_C + 273
         # Газовый фактор нефти
         GasFactor = calc_params.gasFactor
         # Доля углеводородных газов
@@ -216,18 +216,18 @@ class Mishenko:
                         VolumeGas=0)
 
     @staticmethod
-    def three_phase_flow(calc_params):
+    def three_phase_flow(P_bar, T_C, calc_params):
         """
         :param oil_params: Параметры нефти
         """
         # Давление насыщения нефти попутным газом
         SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
         # Текущее давление
-        CurrentP = calc_params.currentP_bar * 101325 * 1e-6
+        CurrentP = P_bar * 101325 * 1e-6
         # Пластовая температура
         PlastT = calc_params.plastT_C + 273
         # Температура в текущей точке
-        CurrentT = calc_params.currentT_C + 273
+        CurrentT = T_C + 273
         # Газовый фактор нефти
         GasFactor = calc_params.gasFactor
         # Доля углеводородных газов
