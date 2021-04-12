@@ -16,8 +16,7 @@ logger = getLogger(__name__)
 # oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
 #                         waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
-oil_params = oil_params(Q_m3_sec=500/86400, Q_m3_day=500,
-                        sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826, waterdensity_kg_m3=1015,
+oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826, waterdensity_kg_m3=1015,
                         gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
 fluid = HE2_OilWater(oil_params)

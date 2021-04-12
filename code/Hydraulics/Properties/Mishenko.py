@@ -75,12 +75,12 @@ class Mishenko:
         GasFactor = calc_params.gasFactor
         Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
         if (CurrentP >= Saturation_pressure) | (calc_params.volumewater_percent == 100):
-            return Mishenko.two_phase_flow(P_bar, T_C, calc_params, tubing)
+            return Mishenko.two_phase_flow(P_bar, T_C, X_kg_sec, calc_params, tubing)
         else:
-            return Mishenko.three_phase_flow(P_bar, T_C, calc_params)
+            return Mishenko.three_phase_flow(P_bar, T_C, X_kg_sec, calc_params)
 
     @staticmethod
-    def two_phase_flow(P_bar, T_C, calc_params:oil_params, tubing=None):
+    def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
         """
         :param oil_params: Параметры нефти
         """
@@ -108,9 +108,6 @@ class Mishenko:
         VolumeWater = calc_params.volumewater_percent / 100
         # Плотность пластовой воды
         PlastWaterDensity = calc_params.waterdensity_kg_m3
-        # Текущийй расход/дебит
-        Q = calc_params.Q_m3_sec
-        Qoil = Q * (1 - VolumeWater)
         # Объемный фактор нефти
         OilVolumeCoeff = calc_params.volumeoilcoeff
 
@@ -118,21 +115,10 @@ class Mishenko:
 
         Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
 
-        #Объемные расходы воды и нефти
-        Qo = Q * OilVolumeCoeff * (1 - VolumeWater)
-        Qw = Q * VolumeWater
+        # Текущийй расход/дебит
 
         #Объемное расходное водосодержание
         VolumeWater = VolumeWater / (VolumeWater + OilVolumeCoeff * (1 - VolumeWater))
-
-        #Скорость смеси
-        structure = 'emulsion'
-        if tubing:
-            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-            #Критическая скорость смеси
-            wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
-            if wm < wkr:
-                structure = "drop"
 
         #Поверхностное натяжение нефть-газ
         TensionOilGas = 10 ** -(1.58 + 0.05 * CurrentP) - 72e-6 * (CurrentT - 303)
@@ -183,6 +169,21 @@ class Mishenko:
         VolumeOil = 1 - VolumeWater
         #CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
         CurrentLiquidDensity = VolumeWater * PlastWaterDensity + VolumeOil * SaturatedOilDensity
+
+        if not X_kg_sec:
+            X_kg_sec = 0
+        # Объемный расход нефтеводогазовой смеси в условиях транспорта
+        Q = X_kg_sec / CurrentLiquidDensity
+
+        #Скорость смеси
+        structure = 'emulsion'
+        if tubing:
+            wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+            #Критическая скорость смеси
+            wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
+            if wm < wkr:
+                structure = "drop"
+
         if structure == "drop":
             mixture_type = "oil_water" if VolumeWater > 0.5 else "water_oil"
             if mixture_type == "water_oil":
@@ -216,7 +217,7 @@ class Mishenko:
                         VolumeGas=0)
 
     @staticmethod
-    def three_phase_flow(P_bar, T_C, calc_params):
+    def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
         """
         :param oil_params: Параметры нефти
         """
@@ -245,8 +246,6 @@ class Mishenko:
         # Плотность пластовой воды
         PlastWaterDensity = calc_params.waterdensity_kg_m3
         # Текущийй расход/дебит
-        Q = calc_params.Q_m3_sec
-        Qoil = Q * (1 - VolumeWater)
         # Объемный фактор нефти
         OilVolumeCoeff = calc_params.volumeoilcoeff
 
@@ -363,17 +362,29 @@ class Mishenko:
         # Поверхностное натяжение нефть - вода
         TensionOilWater = TensionWaterGas - TensionOilGas
 
-        # Объемный расход газовой фазы в условиях транспорта
-        Q2 = (FreeGasDensity * Qoil) * 1.29 * GasDensity / CurrentFreeGasDensity
+        # Отношение объема свободного газа к объему нефти в условиях трубы
+        FreeGasFactor = FreeGasDensity * 1.29 * GasDensity / CurrentFreeGasDensity
 
+        # Плотность смеси Oil+Water+Gas = OWG
+        OWG_density = CurrentLiquidDensity + CurrentFreeGasDensity * FreeGasFactor * (1-VolumeWater)
+
+        if not X_kg_sec:
+            X_kg_sec = 0
         # Объемный расход нефтеводогазовой смеси в условиях транспорта
-        Qc = Q + Q2
+        Q_owg = X_kg_sec / OWG_density
+
+        Q_oil = Q_owg * (1 - VolumeWater)
+        Q_water = Q_owg * VolumeWater
+        Q_liquid = Q_oil + Q_water
+
+        # Объемный расход газовой фазы в условиях транспорта
+        Q_gas = Q_oil * FreeGasFactor
 
         # Объемное расходное газосодержание
-        VolumeGas = Q2 / Qc if Qc!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
+        VolumeGas = Q_gas / Q_owg if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
 # TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
-        return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
+        return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q_liquid,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
                         DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity=FreeGasDensity,
                         SaturatedOilDensity=SaturatedOilDensity,
@@ -383,5 +394,5 @@ class Mishenko:
                         CurrentFreeGasDensity=CurrentFreeGasDensity,
                         CurrentFreeGasViscosity=CurrentFreeGasViscosity, CurrentLiquidDensity=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
-                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=Q2, Qc=Qc,
+                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=Q_gas, Qc=Q_owg,
                         VolumeGas=VolumeGas)

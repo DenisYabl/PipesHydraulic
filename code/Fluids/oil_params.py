@@ -14,7 +14,7 @@ from collections import namedtuple
 
 # TODO make oil_params checkable for nans
 
-fieldlist = ['Q_m3_sec', 'Q_m3_day', 'sat_P_bar', 'plastT_C', 'gasFactor', 'oildensity_kg_m3', 'waterdensity_kg_m3', 'gasdensity_kg_m3',
+fieldlist = ['sat_P_bar', 'plastT_C', 'gasFactor', 'oildensity_kg_m3', 'waterdensity_kg_m3', 'gasdensity_kg_m3',
              # 'oilviscosity_Pa_s', 'volumewater_percent', 'volumeoilcoeff', 'currentP_bar', 'currentT_C', 'CurrentLiquidDensity_kg_m3']
             'oilviscosity_Pa_s', 'volumewater_percent', 'volumeoilcoeff']
 
@@ -39,6 +39,6 @@ oil_params = namedtuple('oil_params', fieldlist)
 #         self.CurrentLiquidDensity_kg_m3 = None
 
 def dummy_oil_params(Q_m3_day=0, volumeWater=50):
-    rez = oil_params(Q_m3_sec = Q_m3_day / 86400, Q_m3_day=Q_m3_day, sat_P_bar = 66.7, plastT_C = 84, gasFactor = 39, oildensity_kg_m3 = 826,
+    rez = oil_params(sat_P_bar = 66.7, plastT_C = 84, gasFactor = 39, oildensity_kg_m3 = 826,
                      waterdensity_kg_m3 = 1015, gasdensity_kg_m3 = 1, oilviscosity_Pa_s = 35e-3, volumewater_percent = volumeWater, volumeoilcoeff = 1.015)
     return rez
