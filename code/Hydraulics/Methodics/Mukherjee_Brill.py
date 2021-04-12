@@ -2,6 +2,17 @@ from Hydraulics.Formulas import *
 import warnings
 warnings.filterwarnings("ignore")
 
+def calc_lambda(Re, tubing):
+    if Re < 2000:
+        lambda0 = 64 / Re
+    else:
+        lambda0 = 0.11 * (tubing["Roughness"] / tubing["IntDiameter"] + 68.5 / Re) ** 0.25
+
+    for i in range(10):
+        lambda0 = (1.74 - 2 * math.log10(2 * tubing["Roughness"] / (tubing["IntDiameter"] ** 2) + 18.7 / (Re * (lambda0 ** 0.5)))) ** -2
+    return lambda0
+
+
 def calculate (mishenko, tubing):
     """
     :param oil_params: Данные о свойствах нефти и режиме работы скважины
@@ -11,13 +22,11 @@ def calculate (mishenko, tubing):
     """
     angle = tubing["angle"]
 
-
-
     wm = mishenko.Qc_m3_s * 4 / (math.pi * tubing["IntDiameter"] ** 2)
     g = 9.81
     if (mishenko.VolumeWater_fraction == 1):
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity_kg_m3 / mishenko.CurrentWaterViscosity_Pa_s
-        lambda_ = 64 / Re if Re < 2300 else 0.11 * (68 / Re + tubing["Roughness"] / tubing["IntDiameter"]) ** 0.25
+        lambda_ = calc_lambda(Re, tubing)
         return lambda_ * mishenko.CurrentLiquidDensity_kg_m3* (wm ** 2) * 0.5 / tubing["IntDiameter"],  mishenko.CurrentLiquidDensity_kg_m3 * mishenko.g
 
     # Коэффициент по скорости жидкости
@@ -33,7 +42,7 @@ def calculate (mishenko, tubing):
     Re = dens * wm * tubing["IntDiameter"] / mu
     if (mishenko.CurrentP_MPa >= mishenko.SaturationPressure_MPa):
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity_kg_m3 / mishenko.CurrentOilViscosity_Pa_s
-        lambda_ = 64 / Re if Re < 2300 else 0.11 * (68 / Re + tubing["Roughness"] / tubing["IntDiameter"]) ** 0.25
+        lambda_ = calc_lambda(Re, tubing)
         return lambda_ * mishenko.CurrentLiquidDensity_kg_m3 * wm ** 2 * 0.5 / tubing["IntDiameter"], mishenko.CurrentLiquidDensity_kg_m3 * mishenko.g
     try:
         form = get_flow_structure_MB(Lw, Lg, Lm, tubing)
@@ -63,15 +72,7 @@ def calculate (mishenko, tubing):
     Ek = min(Ek, 0.5)
     # Коэффициент гидравлического сопротивления однофазного потока
 
-    if Re < 2000:
-        lambda0 = 64 / Re
-    else:
-        #lambda0 = (-2 * math.log10(2 * tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) - 5.02 * math.log10(
-           # 2 * tubing["Roughness"] / (3.7 * tubing["IntDiameter"]) + 13 / Re))) ** -2
-        lambda0 = 0.11 * (tubing["Roughness"] / tubing["IntDiameter"] + 68.5 / Re) ** 0.25
-
-    for i in range(10):
-        lambda0 = (1.74 - 2 * math.log10(2 * tubing["Roughness"] / (tubing["IntDiameter"] ** 2) + 18.7 / (Re * (lambda0 ** 0.5)))) ** -2
+    lambda0 = calc_lambda(Re, tubing)
 
     #Локальный градиент давления
     dP_fric, dP_grav = count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, Lg, Lm, wm)
