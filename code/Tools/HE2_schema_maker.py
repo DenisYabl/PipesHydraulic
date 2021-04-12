@@ -2,7 +2,7 @@ import networkx as nx
 import pandas as pd
 from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
-from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import HE2_DummyOil
 
@@ -89,8 +89,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = HE2_WellPump(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater),
-                       IntDiameter=0.12, frequency=frequency))
+            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater),
+                       frequency=frequency))
     return G
 
 

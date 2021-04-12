@@ -4,7 +4,7 @@ from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
-from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from Fluids.oil_params import oil_params
 import json
 from Tools.HE2_Logger import check_for_nan, getLogger
@@ -265,60 +265,60 @@ def build_DNS2_graph_pads33_34(pressures: dict = {}, plasts: dict = {}, pumps=No
 
     # Куст 33
     G.add_edge('Pump_intake_1385', 'Pump_outlet_1385',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1385[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_1385[0], fluid=fluid,
                                 frequency=pump_1385[1]))
     G.add_edge('Pump_intake_736', 'Pump_outlet_736',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_736[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_736[0], fluid=fluid,
                                 frequency=pump_736[1]))
     G.add_edge('Pump_intake_739', 'Pump_outlet_739',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_739[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_739[0], fluid=fluid,
                                 frequency=pump_739[1]))
     G.add_edge('Pump_intake_1383', 'Pump_outlet_1383',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_1383[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_1383[0], fluid=fluid,
                                 frequency=pump_1383[1]))
     G.add_edge('Pump_intake_738', 'Pump_outlet_738',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_738[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_738[0], fluid=fluid,
                                 frequency=pump_738[1]))
     G.add_edge('Pump_intake_725', 'Pump_outlet_725',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_725[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_725[0], fluid=fluid,
                                 frequency=pump_725[1]))
 
     # Куст 34
     G.add_edge('Pump_intake_731', 'Pump_outlet_731',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_731[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_731[0], fluid=fluid,
                                 frequency=pump_731[1]))
     G.add_edge('Pump_intake_196', 'Pump_outlet_196',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_196[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_196[0], fluid=fluid,
                                 frequency=pump_196[1]))
     G.add_edge('Pump_intake_734', 'Pump_outlet_734',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_734[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_734[0], fluid=fluid,
                                 frequency=pump_734[1]))
     G.add_edge('Pump_intake_198', 'Pump_outlet_198',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_198[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_198[0], fluid=fluid,
                                 frequency=pump_198[1]))
     G.add_edge('Pump_intake_199', 'Pump_outlet_199',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_199[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_199[0], fluid=fluid,
                                 frequency=pump_199[1]))
     G.add_edge('Pump_intake_197', 'Pump_outlet_197',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_197[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_197[0], fluid=fluid,
                                 frequency=pump_197[1]))
     G.add_edge('Pump_intake_195', 'Pump_outlet_195',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_195[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_195[0], fluid=fluid,
                                 frequency=pump_195[1]))
     G.add_edge('Pump_intake_191', 'Pump_outlet_191',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_191[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_191[0], fluid=fluid,
                                 frequency=pump_191[1]))
     G.add_edge('Pump_intake_729', 'Pump_outlet_729',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_729[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_729[0], fluid=fluid,
                                 frequency=pump_729[1]))
     G.add_edge('Pump_intake_730', 'Pump_outlet_730',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_730[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_730[0], fluid=fluid,
                                 frequency=pump_730[1]))
     G.add_edge('Pump_intake_192', 'Pump_outlet_192',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_192[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_192[0], fluid=fluid,
                                 frequency=pump_192[1]))
     G.add_edge('Pump_intake_148', 'Pump_outlet_148',
-               obj=HE2_WellPump(full_HPX=pump_curves, model=pump_148[0], fluid=fluid,
+               obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump_148[0], fluid=fluid,
                                 frequency=pump_148[1]))
 
     # Инклинометрия скважин

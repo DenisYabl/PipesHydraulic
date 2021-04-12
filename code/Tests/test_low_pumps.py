@@ -1,6 +1,6 @@
 from Fluids.HE2_Fluid import HE2_OilWater
 import pandas as pd
-from Tests.Optimization_test import gimme_DNS2_inlets_outlets_Q
+from Tests.Optimization_test import gimme_DNS2_inlets_outlets_Q, print_wells_pressures
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
 import shame_on_me
@@ -24,7 +24,7 @@ pumps - описание насосов скважин, задается мод�
 oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
                         waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
-pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
+pump_curves = pd.read_csv(r"../../CommonData/PumpChart.csv")
 
 fluid = HE2_OilWater(oil_params)
 pressures = {"PAD_5": {"WELL_1523" : 270.5, "WELL_146" : 270.5, "WELL_142" : 270.5, "WELL_1562" : 268.5},
@@ -120,6 +120,33 @@ def test2():
 
     print(f'succ/total: {succ}/{total}')
 
+def test3():
+    outputpressure = 4.8
+    roughness = 1e-5
+    real_diam_coefficient = 0.85
+
+    pumps = {'PAD_33': {'WELL_1385': ['ЭЦН5-125-2500', 41.7], 'WELL_736': ['ЭЦН5-125-2500', 41.7], 'WELL_739': ['ЭЦН5-125-2500', 41.7], 'WELL_1383': ['ЭЦН5-125-2500', 41.7], 'WELL_738': ['ЭЦН5-125-2500', 41.7], 'WELL_725': ['ЭЦН5-125-2500', 41.7]}, 'PAD_34': {'WELL_731': ['ЭЦН5-125-2500', 41.7], 'WELL_196': ['ЭЦН5-125-2500', 41.7], 'WELL_734': ['ЭЦН5-125-2500', 41.7], 'WELL_198': ['ЭЦН5-125-2500', 41.7], 'WELL_199': ['ЭЦН5-125-2500', 41.7], 'WELL_197': ['ЭЦН5-125-2500', 41.7], 'WELL_195': ['ЭЦН5-125-2500', 41.7], 'WELL_191': ['ЭЦН5-125-2500', 41.7], 'WELL_729': ['ЭЦН5-125-2500', 41.7], 'WELL_730': ['ЭЦН5-125-2500', 41.7], 'WELL_192': ['ЭЦН5-125-2500', 41.7], 'WELL_148': ['ЭЦН5-125-2500', 41.7]}}
+
+    # pumps = json.loads(s)
+
+    graph_params = dict(
+        pressures=pressures,
+        plasts=plasts,
+        pumps=pumps,
+        pump_curves=pump_curves,
+        fluid=fluid,
+        roughness=roughness,
+        real_diam_coefficient=real_diam_coefficient,
+        DNS_pressure=outputpressure
+    )
+
+    G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(**graph_params)
+    solver = HE2_Solver(G)
+    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.solve(threshold=0.05)
+    print(solver.op_result)
+    print_wells_pressures(G, inlets)
 
 if __name__ == '__main__':
-    test2()
+    test3()
