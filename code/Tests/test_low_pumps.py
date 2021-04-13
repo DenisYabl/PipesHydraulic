@@ -1,4 +1,4 @@
-from Fluids.HE2_Fluid import HE2_OilWater
+from Fluids.HE2_Fluid import HE2_BlackOil
 import pandas as pd
 from Tests.Optimization_test import gimme_DNS2_inlets_outlets_Q, print_wells_pressures
 from Tools.HE2_ABC import oil_params
@@ -27,7 +27,7 @@ oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m
 
 pump_curves = pd.read_csv(r"../../CommonData/PumpChart.csv")
 
-fluid = HE2_OilWater(oil_params)
+fluid = HE2_BlackOil(oil_params)
 pressures = {"PAD_5": {"WELL_1523" : 270.5, "WELL_146" : 270.5, "WELL_142" : 270.5, "WELL_1562" : 268.5},
              "PAD_33":  {"WELL_1385" : 268.5, "WELL_736" : 268.5, "WELL_739" : 270.5, "WELL_1383" : 270.5, "WELL_738" : 268.5,"WELL_725" : 268.5},
              "PAD_34": {"WELL_731" : 270.5, "WELL_196" : 268.5, "WELL_734" : 270.5, "WELL_198" : 270.5, "WELL_199" : 270.5,"WELL_197" : 268.5,

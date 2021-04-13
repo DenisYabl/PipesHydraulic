@@ -1,5 +1,5 @@
 from Tools import HE2_ABC as abc
-from Fluids.HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
+from Fluids.HE2_Fluid import HE2_DummyWater, HE2_BlackOil, gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
 import numpy as np
 
@@ -175,9 +175,9 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
     Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
     '''
-    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
+    def __init__(self, fluid:HE2_BlackOil=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
         if fluid is None:
-            fluid = HE2_DummyOil(45)
+            fluid = gimme_dummy_BlackOil()
         self.fluid = fluid
 
         self.inner_diam_m = inner_diam_m
@@ -275,7 +275,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.intermediate_results = []
         self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
         if len(fluids) == 0:
-            fluids = [HE2_DummyOil(50) for i in dxs]
+            fluids = [gimme_dummy_BlackOil() for i in dxs]
         for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs, fluids):
             seg = HE2_OilPipeSegment(fluid=fluid, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
             seg.set_pipe_geometry(dx=dx, dy=dy)

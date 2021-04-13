@@ -11,7 +11,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from Fluids import HE2_MixFluids as mixer
-from Fluids.HE2_Fluid import HE2_OilWater
+from Fluids.HE2_Fluid import HE2_BlackOil
 from Solver import HE2_Fit
 from Tools import HE2_Visualize as vis, HE2_tools as tools
 from Tools.cachespline import create_lazy_spline_cache_f_wrapper
@@ -758,7 +758,7 @@ class TestLazyInterpolation(unittest.TestCase):
             "CurrentP": 90,  # Текущее давление, меняем по необходимости
             "CurrentT": 84.0,  # Текущая температура, меняем по необходисости
         }
-        fluid = HE2_OilWater(oil_params)
+        fluid = HE2_BlackOil(oil_params)
         pipe = HE2_OilPipe([1000], [-25], [0.05], [1e-5])
         p,t = pipe.perform_calc_forward(10, 20, -1)
         print(p-10)
