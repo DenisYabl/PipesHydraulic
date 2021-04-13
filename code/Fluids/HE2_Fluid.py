@@ -1,6 +1,5 @@
 from Hydraulics.Properties.Mishenko import Mishenko, from_oil_params
-from Tools.HE2_ABC import HE2_ABC_Fluid
-from Fluids.oil_params import oil_params, dummy_oil_params
+from Tools.HE2_ABC import HE2_ABC_Fluid, oil_params
 
 class HE2_DummyWater(HE2_ABC_Fluid):
     def __init__(self):
@@ -9,6 +8,12 @@ class HE2_DummyWater(HE2_ABC_Fluid):
 
     def calc(self, P_bar, T_C):
         pass
+
+
+def dummy_oil_params(Q_m3_day=0, volumeWater=50):
+    rez = oil_params(sat_P_bar = 66.7, plastT_C = 84, gasFactor = 39, oildensity_kg_m3 = 826,
+                     waterdensity_kg_m3 = 1015, gasdensity_kg_m3 = 1, oilviscosity_Pa_s = 35e-3, volumewater_percent = volumeWater, volumeoilcoeff = 1.015)
+    return rez
 
 
 class HE2_OilWater(HE2_ABC_Fluid):

@@ -1,9 +1,9 @@
-import Tools.HE2_ABC as abc
+import Tools.HE2_ABC
+from Tools.HE2_ABC import oil_params
 import GraphEdges.HE2_Pipe as he2_pipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from GraphEdges.HE2_WellPump import HE2_WellPump
 import Fluids.HE2_Fluid as he2_fluid
-import Fluids.oil_params as oil_params
 import GraphNodes.HE2_Vertices
 
 class_aliases = ['OilPipeSegment', 'WaterPipeSegment', 'OilPipe', 'WaterPipe']
@@ -22,7 +22,7 @@ def fluid_to_dict(fluid):
         return None
     rez = dict(class_alias=class_alias)
     if class_alias in ['DummyOil', 'OilWater']:
-        flds = oil_params.fieldlist
+        flds = Tools.HE2_ABC.fieldlist
         d = {k: fluid.oil_params.__dict__[k] for k in flds}
         rez.update(d)
 
@@ -36,7 +36,7 @@ def dict_to_fluid(obj_dict):
         obj_dict.pop('currentP_bar')
         obj_dict.pop('currentT_C')
         obj_dict.pop('CurrentLiquidDensity_kg_m3')
-        oil_params = he2_fluid.oil_params(**obj_dict)
+        oil_params = Tools.HE2_ABC.oil_params(**obj_dict)
         rez = he2_fluid.HE2_OilWater(oil_params)
         return rez
 

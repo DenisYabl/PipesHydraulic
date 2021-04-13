@@ -5,7 +5,7 @@ from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
 from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
-from Fluids.oil_params import oil_params
+from Tools.HE2_ABC import oil_params
 import json
 from Tools.HE2_Logger import check_for_nan, getLogger
 logger = getLogger(__name__)

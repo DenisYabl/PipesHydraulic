@@ -1,7 +1,7 @@
 from Fluids.HE2_Fluid import HE2_OilWater
 import pandas as pd
 from Tests.Optimization_test import gimme_DNS2_inlets_outlets_Q, print_wells_pressures
-from Fluids.oil_params import oil_params
+from Tools.HE2_ABC import oil_params
 from Solver.HE2_Solver import HE2_Solver
 import shame_on_me
 import json

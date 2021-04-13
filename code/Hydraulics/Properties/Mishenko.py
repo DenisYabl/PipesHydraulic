@@ -1,7 +1,7 @@
 import pandas as pd
 import math
 from Hydraulics.Formulas import get_dens_freegas
-from Fluids.oil_params import oil_params, dummy_oil_params
+from Tools.HE2_ABC import oil_params
 from Tools.HE2_Logger import check_for_nan, getLogger
 from collections import namedtuple
 
