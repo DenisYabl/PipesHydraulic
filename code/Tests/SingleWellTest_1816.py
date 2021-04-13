@@ -1,6 +1,7 @@
 import networkx as nx
 
 from Fluids.HE2_Fluid import HE2_OilWater
+from Fluids.oil_params import oil_params
 from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
@@ -8,18 +9,9 @@ from GraphEdges.HE2_WellPump import HE2_WellPump
 from Solver.HE2_Solver import HE2_Solver
 import pandas as pd
 
-oil_params = {
-    "OilSaturationP": 66.7, #Давление насыщения нефти при стандартных условиях, исходные данные
-    "PlastT": 84.0, #Пластовая температура, исходные данные
-    "GasFactor": 34.8, #Газовый фактор нефти, исходные данные
-    "SepOilWeight": 0.885, #Плотность нефти, исходные данные
-    "GasDensity": 1.003, #Плотность попутного газа, исходные данные
-    "SepOilDynamicViscosity": 43.03, #Динамическая вязкость нефти, исходные данные
-    "wellopVolumeWater": 92.8, #Обводненность нефти, исходные данные
-    "VolumeOilCoeff": 1.097, #Объемный коэффициент нефти, исходные данные
-    "PlastWaterWeight": 1.025, #Плотность попутной воды, исходные данные
-}
-fluid = HE2_OilWater(oil_params)
+calc_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
+                        waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
+fluid = HE2_OilWater(calc_params)
 
 
 inlets = dict(PLAST_1816=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
@@ -28,7 +20,7 @@ outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('Q', 3.5))
 #outlets = dict(wellhead = vrtxs.HE2_Boundary_Vertex('P', 11))
 
 
-pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
+pump_curves = pd.read_csv("/home/denis/PycharmProjects/Pipeline/PipesHydraulic/CommonData/PumpChart.csv")
 
 juncs = dict(Pump_intake=vrtxs.HE2_ABC_GraphVertex(),
             Pump_outlet=vrtxs.HE2_ABC_GraphVertex(),
@@ -55,7 +47,7 @@ G.add_edge('ZABOI_ZONE', 'Pump_intake',
 
 #Насос
 G.add_edge('Pump_intake', 'Pump_outlet',
-           obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, IntDiameter=0.12, frequency=pump_3270[1]))
+           obj=HE2_WellPump(full_HPX=pump_curves, model=pump_3270[0], fluid=fluid, frequency=pump_3270[1]))
 
 
 
