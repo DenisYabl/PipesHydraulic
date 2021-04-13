@@ -96,7 +96,7 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         dP_grav = (dens_true * mishenko.g) / (1 - Ek)
     elif form == 'annular':
         #Расчет для кольцевого течения
-        y = mishenko.OilVolumeCoeff / phi1
+        y = mishenko.oil_params.volumeoilcoeff / phi1
         from scipy.interpolate import interp1d
         import numpy as np
 
@@ -128,7 +128,7 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         Perim = math.pi * tubing["IntDiameter"]
         Perimg = (1 - 0.5 * delta / math.pi) * Perim
         Perimo = Perim - Perimg
-        wo = mishenko.OilVolumeCoeff * wm / phi1
+        wo = mishenko.oil_params.volumeoilcoeff * wm / phi1
         wg = mishenko.VolumeGas_fraction * wm / phi2
         Re1 = mishenko.SaturatedOilDensity_kg_m3 * wo * Dhg / mishenko.CurrentOilViscosity_Pa_s
         Re2 = mishenko.CurrentFreeGasDensity_kg_m3 * wg * Dhl / mishenko.CurrentFreeGasViscosity_Pa_s
@@ -140,7 +140,7 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         # Касательные напряжения на стенке трубы
         tauo = lambdao * mishenko.SaturatedOilDensity_kg_m3 * wo ** 2 * 0.5 / mishenko.g
         taug = lambdag * mishenko.FreeGasDensity_kg_m3 * wg ** 2 * 0.5 / mishenko.g
-        dP_fric = -(tauo * Perimo + taug * Perimg) / mishenko.GasFactor
+        dP_fric = -(tauo * Perimo + taug * Perimg) / mishenko.oil_params.gasFactor
         dP_grav = dens_true * mishenko.g
     return dP_fric, dP_grav
 

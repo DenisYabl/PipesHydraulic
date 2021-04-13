@@ -11,10 +11,9 @@ from collections import namedtuple
 # Во втором либо линейной интерполяцией, либо инверсией фаз
 
 field_list = [
-'GasFactor',
+'oil_params',
 'VolumeWater_fraction',
 "Q_liq_m3_s",
-"OilVolumeCoeff",
 "g",
 'SaturationPressure_MPa',
 'CurrentP_MPa',
@@ -229,10 +228,10 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
 
     CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
 
-    return Mishenko(CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, GasFactor=GasFactor, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q,
-                    OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
+    return Mishenko(oil_params=calc_params, CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q,
+                    g=g, SaturationPressure_MPa=Saturation_pressure,
                     DissolvedGasAmount=1, FreeGasDensity_kg_m3=0,
-                    SaturatedOilDensity_kg_m3=SepOilDensity,
+                    SaturatedOilDensity_kg_m3=SaturatedOilDensity,
                     CurrentWaterDensity_kg_m3=PlastWaterDensity, CurrentOilViscosity_Pa_s=CurrentOilViscosity,
                     CurrentWaterViscosity_Pa_s=CurrentWaterViscosity,
                     RelativePressure=-100500, RelativeTemperature=-100500,
@@ -409,8 +408,8 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     VolumeGas = Q_gas / Q_owg if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
 # TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
-    return Mishenko(CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, GasFactor=GasFactor, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q_liquid,
-                    OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
+    return Mishenko(oil_params=calc_params, CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q_liquid,
+                    g=g, SaturationPressure_MPa=Saturation_pressure,
                     DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity_kg_m3=FreeGasDensity,
                     SaturatedOilDensity_kg_m3=SaturatedOilDensity,
                     CurrentWaterDensity_kg_m3=CurrentWaterDensity, CurrentOilViscosity_Pa_s=CurrentOilViscosity,

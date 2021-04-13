@@ -32,12 +32,12 @@ def calculate (mishenko : Mishenko, tubing):
 
     # Коэффициент по скорости жидкости
     TensionLiquidGas = mishenko.TensionWaterGas * mishenko.VolumeWater_fraction + mishenko.TensionOilGas * (1 + mishenko.VolumeWater_fraction)
-    Lw = mishenko.OilVolumeCoeff * wm * (mishenko.SaturatedOilDensity_kg_m3/ (g * TensionLiquidGas)) ** 0.25
+    Lw = mishenko.oil_params.volumeoilcoeff * wm * (mishenko.SaturatedOilDensity_kg_m3/ (g * TensionLiquidGas)) ** 0.25
     # Коэффициент по скорости свободного газа
     Lg = mishenko.VolumeGas_fraction * wm * (mishenko.SaturatedOilDensity_kg_m3 / (g * TensionLiquidGas)) ** 0.25
     # Коэффициент по вязкости жидкости
     Lm = mishenko.CurrentOilViscosity_Pa_s * wm * (mishenko.SaturatedOilDensity_kg_m3 / (g * TensionLiquidGas ** 3)) ** 0.25
-    mu = mishenko.OilVolumeCoeff * mishenko.CurrentOilViscosity_Pa_s + mishenko.VolumeGas_fraction * mishenko.CurrentFreeGasViscosity_Pa_s
+    mu = mishenko.oil_params.volumeoilcoeff * mishenko.CurrentOilViscosity_Pa_s + mishenko.VolumeGas_fraction * mishenko.CurrentFreeGasViscosity_Pa_s
     dens = mishenko.CurrentLiquidDensity_kg_m3 * (1 - mishenko.VolumeGas_fraction) + mishenko.VolumeGas_fraction * mishenko.CurrentFreeGasDensity_kg_m3
     # Число Рейнольдса
     Re = dens * wm * tubing["IntDiameter"] / mu
