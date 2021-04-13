@@ -1,4 +1,4 @@
-from Hydraulics.Properties.Mishenko import Mishenko
+from Hydraulics.Properties.Mishenko import Mishenko, from_oil_params
 from Tools.HE2_ABC import HE2_ABC_Fluid
 from Fluids.oil_params import oil_params, dummy_oil_params
 
@@ -24,7 +24,7 @@ class HE2_OilWater(HE2_ABC_Fluid):
         calc_params = self.oil_params
 
         tubing = {"IntDiameter": IntDiameter} if IntDiameter else None
-        temp_mishenko = Mishenko.from_oil_params(P_for_PVT, T_C, None, calc_params=calc_params, tubing=tubing)
+        temp_mishenko = from_oil_params(P_for_PVT, T_C, None, calc_params=calc_params, tubing=tubing)
         #Side effects
         self.CurrentLiquidDensity_kg_m3 = temp_mishenko.CurrentLiquidDensity_kg_m3
         self.CurrentOilViscosity_Pa_s = temp_mishenko.CurrentOilViscosity_Pa_s
@@ -43,7 +43,7 @@ class HE2_DummyOil(HE2_ABC_Fluid):
         calc_params = self.oil_params
 
         tubing = {"IntDiameter": IntDiameter} if IntDiameter else None
-        temp_mishenko = Mishenko.from_oil_params(P_for_PVT, T_C, X_kgsec, calc_params=calc_params, tubing=tubing)
+        temp_mishenko = from_oil_params(P_for_PVT, T_C, X_kgsec, calc_params=calc_params, tubing=tubing)
         #Side effects
         self.CurrentLiquidDensity_kg_m3 = temp_mishenko.CurrentLiquidDensity_kg_m3
         self.CurrentOilViscosity_Pa_s = temp_mishenko.CurrentOilViscosity_Pa_s
