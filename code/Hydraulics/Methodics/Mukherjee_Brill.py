@@ -1,5 +1,6 @@
 from Hydraulics.Formulas import *
 import warnings
+from Hydraulics.Properties.Mishenko import Mishenko
 warnings.filterwarnings("ignore")
 
 def calc_lambda(Re, tubing):
@@ -13,7 +14,7 @@ def calc_lambda(Re, tubing):
     return lambda0
 
 
-def calculate (mishenko, tubing):
+def calculate (mishenko : Mishenko, tubing):
     """
     :param oil_params: Данные о свойствах нефти и режиме работы скважины
     :param mishenko: Уточненные характеристики нефтегазовой смеси, рассчитанные по методике Мищенко
@@ -22,7 +23,7 @@ def calculate (mishenko, tubing):
     """
     angle = tubing["angle"]
 
-    wm = mishenko.Qc_m3_s * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+    wm = mishenko.Q_liq_and_gas_m3_s * 4 / (math.pi * tubing["IntDiameter"] ** 2)
     g = 9.81
     if (mishenko.VolumeWater_fraction == 1):
         Re = wm * tubing["IntDiameter"] * mishenko.CurrentLiquidDensity_kg_m3 / mishenko.CurrentWaterViscosity_Pa_s

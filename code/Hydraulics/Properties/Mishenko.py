@@ -17,30 +17,30 @@ class Mishenko:
     def __init__(self, **kwargs):
         check_for_nan(**kwargs)
         self.GasFactor = kwargs.pop('GasFactor')
-        self.VolumeWater_fraction = kwargs.pop('VolumeWater')
-        self.Q_m3_s = kwargs.pop("Q")
+        self.VolumeWater_fraction = kwargs.pop('VolumeWater_fraction')
+        self.Q_liq_m3_s = kwargs.pop("Q_liq_m3_s")
         self.OilVolumeCoeff = kwargs.pop("OilVolumeCoeff")
         self.g = kwargs.pop("g")
         self.SaturationPressure_MPa = kwargs.pop('SaturationPressure_MPa')
-        self.CurrentP_MPa = kwargs.pop('CurrentP')
-        self.CurrentT_K = kwargs.pop('CurrentT')
+        self.CurrentP_MPa = kwargs.pop('CurrentP_MPa')
+        self.CurrentT_K = kwargs.pop('CurrentT_K')
         self.DissolvedGasAmount = kwargs.pop("DissolvedGasAmount")
-        self.FreeGasDensity_kg_m3 = kwargs.pop('FreeGasDensity')
-        self.SaturatedOilDensity_kg_m3 = kwargs.pop('SaturatedOilDensity')
-        self.CurrentWaterDensity_kg_m3 = kwargs.pop('CurrentWaterDensity')
-        self.CurrentOilViscosity_Pa_s = kwargs.pop('CurrentOilViscosity')
-        self.CurrentWaterViscosity_Pa_s = kwargs.pop('CurrentWaterViscosity')
+        self.FreeGasDensity_kg_m3 = kwargs.pop('FreeGasDensity_kg_m3')
+        self.SaturatedOilDensity_kg_m3 = kwargs.pop('SaturatedOilDensity_kg_m3')
+        self.CurrentWaterDensity_kg_m3 = kwargs.pop('CurrentWaterDensity_kg_m3')
+        self.CurrentOilViscosity_Pa_s = kwargs.pop('CurrentOilViscosity_Pa_s')
+        self.CurrentWaterViscosity_Pa_s = kwargs.pop('CurrentWaterViscosity_Pa_s')
         self.RelativePressure = kwargs.pop('RelativePressure')
         self.RelativeTemperature = kwargs.pop('RelativeTemperature')
-        self.CurrentFreeGasDensity_kg_m3 = kwargs.pop('CurrentFreeGasDensity')
-        self.CurrentFreeGasViscosity_Pa_s = kwargs.pop('CurrentFreeGasViscosity')
-        self.CurrentLiquidDensity_kg_m3 = kwargs.pop('CurrentLiquidDensity')
+        self.CurrentFreeGasDensity_kg_m3 = kwargs.pop('CurrentFreeGasDensity_kg_m3')
+        self.CurrentFreeGasViscosity_Pa_s = kwargs.pop('CurrentFreeGasViscosity_Pa_s')
+        self.CurrentLiquidDensity_kg_m3 = kwargs.pop('CurrentLiquidDensity_kg_m3')
         self.TensionOilGas = kwargs.pop('TensionOilGas')
         self.TensionWaterGas = kwargs.pop('TensionWaterGas')
         self.TensionOilWater = kwargs.pop('TensionOilWater')
-        self.Q2_m3_s = kwargs.pop('Q2')
-        self.Qc_m3_s = kwargs.pop('Qc')
-        self.VolumeGas_fraction = kwargs.pop('VolumeGas')
+        self.Q_gas_m3_s = kwargs.pop('Q_gas_m3_s')
+        self.Q_liq_and_gas_m3_s = kwargs.pop('Q_liq_and_gas_m3_s')
+        self.VolumeGas_fraction = kwargs.pop('VolumeGas_fraction')
 
     def print(self):
         print(f"""Газовый фактор self.GasFactor= {self.GasFactor}
@@ -203,18 +203,18 @@ class Mishenko:
 
         CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
 
-        return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q,
+        return Mishenko(CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, GasFactor=GasFactor, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
-                        DissolvedGasAmount=1, FreeGasDensity=0,
-                        SaturatedOilDensity=SepOilDensity,
-                        CurrentWaterDensity=PlastWaterDensity, CurrentOilViscosity=CurrentOilViscosity,
-                        CurrentWaterViscosity=CurrentWaterViscosity,
+                        DissolvedGasAmount=1, FreeGasDensity_kg_m3=0,
+                        SaturatedOilDensity_kg_m3=SepOilDensity,
+                        CurrentWaterDensity_kg_m3=PlastWaterDensity, CurrentOilViscosity_Pa_s=CurrentOilViscosity,
+                        CurrentWaterViscosity_Pa_s=CurrentWaterViscosity,
                         RelativePressure=-100500, RelativeTemperature=-100500,
-                        CurrentFreeGasDensity=0,
-                        CurrentFreeGasViscosity=0, CurrentLiquidDensity=CurrentLiquidDensity,
+                        CurrentFreeGasDensity_kg_m3=0,
+                        CurrentFreeGasViscosity_Pa_s=0, CurrentLiquidDensity_kg_m3=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
-                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=0, Qc=Q,
-                        VolumeGas=0)
+                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q_gas_m3_s=0, Q_liq_and_gas_m3_s=Q,
+                        VolumeGas_fraction=0)
 
     @staticmethod
     def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
@@ -384,15 +384,15 @@ class Mishenko:
         VolumeGas = Q_gas / Q_owg if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
 # TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
-        return Mishenko(CurrentP=CurrentP, CurrentT=CurrentT, GasFactor=GasFactor, VolumeWater=VolumeWater, Q=Q_liquid,
+        return Mishenko(CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, GasFactor=GasFactor, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q_liquid,
                         OilVolumeCoeff=OilVolumeCoeff, g=g, SaturationPressure_MPa=Saturation_pressure,
-                        DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity=FreeGasDensity,
-                        SaturatedOilDensity=SaturatedOilDensity,
-                        CurrentWaterDensity=CurrentWaterDensity, CurrentOilViscosity=CurrentOilViscosity,
-                        CurrentWaterViscosity=CurrentWaterViscosity,
+                        DissolvedGasAmount=DissolvedGasAmount, FreeGasDensity_kg_m3=FreeGasDensity,
+                        SaturatedOilDensity_kg_m3=SaturatedOilDensity,
+                        CurrentWaterDensity_kg_m3=CurrentWaterDensity, CurrentOilViscosity_Pa_s=CurrentOilViscosity,
+                        CurrentWaterViscosity_Pa_s=CurrentWaterViscosity,
                         RelativePressure=RelativePressure, RelativeTemperature=RelativeTemperature,
-                        CurrentFreeGasDensity=CurrentFreeGasDensity,
-                        CurrentFreeGasViscosity=CurrentFreeGasViscosity, CurrentLiquidDensity=CurrentLiquidDensity,
+                        CurrentFreeGasDensity_kg_m3=CurrentFreeGasDensity,
+                        CurrentFreeGasViscosity_Pa_s=CurrentFreeGasViscosity, CurrentLiquidDensity_kg_m3=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
-                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=Q_gas, Qc=Q_owg,
-                        VolumeGas=VolumeGas)
+                        TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q_gas_m3_s=Q_gas, Q_liq_and_gas_m3_s=Q_owg,
+                        VolumeGas_fraction=VolumeGas)
