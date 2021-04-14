@@ -39,57 +39,23 @@ field_list = [
 
 Mishenko = namedtuple('Mishenko', field_list)
 
-
-# class Mishenko:
-#     """
-#     Уточненный расчет физических свойств нефтегазовой смеси в текущих условиях давления и температуры
-#     """
-# 
-#     def __init__(self, **kwargs):
-#         check_for_nan(**kwargs)
-#         self.GasFactor = kwargs.pop('GasFactor')
-#         self.VolumeWater_fraction = kwargs.pop('VolumeWater_fraction')
-#         self.Q_liq_m3_s = kwargs.pop("Q_liq_m3_s")
-#         self.OilVolumeCoeff = kwargs.pop("OilVolumeCoeff")
-#         self.g = kwargs.pop("g")
-#         self.SaturationPressure_MPa = kwargs.pop('SaturationPressure_MPa')
-#         self.CurrentP_MPa = kwargs.pop('CurrentP_MPa')
-#         self.CurrentT_K = kwargs.pop('CurrentT_K')
-#         self.DissolvedGasAmount = kwargs.pop("DissolvedGasAmount")
-#         self.FreeGasDensity_kg_m3 = kwargs.pop('FreeGasDensity_kg_m3')
-#         self.SaturatedOilDensity_kg_m3 = kwargs.pop('SaturatedOilDensity_kg_m3')
-#         self.CurrentWaterDensity_kg_m3 = kwargs.pop('CurrentWaterDensity_kg_m3')
-#         self.CurrentOilViscosity_Pa_s = kwargs.pop('CurrentOilViscosity_Pa_s')
-#         self.CurrentWaterViscosity_Pa_s = kwargs.pop('CurrentWaterViscosity_Pa_s')
-#         self.RelativePressure = kwargs.pop('RelativePressure')
-#         self.RelativeTemperature = kwargs.pop('RelativeTemperature')
-#         self.CurrentFreeGasDensity_kg_m3 = kwargs.pop('CurrentFreeGasDensity_kg_m3')
-#         self.CurrentFreeGasViscosity_Pa_s = kwargs.pop('CurrentFreeGasViscosity_Pa_s')
-#         self.CurrentLiquidDensity_kg_m3 = kwargs.pop('CurrentLiquidDensity_kg_m3')
-#         self.TensionOilGas = kwargs.pop('TensionOilGas')
-#         self.TensionWaterGas = kwargs.pop('TensionWaterGas')
-#         self.TensionOilWater = kwargs.pop('TensionOilWater')
-#         self.Q_gas_m3_s = kwargs.pop('Q_gas_m3_s')
-#         self.Q_liq_and_gas_m3_s = kwargs.pop('Q_liq_and_gas_m3_s')
-#         self.VolumeGas_fraction = kwargs.pop('VolumeGas_fraction')
-
-def print(mishenko : Mishenko):
-    print(f"""Газовый фактор GasFactor= {mishenko.GasFactor}
-Обводненность VolumeWater =  {mishenko.VolumeWater}
-Дебит mishenko.Q =  {mishenko.Q}
-Объемный фактор нефти OilVolumeCoeff {mishenko.OilVolumeCoeff}
-Текущее давление насыщения SaturationPressure_MPa = {mishenko.SaturationPressure_MPa}
-Текущее давление CurrentP = {mishenko.CurrentP}
-Текущая температуры CurrentT = {mishenko.CurrentT}
-Удельный объем растворенного газа DissolvedGasAmount = {mishenko.DissolvedGasAmount}
-Плотность газонасыщенной нефти SaturatedOilDensity = {mishenko.SaturatedOilDensity}
-Плотность воды в текущих условиях CurrentWaterDensity = {mishenko.CurrentWaterDensity}
-Вязкость нефти в текущих условиях CurrentOilViscosity = {mishenko.CurrentOilViscosity}
-Вязкость воды в текущих условиях CurrentWaterViscosity = {mishenko.CurrentWaterViscosity}
-Плотность свободного газа в текущих условиях CurrentFreeGasDensity = {mishenko.CurrentFreeGasDensity}
-Вязкость газа в текущих условиях CurrentFreeGasViscosity = {mishenko.CurrentFreeGasViscosity}
-Плотность жидкой фазы в текущих условиях CurrentLiquidDensity = {mishenko.CurrentLiquidDensity}
-Объемная доля газа в смеси VolumeGas = {mishenko.VolumeGas}""")
+# def print(mishenko : Mishenko):
+#     print(f"""Газовый фактор GasFactor= {mishenko.oil_params.gasFactor}
+# Обводненность VolumeWater =  {mishenko.oil_params.VolumeWater}
+# Дебит mishenko.Q =  {mishenko.Q}
+# Объемный фактор нефти OilVolumeCoeff {mishenko.OilVolumeCoeff}
+# Текущее давление насыщения SaturationPressure_MPa = {mishenko.SaturationPressure_MPa}
+# Текущее давление CurrentP = {mishenko.CurrentP}
+# Текущая температуры CurrentT = {mishenko.CurrentT}
+# Удельный объем растворенного газа DissolvedGasAmount = {mishenko.DissolvedGasAmount}
+# Плотность газонасыщенной нефти SaturatedOilDensity = {mishenko.SaturatedOilDensity}
+# Плотность воды в текущих условиях CurrentWaterDensity = {mishenko.CurrentWaterDensity}
+# Вязкость нефти в текущих условиях CurrentOilViscosity = {mishenko.CurrentOilViscosity}
+# Вязкость воды в текущих условиях CurrentWaterViscosity = {mishenko.CurrentWaterViscosity}
+# Плотность свободного газа в текущих условиях CurrentFreeGasDensity = {mishenko.CurrentFreeGasDensity}
+# Вязкость газа в текущих условиях CurrentFreeGasViscosity = {mishenko.CurrentFreeGasViscosity}
+# Плотность жидкой фазы в текущих условиях CurrentLiquidDensity = {mishenko.CurrentLiquidDensity}
+# Объемная доля газа в смеси VolumeGas = {mishenko.VolumeGas}""")
 
 
 
@@ -139,8 +105,6 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
     g = 9.81
 
     Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
-
-    # Текущийй расход/дебит
 
     #Объемное расходное водосодержание
     VolumeWater = VolumeWater / (VolumeWater + OilVolumeCoeff * (1 - VolumeWater))
