@@ -268,17 +268,17 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         check_for_nan(P_rez_bar = P_rez_bar, T_rez_C = T_rez_C)
         return P_rez_bar, T_rez_C
 
-#TODO Флюид в конструкторе должен быть один
-#TODO На расчете флюид из трубы надо копировать в сегменты, потому что он мог быть изменен извне
 class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, dxs, dys, diams, rghs, fluids=[]):
+    def __init__(self, dxs, dys, diams, rghs, fluid=None):
         self.segments = []
         self.intermediate_results = []
         self._printstr = ';\n '.join([' '.join([f'{itm:.2f}' for itm in vec]) for vec in [dxs, dys, diams, rghs]])
-        if len(fluids) == 0:
-            fluids = [gimme_dummy_BlackOil() for i in dxs]
-        for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs, fluids):
-            seg = HE2_OilPipeSegment(fluid=fluid, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
+        if fluid is None:
+            fluid = gimme_dummy_BlackOil()
+        self.fluid = fluid
+        for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs):
+            seg = HE2_OilPipeSegment(inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
+            seg.fluid.oil_params = self.fluid.oil_params
             seg.set_pipe_geometry(dx=dx, dy=dy)
             a = seg
             self.segments += [seg]
@@ -299,6 +299,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         p, t = P_bar, T_C
         self.intermediate_results = []
         for seg in self.segments:
+            seg.fluid.oil_params = self.fluid.oil_params
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, 1)
             self.intermediate_results += [(p, t)]
         return p, t
@@ -307,6 +308,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         p, t = P_bar, T_C
         self.intermediate_results = []
         for seg in self.segments[::-1]:
+            seg.fluid.oil_params = self.fluid.oil_params
             p, t = seg.calc_segment_pressure_drop(p, t, X_kgsec, -1)
             self.intermediate_results += [(p, t)]
         return p, t
