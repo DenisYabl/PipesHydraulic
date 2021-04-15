@@ -8,6 +8,9 @@ from Tools import HE2_ABC as abc
 from Tools.HE2_ABC import Root
 import pandas as pd
 from Tools.HE2_Logger import check_for_nan, getLogger
+import Fluids.HE2_MixFluids as mixer
+import Fluids.HE2_Fluid as fl
+
 
 logger = getLogger(__name__)
 
@@ -42,6 +45,8 @@ class HE2_Solver():
         self.derivatives = None
         self.forward_edge_functions = dict()
         self.backward_edge_functions = dict()
+
+        self.fluids_move_rate = 0.5
 
 
     def prepare_initial_approximation(self, G, Q_dict):
@@ -536,3 +541,45 @@ class HE2_Solver():
         logger.info(f'randseed is {rand_seed}')
         np.random.seed(rand_seed)
         return np.random.uniform(0.1, 0.5)
+
+
+    def evaluate_and_set_fluids_on_tree(self):
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(self.graph, self.edges_x)
+        src_fluids =[]
+        for n in srcs:
+            src_fluids += [self.schema.nodes[n]['obj'].fluid]
+        for key, value in cocktails.items():
+            if key in self.graph.nodes:
+                continue
+            u, v = key
+            cktl = value
+            fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            self.graph[u][v]['obj'].fluid = fluid
+
+    def evaluate_and_set_avg_fluid_on_all_edges(self):
+        G = self.graph
+        fluids = []
+        qs = []
+        for n in G.nodes:
+            obj = G.nodes[n]['obj']
+            if isinstance(obj, vrtxs.HE2_Source_Vertex):
+                fluids += [obj.fluid]
+                qs += [obj.Q]
+        avg_fluid = fl.dot_product(list(zip(qs, fluids)))
+        for u, v in G.edges:
+            obj = G[u][v]['obj']
+            obj.fluid = fl.HE2_BlackOil(avg_fluid.oil_params)
+        self.avg_fluid = avg_fluid
+
+    def evaluate_and_set_new_fluids(self):
+        G = self.graph
+        mr = self.fluids_move_rate
+        w = np.array([1-mr, mr])
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        for (u, v), cktl in cocktails.items():
+            obj = G.nodes[u][v]['obj']
+            fluidA = fl.dot_product(cktl, src_fluids)
+            fluidB = obj.fluid
+            fluidC = fl.dot_product(w, [fluidA, fluidB])
+            obj.fluid = fluidC

@@ -46,7 +46,7 @@ def check_all_are_ther_same(arr, msg):
         raise NotImplementedError
     return max_arr
 
-def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]):
+def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOil:
     '''
     :return: new fluid instance, dot product Xs and fluids
     '''

@@ -74,3 +74,9 @@ def evalute_network_fluids_wo_root(_G, x_dict):
         np.testing.assert_almost_equal(sum(cocktails[k]), 1)
     return cocktails, srcs
 
+def evalute_network_fluids_with_root(G, x_dict):
+    # Возможно здесь нужно еще подтаскивать флюиды из схемы, так как они могли отвалится при перестроении графа
+    edges = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
+    G2 = nx.DiGraph(edges)
+    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict)
+    return cocktails, srcs

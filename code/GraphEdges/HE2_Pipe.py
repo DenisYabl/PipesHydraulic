@@ -268,7 +268,8 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         check_for_nan(P_rez_bar = P_rez_bar, T_rez_C = T_rez_C)
         return P_rez_bar, T_rez_C
 
-
+#TODO Флюид в конструкторе должен быть один
+#TODO На расчете флюид из трубы надо копировать в сегменты, потому что он мог быть изменен извне
 class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, dxs, dys, diams, rghs, fluids=[]):
         self.segments = []
