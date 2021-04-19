@@ -1,7 +1,7 @@
 import math
 
 from Tools import HE2_ABC as abc
-from Fluids.HE2_Fluid import HE2_DummyOil
+from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
 import numpy as np
 import pandas as pd
@@ -29,7 +29,7 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
     def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50):
         if fluid is None:
-            fluid = HE2_DummyOil()
+            fluid = gimme_dummy_BlackOil()
         self.fluid = fluid
         self.model = model
         self.frequency = frequency

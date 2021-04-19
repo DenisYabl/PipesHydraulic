@@ -1,11 +1,11 @@
 from Tools import HE2_ABC as abc
-from Fluids.HE2_Fluid import HE2_DummyOil
+from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 import numpy as np
 from Tools.HE2_Logger import check_for_nan, getLogger
 logger = getLogger(__name__)
 
 class HE2_Plast(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, productivity = 0, fluid = HE2_DummyOil(50)):
+    def __init__(self, productivity = 0, fluid=None):
         if productivity <= 0:
             raise ValueError(f'Productivity = {productivity}')
         self.Productivity = productivity

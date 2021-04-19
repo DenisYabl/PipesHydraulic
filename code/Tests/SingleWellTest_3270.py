@@ -1,6 +1,6 @@
 import networkx as nx
 
-from Fluids.HE2_Fluid import HE2_OilWater
+from Fluids.HE2_Fluid import HE2_BlackOil
 from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
@@ -19,7 +19,7 @@ oil_params = {
     "VolumeOilCoeff": 1.097, #Объемный коэффициент нефти, исходные данные
     "PlastWaterWeight": 1.015, #Плотность попутной воды, исходные данные
 }
-fluid = HE2_OilWater(oil_params)
+fluid = HE2_BlackOil(oil_params)
 
 inlets = dict(PLAST_88=vrtxs.HE2_Source_Vertex('P', 270.5, fluid, 20))
 

@@ -1,8 +1,8 @@
-from Fluids.HE2_Fluid import HE2_OilWater
+from Fluids.HE2_Fluid import HE2_BlackOil
 from Tests.Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
 from Tests.Optimization_test import model_DNS_2_by_parts, print_wells_pressures
 import pandas as pd
-from Fluids.oil_params import oil_params
+from Tools.HE2_ABC import oil_params
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_tools import check_solution
 from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
@@ -19,12 +19,12 @@ plasts - описание свойств пласта используемых �
 
 pumps - описание насосов скважин, задается моделью насоса и частотой работы
 """
-oil_params = oil_params(Q_m3_day=500, sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
+oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
                         waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
 
-fluid = HE2_OilWater(oil_params)
+fluid = HE2_BlackOil(oil_params)
 pressures = {"PAD_5": {"WELL_1523" : 270.5, "WELL_146" : 270.5, "WELL_142" : 270.5, "WELL_1562" : 268.5},
              "PAD_33":  {"WELL_1385" : 268.5, "WELL_736" : 268.5, "WELL_739" : 270.5, "WELL_1383" : 270.5, "WELL_738" : 268.5,"WELL_725" : 268.5},
              "PAD_34": {"WELL_731" : 270.5, "WELL_196" : 268.5, "WELL_734" : 270.5, "WELL_198" : 270.5, "WELL_199" : 270.5,"WELL_197" : 268.5,
@@ -264,6 +264,6 @@ def test_2pads_with_change_graph():
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
-    test_with_change_graph_on_the_fly()
-    # full_test()
+    # test_with_change_graph_on_the_fly()
+    full_test()
     #part_test()
