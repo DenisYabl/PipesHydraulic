@@ -276,7 +276,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         if fluid is None:
             fluid = gimme_dummy_BlackOil()
         self.fluid = fluid
-        for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs):
+        for dx, dy, diam, rgh in zip(dxs, dys, diams, rghs):
             seg = HE2_OilPipeSegment(inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
             seg.fluid.oil_params = self.fluid.oil_params
             seg.set_pipe_geometry(dx=dx, dy=dy)

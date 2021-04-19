@@ -50,6 +50,10 @@ def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOi
     '''
     :return: new fluid instance, dot product Xs and fluids
     '''
+    if (Xs_and_fluids is None) or (len(Xs_and_fluids) == 0):
+        logger.error('Empty fluids list')
+        raise ValueError
+
     xs_vec = np.array([x for x, fl in Xs_and_fluids])
     ops = [fl.oil_params for x, fl in Xs_and_fluids]
 
