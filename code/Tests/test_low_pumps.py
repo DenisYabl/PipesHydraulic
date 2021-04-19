@@ -121,7 +121,7 @@ def test1():
     G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(**graph_params)
     solver = HE2_Solver(G)
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
-    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.set_known_Q(inlets_Q)
     solver.solve()
 
     for n in inlets:
@@ -162,7 +162,7 @@ def test2():
         G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(**graph_params)
         solver = HE2_Solver(G)
         inlets_Q = gimme_DNS2_inlets_outlets_Q()
-        solver.prepare_initial_approximation(G, inlets_Q)
+        solver.set_known_Q(inlets_Q)
         solver.solve(threshold=0.05)
         if not solver.op_result.success:
             print(i, solver.op_result.fun)
@@ -194,7 +194,7 @@ def test3():
     G, inlets, juncs, outlets = shame_on_me.build_DNS2_graph_pads33_34(**graph_params)
     solver = HE2_Solver(G)
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
-    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.set_known_Q(inlets_Q)
     solver.solve(threshold=0.05)
     print(solver.op_result)
     print_wells_pressures(G, inlets)

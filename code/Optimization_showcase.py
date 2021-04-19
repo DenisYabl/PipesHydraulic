@@ -162,7 +162,7 @@ def test_with_change_graph_on_the_fly():
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
-    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.set_known_Q(inlets_Q)
     solver.solve()
 
     validity = check_solution(G)
@@ -230,7 +230,7 @@ def test_2pads_with_change_graph():
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
-    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.set_known_Q(inlets_Q)
     solver.solve()
 
     print_wells_pressures(G, inlets)

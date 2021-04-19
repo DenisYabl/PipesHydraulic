@@ -1024,7 +1024,7 @@ def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pump
     inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
-    solver.prepare_initial_approximation(G, inlets_Q)
+    solver.set_known_Q(inlets_Q)
     solver.solve(threshold=0.25)
     return G, inlets, juncs, outlets
 
