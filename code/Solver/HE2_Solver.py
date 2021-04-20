@@ -142,16 +142,27 @@ class HE2_Solver():
         edgelist = [(u, v) for (u, v) in G.edges()]
         A_full = nx.incidence_matrix(G, nodelist=nodelist, edgelist=edgelist, oriented=True)
         A_full = -1 * A_full.toarray()
-        q_vec = np.zeros((len(nodelist)-1, 1))
+        q_vec = np.zeros((len(nodelist), 1))
         for i, node in enumerate(nodelist):
             if node in Q_dict:
                 q_vec[i] = Q_dict[node]
 
         logger.debug(f'q_vec = {q_vec.flatten()}')
-        A_truncated = A_full[:-1]
-        A_inv = np.linalg.inv(A_truncated)
-        x_tree = np.matmul(A_inv, q_vec)
-        self.initial_edges_x = dict(zip(edgelist, x_tree.flatten()))
+        A_inv = np.linalg.pinv(A_full)
+        xs = np.matmul(A_inv, q_vec)
+        self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
+
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        for key, cktl in cocktails.items():
+            initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            if key in edgelist:
+                u, v = key
+                obj = G[u][v]['obj']
+            else:
+                obj = G.nodes[key]['obj']
+            obj.fluid = initial_fluid
+
         logger.debug(f'initial_edges_x = {self.initial_edges_x}')
 
     def get_initial_approximation(self):

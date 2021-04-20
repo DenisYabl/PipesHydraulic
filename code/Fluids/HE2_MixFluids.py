@@ -45,7 +45,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
         for u, v in G.out_edges(node): # all the outlet flows are the same
             j = var_idx[(u, v)]
             mx1[i, j] = -x_dict[(u, v)]
-            these_vars_are_the_same += [j] # so we have to remmeber this unknown too
+            these_vars_are_the_same += [j] # so we have to remember this unknown too
 
         if Q[i] > 0:
             mx1[i] /= -Q[i] # cause we need only ones and zeros on the right side
@@ -63,7 +63,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     srcs = []
     S = 0
     for i, n in enumerate(nodes):
-        if Q[i] > 0:
+        if Q[i] > 1e-7:
             rez_mx[:, S] = mx_inv[:,i]
             srcs += [n]
             S += 1
@@ -76,7 +76,23 @@ def evalute_network_fluids_wo_root(_G, x_dict):
 
 def evalute_network_fluids_with_root(G, x_dict):
     # Возможно здесь нужно еще подтаскивать флюиды из схемы, так как они могли отвалится при перестроении графа
-    edges = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
-    G2 = nx.DiGraph(edges)
-    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict)
-    return cocktails, srcs
+    edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
+    edges2 = []
+    x_dict2 = {}
+    for (u, v) in edges1:
+        e = (u, v)
+        if x_dict[(u, v)] < 0:
+            e = (v, u)
+        x_dict2[e] = abs(x_dict[(u, v)])
+        edges2 += [e]
+
+    G2 = nx.DiGraph(edges2)
+    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict2)
+    cocktails2 = {}
+    for key, cktl in cocktails.items():
+        if (key in edges2) and not (key in edges1):
+            u, v = key
+            cocktails2[(v, u)] = cktl
+        else:
+            cocktails2[key] = cktl
+    return cocktails2, srcs
