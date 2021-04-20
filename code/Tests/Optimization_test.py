@@ -1140,6 +1140,6 @@ def print_wells_pressures(G, wells):
             P = G.nodes[n]['obj'].result['P_bar']
             prefix = Back.RED if P <= 1 else Style.RESET_ALL
             print(prefix + f'{P:8.3f}', end= ' ')
-        print('   up to pad collector')
+        print(Style.RESET_ALL + '   up to pad collector')
 
 
