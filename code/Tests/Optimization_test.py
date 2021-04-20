@@ -11,8 +11,19 @@ import json
 import colorama
 from colorama import Fore, Back, Style
 from Tools.HE2_Logger import check_for_nan, getLogger
+import numpy as np
 logger = getLogger(__name__)
 
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
 
 oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826, waterdensity_kg_m3=1015,
                         gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
@@ -83,7 +94,7 @@ def gimme_DNS2_inlets_outlets_Q():
 def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_curves=None, fluid=None,
                      roughness=0.00001, real_diam_coefficient=1, DNS_daily_debit=0, DNS_pressure=4.8):
 
-    json_str = json.dumps(pumps)
+    json_str = json.dumps(pumps, cls=NpEncoder)
     logger.info(f'Pumps: {json_str}')
 
     # Давления в источниках
@@ -469,7 +480,7 @@ def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_c
                  UDR_2=vrtxs.HE2_ABC_GraphVertex(),
                  ZKL_98=vrtxs.HE2_ABC_GraphVertex())
 
-    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C= 20, X_kgsec = 0).CurrentLiquidDensity_kg_m3 / 86400
+    q = DNS_daily_debit * fluid.calc(P_bar=20, T_C=20, X_kgsec=0).CurrentLiquidDensity_kg_m3 / 86400
     outlets = dict(DNS_2=vrtxs.HE2_Boundary_Vertex('P', DNS_pressure))
 
     G = nx.DiGraph()  # Di = directed
