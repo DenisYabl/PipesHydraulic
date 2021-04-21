@@ -66,7 +66,7 @@ def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOi
     oil_Visc_vec = np.array([op.oilviscosity_Pa_s for op in ops])
     oil_Visc = check_all_are_ther_same(oil_Visc_vec, 'dot product for fluid.oil_viscosity is not implemented')
 
-    Volume_keff_vec = np.array([op.oilviscosity_Pa_s for op in ops])
+    Volume_keff_vec = np.array([op.volumeoilcoeff for op in ops])
     Volume_keff = check_all_are_ther_same(Volume_keff_vec, 'dot product for fluid.volumeoilcoeff is not implemented')
 
     oil_ro_vec = np.array([op.oildensity_kg_m3 for op in ops])
