@@ -436,6 +436,7 @@ class HE2_Solver():
                 new_obj = vrtxs.HE2_ABC_GraphVertex()
                 G.nodes[n]['obj'] = new_obj
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
+                self.initial_edges_x[(Root, n)] = self.known_Q[n]
                 self.mock_edges += [(Root, n)]
                 p_node_found = True
         if not p_node_found:
