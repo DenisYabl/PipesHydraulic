@@ -1,10 +1,11 @@
 from Fluids.HE2_Fluid import HE2_OilWater
-from Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
-from Optimization_test import model_DNS_2_by_parts
+from Tests.Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
+from Tests.Optimization_test import model_DNS_2_by_parts, print_wells_pressures
 import pandas as pd
 from Fluids.oil_params import oil_params
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_tools import check_solution
+from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
 
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -37,37 +38,44 @@ pressures = {"PAD_5": {"WELL_1523" : 270.5, "WELL_146" : 270.5, "WELL_142" : 270
 
 
 plasts = {"PAD_5": {"WELL_1523":0.237, "WELL_146": 0.416, "WELL_142": 0.158,"WELL_1562": 0.276},
+
 "PAD_33": {"WELL_1385" : 0.45, "WELL_736" : 0.3, "WELL_739" : 0.378, "WELL_1383" : 0.5, "WELL_738" : 0.33,"WELL_725" : 0.5},
+# "PAD_33": {"WELL_1385" : 0.25, "WELL_736" : 0.2, "WELL_739" : 0.378, "WELL_1383" : 0.25, "WELL_738" : 0.53,"WELL_725" : 0.5},
+
 "PAD_34": {"WELL_731" : 0.347, "WELL_196" : 0.6, "WELL_734" : 0.6, "WELL_198" : 0.4, "WELL_199" : 0.457,"WELL_197" : 0.236,
     "WELL_195" : 0.27, "WELL_191" : 0.227, "WELL_729" : 1.4, "WELL_730" : 0.189, "WELL_192" : 0.445,"WELL_148" : 0.232},
+
 "PAD_39": {"WELL_3552": 0.98, "WELL_617": 0.348, "WELL_567": 0.034, "WELL_614": 0.98, "WELL_619": 0.31,"WELL_609": 0.235},
+
 "PAD_49":  {"WELL_1816" : 1.66, "WELL_2630" : 0.05, "WELL_1815" : 0.516, "WELL_676" : 0.823, "WELL_3270" : 0.288,
     "WELL_3266" : 0.492, "WELL_1814" : 1.259, "WELL_1817" : 0.695, "WELL_4532" : 0.293, "WELL_2631" : 0.68, "WELL_677" : 0.37},
+
 "PAD_57": {"WELL_3113" : 0.515, "WELL_3118" : 0.052, "WELL_3112" : 0.5, "WELL_4235" : 0.17, "WELL_3117" : 1.29,
     "WELL_1493" : 0.792, "WELL_1574" : 0.53, "WELL_1579" : 0.197, "WELL_3116" : 0.98}
 }
 
 
-pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 50], "WELL_146": ["ЭЦН5-60-2450", 50], "WELL_142": ["ЭЦН5-45-2500", 50],"WELL_1562": ["ЭЦН5-50-2500", 50]},
-"PAD_33": {"WELL_1385" : ["ЭЦН5-30-2600", 50], "WELL_736" : ["ЭЦН5-30-2600", 50], "WELL_739" : ["ЭЦН5-80-2200", 50],
-    "WELL_1383" : ["ЭЦН5-80-2550", 50], "WELL_738" : ["ЭЦН5-80-2500", 50],"WELL_725" : ["ЭЦН5-80-2500", 50]},
+pumps = {"PAD_5": {"WELL_1523":["ЭЦН5-80-2500", 48], "WELL_146": ["ЭЦН5-60-2450", 58], "WELL_142": ["ЭЦН5-45-2500", 45],"WELL_1562": ["ЭЦН5-50-2500", 50]},
 
-"PAD_34": {"WELL_731" : ["ЭЦН5-80-2550", 50], "WELL_196" : ["ЭЦН5-125-2500", 50], "WELL_734" : ["ЭЦН5-80-2200", 50],
-    "WELL_198" :["ЭЦН5-80-2550", 50], "WELL_199" : ["ЭЦН5-80-2600", 50],"WELL_197" : ["ЭЦН5-80-2550", 50],
-    "WELL_195" : ["ЭЦН5-60-2500", 50], "WELL_191" : ["ЭЦН5-60-2450", 50], "WELL_729" :["ЭЦН5А-250-2400", 50],
-    "WELL_730" : ["ЭЦН5-45-2400", 50], "WELL_192" : ["ЭЦН5-80-2650", 50],"WELL_148" : ["ЭЦН5-60-2450", 50]},
+"PAD_33": {"WELL_1385" : ["ЭЦН5-30-2600", 60], "WELL_736" : ["ЭЦН5-30-2600", 60], "WELL_739" : ["ЭЦН5-80-2200", 50],
+    "WELL_1383" : ["ЭЦН5-80-2550", 50], "WELL_738" : ["ЭЦН5-80-2500", 43],"WELL_725" : ["ЭЦН5-80-2500", 50]},
 
-"PAD_39": {"WELL_3552": ["ЭЦН5А-160-2400", 50], "WELL_617": ["ЭЦН5-80-2500", 50], "WELL_567": ["ЭЦН5-50-2450", 50],
-    "WELL_614": ["ЭЦН5А-160-2500", 50], "WELL_619": ["ЭЦН5-80-2550", 50],"WELL_609": ["ЭЦН5-80-2400", 50]},
+"PAD_34": {"WELL_731" : ["ЭЦН5-80-2550", 45], "WELL_196" : ["ЭЦН5-125-2500", 50], "WELL_734" : ["ЭЦН5-80-2200", 55],
+    "WELL_198" :["ЭЦН5-80-2550", 50], "WELL_199" : ["ЭЦН5-80-2600", 45],"WELL_197" : ["ЭЦН5-80-2550", 45],
+    "WELL_195" : ["ЭЦН5-60-2500", 45], "WELL_191" : ["ЭЦН5-60-2450", 50], "WELL_729" :["ЭЦН5А-250-2400", 50],
+    "WELL_730" : ["ЭЦН5-45-2400", 40], "WELL_192" : ["ЭЦН5-80-2650", 45],"WELL_148" : ["ЭЦН5-60-2450", 40]},
 
-"PAD_49":  {"WELL_1816" : ["ЭЦН5А-320-2400", 50], "WELL_2630" : ["ЭЦН5-80-2400", 50], "WELL_1815" : ["ЭЦН5А-160-2500", 50],
+"PAD_39": {"WELL_3552": ["ЭЦН5А-160-2400", 50], "WELL_617": ["ЭЦН5-80-2500", 50], "WELL_567": ["ЭЦН5-50-2450", 42],
+    "WELL_614": ["ЭЦН5А-160-2500", 55], "WELL_619": ["ЭЦН5-80-2550", 45],"WELL_609": ["ЭЦН5-80-2400", 45]},
+
+"PAD_49":  {"WELL_1816" : ["ЭЦН5А-320-2400", 50], "WELL_2630" : ["ЭЦН5-80-2400", 45], "WELL_1815" : ["ЭЦН5А-160-2500", 45],
             "WELL_676" : ["ЭЦН5А-160-2600", 50], "WELL_3270" : ["ЭЦН5-45-2500", 50], "WELL_3266" : ["ЭЦН5-80-2700", 50],
             "WELL_1814" : ["ЭЦН5А-250-2400", 50], "WELL_1817" : ["ЭЦН5А-160-2600", 50], "WELL_4532" : ["ЭЦН5-60-2400", 50],
             "WELL_2631" : ["ЭЦН5А-160-2400", 50], "WELL_677" : ["ЭЦН5-80-2600", 50]},
 
-"PAD_57": {"WELL_3113" : ["ЭЦН5-125-2500", 50], "WELL_3118" : ["ЭЦН5-80-2500", 50], "WELL_3112" : ["ЭЦН5-80-2400", 50],
-           "WELL_4235" : ["ЭЦН5-80-2500", 50], "WELL_3117" : ["ЭЦН5А-250-2500", 50], "WELL_1493" : ["ЭЦН5А-160-2500", 50],
-           "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 50], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
+"PAD_57": {"WELL_3113" : ["ЭЦН5-125-2500", 45], "WELL_3118" : ["ЭЦН5-80-2500", 45], "WELL_3112" : ["ЭЦН5-80-2400", 57],
+           "WELL_4235" : ["ЭЦН5-80-2500", 45], "WELL_3117" : ["ЭЦН5А-250-2500", 50], "WELL_1493" : ["ЭЦН5А-160-2500", 50],
+           "WELL_1574" : ["ЭЦН5-125-2450", 50], "WELL_1579" : ["ЭЦН5-80-2500", 45], "WELL_3116" : ["ЭЦН5А-250-2400", 50]}
 }
 
 inclination = {
@@ -125,11 +133,12 @@ def full_test():
     Full_system_daily_debit = 5200
     G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
                                             DNS_daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
-    for n in outlets:
-        print(n, G.nodes[n]["obj"].result)
+    print_wells_pressures(G, inlets)
+
+    validity = check_solution(G)
+    print(validity)
+
 
 
 def part_test():
@@ -138,7 +147,7 @@ def part_test():
     model_DNS_2_by_parts(pressures=pressures, plasts=plasts, pumps=pumps, pump_curves=pump_curves, fluid=fluid,
                          DNS_daily_debit=Full_system_daily_debit)
 
-def test_with_change_graph_ont_the_fly():
+def test_with_change_graph_on_the_fly():
     # Выходное условие заменено на выходное давление ДНС-2
     outputpressure = 4.8
     roughness = 1e-5
@@ -159,9 +168,7 @@ def test_with_change_graph_ont_the_fly():
     validity = check_solution(G)
     print(validity)
 
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
-
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
@@ -172,23 +179,36 @@ def test_with_change_graph_ont_the_fly():
 
     solver.solve()
     print("\nРешение с измененным давлением")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
     #Меняем частоту насоса скважины 1562 куста 5
 
-    G.edges._adjdict["Pump_intake_1562"]['Pump_outlet_1562']['obj'].changeFrequency(55)
+    G["Pump_intake_1562"]['Pump_outlet_1562']['obj'].changeFrequency(55)
 
     solver.solve()
     print("\nРешение с измененной частотой насоса")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
+
+    #Меняем модель насоса скважины 1562 куста 5
+    edge = G['Pump_intake_1562']['Pump_outlet_1562']
+    new_pump = create_HE2_WellPump_instance_from_dataframe(pump_curves, 'ЭЦН5-45-2500', fluid, 50)
+    edge['obj'] = new_pump
+    solver.ready_for_solve = False # Иначе солвер не обновит внутренние edge_func
+
+    solver.solve()
+    print("\nРешение с измененной частотой насоса")
+
+    print_wells_pressures(G, inlets)
+    for n in outlets:
+        print(n, G.nodes[n]["obj"].result)
+    print(f'Well 1562 pump power is {new_pump.power} Wt')
+
 
 
 import shame_on_me
@@ -213,9 +233,7 @@ def test_2pads_with_change_graph():
     solver.prepare_initial_approximation(G, inlets_Q)
     solver.solve()
 
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
-
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
@@ -225,12 +243,12 @@ def test_2pads_with_change_graph():
 
 
     solver.solve()
-    print("\nРешение с измененным давлением")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
 
+    print("\nРешение с измененным давлением")
+    print_wells_pressures(G, inlets)
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
+
 
     #Меняем частоту насоса скважины 1562 куста 5
 
@@ -238,8 +256,7 @@ def test_2pads_with_change_graph():
 
     solver.solve()
     print("\nРешение с измененной частотой насоса")
-    for n in inlets:
-        print(n, G.nodes[n]["obj"].result)
+    print_wells_pressures(G, inlets)
 
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
@@ -247,6 +264,6 @@ def test_2pads_with_change_graph():
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
-    test_with_change_graph_ont_the_fly()
-    full_test()
+    test_with_change_graph_on_the_fly()
+    # full_test()
     #part_test()

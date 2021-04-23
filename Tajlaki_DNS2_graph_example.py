@@ -5,7 +5,7 @@ from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
-from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from Fluids.oil_params import oil_params
 import json
 from Tools.HE2_Logger import check_for_nan, getLogger
@@ -37,7 +37,7 @@ def build_well_graph(G, wellhead_node, pad_name, well_name, pressures, plasts, p
     G.add_edge(plast, zaboi, obj=HE2_Plast(productivity=productivity, fluid=fluid))
 
     pump = pumps[pad_name][well_name]
-    G.add_edge(intake, outlet,obj=HE2_WellPump(full_HPX=pump_curves, model=pump[0], fluid=fluid, frequency=pump[1]))
+    G.add_edge(intake, outlet,obj=create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=pump[0], fluid=fluid, frequency=pump[1]))
 
     nkt_dx, nkt_dy, nkt_inner_d, colon_dx, colon_dy, colon_inner_d = inclination[well_name]
     G.add_edge(outlet, wellhead_node, obj=HE2_OilPipe([nkt_dx], [nkt_dy], [nkt_inner_d * d_keff], [roughness]))
