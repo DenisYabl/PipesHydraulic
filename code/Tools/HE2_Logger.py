@@ -4,7 +4,7 @@ import numpy as np
 from Tools.HE2_ABC import SOLVER_VERSION
 
 # logging.basicConfig(level=logging.INFO, filename=f'HE2 pid {os.getpid()}.log', format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
+logging.basicConfig(level=logging.DEBUG, filename=f'HE2 pid {os.getpid()}.log', format='%(asctime)s %(levelname)s %(funcName)s(): %(message)s')
 np.seterr(invalid='raise')
 
 def getLogger(name):
