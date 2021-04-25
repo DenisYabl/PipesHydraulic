@@ -29,8 +29,10 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
 #     def __init__(self, Q_P_N_table=None, fluid = HE2_DummyOil, frequency = 50):
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, frequency = 50):
-        self.base_HPX = full_HPX[full_HPX["pumpModel"] == model]
+    def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50, engine_efficiency = 0.92):
+        if fluid is None:
+            fluid = gimme_dummy_BlackOil()
+        self.engine_efficiency = engine_efficiency
         self.fluid = fluid
         self.model = model
         self.intermediate_results = []
@@ -102,16 +104,20 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.power = 0
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
+            get_eff = self.get_eff_1
         elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
+            get_eff = self.get_eff_2
             self.power = self.n_interpolator(liquid_debit)
         else:
             get_pressure_raise = self.get_pressure_raise_3
+            get_eff = self.get_eff_3
+
         pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
+
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
 
-        eff = self.true_HPX[(self.true_HPX["debit"] - liquid_debit).abs() == (self.true_HPX["debit"] - liquid_debit).abs().min()]["eff"].iloc[0]
-
+        eff = get_eff(liquid_debit)
         T_rez_C = T_C + self.calculate_temperature_raise(pressure_raise, eff, mishenko)
 
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
@@ -144,6 +150,11 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
         self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
         self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
+
+        self.get_eff_1 = 0.001
+        self.get_eff_2 = interp1d(self.q_vec, self.eff_vec, kind="quadratic")
+        self.get_eff_3 = 0.001
+
         self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
 
     def changeFrequency(self, new_frequency):

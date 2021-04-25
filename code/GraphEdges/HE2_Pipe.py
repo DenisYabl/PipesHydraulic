@@ -1,5 +1,5 @@
 from Tools import HE2_ABC as abc
-from Fluids.HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil, gimme_dummy_BlackOil
+from Fluids.HE2_Fluid import HE2_DummyWater, HE2_BlackOil, gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
 import numpy as np
 import math
@@ -7,7 +7,6 @@ import Hydraulics.Methodics.Mukherjee_Brill as mb
 from functools import lru_cache
 from Tools.HE2_Logger import check_for_nan, getLogger
 logger = getLogger(__name__)
-
 
 class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
@@ -175,7 +174,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
     Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
     '''
-    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None,
+    def __init__(self, fluid:HE2_BlackOil=None, inner_diam_m=None, roughness_m=None, L_m=None,
                  uphill_m=None, outer_diam_m = None, wall_thickness = 0.008, ins_thickness = 2, Outer_T_C = 0,
                  soil_thermal_conductivity = 1.3, ins_thermal_conductivity = 0.045, subsurface = True, sub_depth = 2,
                  wind_velocity = 3, snow_depth = 1.5):

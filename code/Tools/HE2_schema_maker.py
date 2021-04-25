@@ -48,7 +48,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
 
 
     calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
-    calc_df = calc_df[calc_df['sumOfCounts'] > 2]
+    calc_df = calc_df[calc_df['sumOfCounts'] >= 2]
 
     mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes']) | (~calc_df['inletBoundaryMistakes']) | (~calc_df['outletBoundaryMistakes'])]
 
@@ -61,9 +61,9 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
 
 
 
-    inlets_df = calc_df[dataset["startIsSource"]]
-    outletsdf = calc_df[dataset["endIsOutlet"]]
-    juncs_df = pd.concat((dataset["node_id_start"], dataset["node_id_end"])).unique()
+    inlets_df = calc_df[calc_df["startIsSource"]]
+    outletsdf = calc_df[calc_df["endIsOutlet"]]
+    juncs_df = pd.concat((calc_df["node_id_start"], calc_df["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
         volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
@@ -88,10 +88,11 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
             L = row["L"]
             uphill = row["uphillM"]
             diam_coef = row["effectiveD"]
+            VolumeWater = row["VolumeWater"]
             D = row["intD"]
             roughness = row["roughness" ]
             G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [
-                gimme_dummy_BlackOil()]))
+                gimme_dummy_BlackOil(VolumeWater = VolumeWater)]))
         elif junctype == "plast":
             productivity = row["productivity" ]
             G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil()))
