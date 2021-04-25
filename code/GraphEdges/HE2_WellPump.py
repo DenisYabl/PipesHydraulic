@@ -29,11 +29,11 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
 #     def __init__(self, Q_P_N_table=None, fluid = HE2_DummyOil, frequency = 50):
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50):
-        if fluid is None:
-            fluid = gimme_dummy_BlackOil()
+    def __init__(self, full_HPX:pd.DataFrame, model = "", fluid = HE2_DummyOil, frequency = 50):
+        self.base_HPX = full_HPX[full_HPX["pumpModel"] == model]
         self.fluid = fluid
         self.model = model
+        self.intermediate_results = []
         self.frequency = frequency
         self._printstr = self.model
         self.base_q = q_vec # self.base_* - НРХ насоса по воде
@@ -63,7 +63,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = None
         self.get_pressure_raise_2 = None
         self.get_pressure_raise_3 = None
-        self.n_interpolator = None
         self.make_extrapolators()
 
 
@@ -74,6 +73,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         assert unifloc_direction in [0, 1, 10, 11]
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
+
+
 
         if calc_direction == 1:
             return self.perform_calc_forward(P_bar, T_C, X_kgsec)
@@ -106,9 +107,13 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
             self.power = self.n_interpolator(liquid_debit)
         else:
             get_pressure_raise = self.get_pressure_raise_3
+        pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
 
-        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
-        T_rez_C = T_C
+        eff = self.true_HPX[(self.true_HPX["debit"] - liquid_debit).abs() == (self.true_HPX["debit"] - liquid_debit).abs().min()]["eff"].iloc[0]
+
+        T_rez_C = T_C + self.calculate_temperature_raise(pressure_raise, eff, mishenko)
+
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
 
         return P_rez_bar, T_rez_C
@@ -147,3 +152,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 
+    def calculate_temperature_raise(self, deltaP, eff, mishenko):
+        deltaT = deltaP / (mishenko.CurrentLiquidDensity_kg_m3 * mishenko.Thermal_capacity) * (1 / (eff / 100 * self.engine_efficiency) - 1)
+        return deltaT
