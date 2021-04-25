@@ -1,3 +1,5 @@
+import math
+
 from Tools import HE2_ABC as abc
 from Fluids.HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil
 import uniflocpy.uTools.uconst as uc
@@ -26,6 +28,13 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         self.angle_dgr = None
         self.dx_m = None
         self.set_pipe_geometry(L=L_m, dy=uphill_m)
+        self.soil_thermal_conductivity = soil_thermal_conductivity
+        self.ins_thermal_conductivity = ins_thermal_conductivity
+        self.subsurface = subsurface
+        self.sub_depth = sub_depth
+        self.wind_velovity = wind_velocity
+        self.snow_depth = snow_depth
+
 
     def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
         if dx is not None and dy is not None:
@@ -175,18 +184,30 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
     Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
     '''
-    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
+    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None,
+                 uphill_m=None, outer_diam_m = None, wall_thickness = 0.008, ins_thickness = 2, Outer_T_C = 0,
+                 soil_thermal_conductivity = 1.3, ins_thermal_conductivity = 0.045, subsurface = True, sub_depth = 2,
+                 wind_velocity = 3, snow_depth = 1.5):
         if fluid is None:
             fluid = HE2_DummyOil(45)
         self.fluid = fluid
-
-        self.inner_diam_m = inner_diam_m
+        self.outer_diam_m = outer_diam_m
+        self.inner_diam_m =  inner_diam_m if inner_diam_m is not None else  outer_diam_m - 2 * wall_thickness
+        self.outer_diam_ins_m = outer_diam_m + 2 * ins_thickness
         self.roughness_m = roughness_m
         self.L_m = L_m
         self.uphill_m = uphill_m
         self.angle_dgr = 90
+        self.outer_T_C = Outer_T_C
         self.dx_m = None
         self.set_pipe_geometry(L=L_m, dy=uphill_m)
+        self.soil_thermal_conductivity = soil_thermal_conductivity
+        self.ins_thermal_conductivity = ins_thermal_conductivity
+        self.subsurface = subsurface
+        self.sub_depth = sub_depth
+        self.wind_velovity = wind_velocity
+        self.snow_depth = snow_depth
+
 
     def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
         if dx is not None and dy is not None:
@@ -237,33 +258,53 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         t_sign = calc_direction
         return grav_sign, fric_sign, t_sign
 
-    def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign, grav_sign, calc_direction):
+    def calc_P_friction_gradient_Pam(self, P_bar, T_C, X_kgsec, fric_sign, grav_sign, calc_direction, current_mishenko):
         #Уточнить про X_kgsec
         if X_kgsec == 0:
             return 0, self.fluid.calc(P_bar, T_C, 1, self.inner_diam_m).CurrentLiquidDensity_kg_m3 * 9.81
         # Fluid.calc will be optimized at lower level. So we will call it every time
-        current_mishenko = self.fluid.calc(P_bar, T_C,abs(X_kgsec), self.inner_diam_m)
+        current_mishenko = current_mishenko
         #Определяем угол в зависимости от fric_sign
         angle = self.angle_dgr if calc_direction > 0 else -self.angle_dgr
         P_fric_grad_Pam, P_grav_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
         return P_fric_grad_Pam, P_grav_grad_Pam
 
-    def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):
-        return 0
+    def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec, current_mishenko):
+
+        R_ins = self.outer_diam_m / (2 * self.ins_thermal_conductivity) * math.log(self.outer_diam_ins_m / self.outer_diam_m)
+
+        h0 = self.sub_depth if ((self.sub_depth / self.inner_diam_m > 3) and (self.sub_depth > 0.7)) else \
+            self.sub_depth +  self.soil_thermal_conductivity / 14.5 + self.snow_depth * self.soil_thermal_conductivity / 0.3
+
+        if not self.subsurface:
+            alpha = 11.63 + 7 * math.sqrt(self.wind_velovity)
+        else:
+            alpha = 2 * self.soil_thermal_conductivity / (self.outer_diam_m * math.log(2 * h0 / self.outer_diam_m +
+                                                                                       math.sqrt((2 * h0 / self.outer_diam_m))**2 -1))
+
+        R_soil = self.inner_diam_m / (alpha * self.outer_diam_ins_m)
+
+        K = 1 / (R_ins + R_soil)
+
+        X_kgsec = 1 if abs(X_kgsec) < 1 else 1
+        A = K * math.pi * self.outer_diam_ins_m / (abs(X_kgsec) * current_mishenko.Thermal_capacity)
+        T_grad_Cm = T_C - (T_C - self.outer_T_C ) / math.exp(A)
+        return T_grad_Cm
 
     def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
         check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
+        current_mishenko = self.fluid.calc(P_bar, T_C, abs(X_kgsec), self.inner_diam_m)
         #Определяем направления расчета
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         #Считаем локальный градиент давления по M_B
-        P_fric_grad_Pam, P_grav_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign, grav_sign, calc_direction)
+        P_fric_grad_Pam, P_grav_grad_Pam = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec), fric_sign, grav_sign, calc_direction, current_mishenko)
         #Считаем потери давления на сегменте
         dP_full_Pa = P_fric_grad_Pam * self.L_m
         dP_full_grav_Pa = P_grav_grad_Pam * self.uphill_m
         #Считаем полные потери давления по сегменту
         P_drop_bar = fric_sign * uc.Pa2bar(dP_full_Pa) + grav_sign * uc.Pa2bar(dP_full_grav_Pa)
         P_rez_bar = P_bar - P_drop_bar #temp solution
-        T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec)
+        T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec, current_mishenko)
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         check_for_nan(P_rez_bar = P_rez_bar, T_rez_C = T_rez_C)
         return P_rez_bar, T_rez_C
@@ -277,7 +318,7 @@ class HE2_OilPipe(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         if len(fluids) == 0:
             fluids = [HE2_DummyOil(50) for i in dxs]
         for dx, dy, diam, rgh, fluid in zip(dxs, dys, diams, rghs, fluids):
-            seg = HE2_OilPipeSegment(fluid=fluid, inner_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
+            seg = HE2_OilPipeSegment(fluid=fluid, outer_diam_m=diam, roughness_m=rgh, L_m=None, uphill_m=None)
             seg.set_pipe_geometry(dx=dx, dy=dy)
             a = seg
             self.segments += [seg]

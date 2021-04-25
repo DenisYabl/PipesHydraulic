@@ -40,6 +40,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.base_p = p_vec
         self.base_n = n_vec
         self.base_eff = eff_vec
+        self.intermediate_results = []
 
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
         # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)

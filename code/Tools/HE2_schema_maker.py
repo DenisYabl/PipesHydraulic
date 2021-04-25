@@ -2,7 +2,7 @@ import networkx as nx
 import pandas as pd
 from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
-from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
+from GraphEdges.HE2_WellPump import HE2_WellPump
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import HE2_DummyOil
 
@@ -12,15 +12,20 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     inlets = {}
     juncs = {}
     calc_df = dataset
-    ids_count =  pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
+    calc_df["startIsSource"] = calc_df["startIsSource"].fillna(False)
+    calc_df["endIsOutlet"] = calc_df["endIsOutlet"].fillna(False)
+    ids_count = pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
     ids_count.rename('ids_count')
     calc_df = calc_df.join(ids_count.to_frame(), on='node_id_start', how='left')
     calc_df = calc_df.rename(columns = {0:'start_id_count'})
-    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_end', how='left')
-    calc_df = calc_df.rename(columns = {0:'end_id_count'})
 
+    ids_count = calc_df['node_id_start'].value_counts()
+    ids_count.rename('ids_count')
+    calc_df = calc_df.join(ids_count.to_frame().rename(columns = {"node_id_start":0}), on='node_id_end', how='left')
+    calc_df = calc_df.rename(columns = {0:'end_id_count'})
+    calc_df['end_id_count'] = calc_df["end_id_count"].fillna(0)
     calc_df['sourceByCount'] = calc_df['start_id_count'] == 1
-    calc_df['outletByCount'] = calc_df['end_id_count'] == 1
+    calc_df['outletByCount'] = calc_df['end_id_count']  == 0
 
     calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
     calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
@@ -33,6 +38,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
 
     calc_df['inletBoundaryMistakes'] = True
     calc_df['outletBoundaryMistakes'] = True
+
+
 
     calc_df.loc[calc_df["startIsSource"], 'inletBoundaryMistakes'] = calc_df[calc_df["startIsSource"]]['sourceValueIsFilled'] & calc_df[calc_df["startIsSource"]]['sourceKindIsFilled']
 
@@ -89,8 +96,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater),
-                       frequency=frequency))
+            G.add_edge(start, end, obj = HE2_WellPump(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater), frequency=frequency))
     return G
 
 

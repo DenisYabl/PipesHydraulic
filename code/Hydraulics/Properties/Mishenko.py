@@ -41,6 +41,7 @@ class Mishenko:
         self.Q2_m3_s = kwargs.pop('Q2')
         self.Qc_m3_s = kwargs.pop('Qc')
         self.VolumeGas_fraction = kwargs.pop('VolumeGas')
+        self.Thermal_capacity = kwargs.pop('Thermal_capacity')
 
     def print(self):
         print(f"""Газовый фактор self.GasFactor= {self.GasFactor}
@@ -213,7 +214,7 @@ class Mishenko:
                         CurrentFreeGasViscosity=0, CurrentLiquidDensity=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
                         TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=0, Qc=Q,
-                        VolumeGas=0)
+                        VolumeGas=0, Thermal_capacity = calc_params.thermal_capacity)
 
     @staticmethod
     def three_phase_flow(calc_params):
@@ -384,4 +385,4 @@ class Mishenko:
                         CurrentFreeGasViscosity=CurrentFreeGasViscosity, CurrentLiquidDensity=CurrentLiquidDensity,
                         TensionOilGas=TensionOilGas,
                         TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q2=Q2, Qc=Qc,
-                        VolumeGas=VolumeGas)
+                        VolumeGas=VolumeGas, Thermal_capacity = calc_params.thermal_capacity)

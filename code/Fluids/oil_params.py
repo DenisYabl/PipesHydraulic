@@ -17,7 +17,7 @@ fieldlist = ['Q_m3_sec', 'Q_m3_day', 'sat_P_bar', 'plastT_C', 'gasFactor', 'oild
 
 class oil_params():
     def __init__(self, Q_m3_day=None, sat_P_bar=None, plastT_C=None, gasFactor=None, oildensity_kg_m3=None,
-                 waterdensity_kg_m3=None, gasdensity_kg_m3=None, oilviscosity_Pa_s=None, volumewater_percent=None, volumeoilcoeff=None):
+                 waterdensity_kg_m3=None, gasdensity_kg_m3=None, oilviscosity_Pa_s=None, volumewater_percent=None, volumeoilcoeff=None, thermal_capacity_water = 4182, thermal_capacity_oil = 2100):
         self.Q_m3_day = Q_m3_day
         self.Q_m3_sec = self.Q_m3_day / 86400
         self.sat_P_bar = sat_P_bar
@@ -32,6 +32,7 @@ class oil_params():
         self.currentP_bar = None
         self.currentT_C = None
         self.CurrentLiquidDensity_kg_m3 = None
+        self.thermal_capacity = thermal_capacity_oil * (1 - volumewater_percent / 100) + thermal_capacity_water * volumewater_percent / 100
 
 class dummy_oil_params:
     def __init__(self, Q_m3_day=None, volumeWater=50):
@@ -49,3 +50,15 @@ class dummy_oil_params:
         self.currentP_bar = None
         self.currentT_C = None
         self.CurrentLiquidDensity_kg_m3 = None
+        thermal_capacity_oil = 2100
+        thermal_capacity_water = 4182
+        self.thermal_capacity = thermal_capacity_oil * (1 - volumeWater / 100) + thermal_capacity_water * volumeWater / 100
+        thermal_capacity_oil = 2100
+        thermal_capacity_water = 4182
+        self.thermal_capacity = thermal_capacity_oil * (1 - volumeWater / 100) + thermal_capacity_water * volumeWater / 100
+        thermal_capacity_oil = 2100
+        thermal_capacity_water = 4182
+        self.thermal_capacity = thermal_capacity_oil * (1 - volumeWater / 100) + thermal_capacity_water * volumeWater / 100
+        thermal_capacity_oil = 2100
+        thermal_capacity_water = 4182
+        self.thermal_capacity = thermal_capacity_oil * (1 - volumeWater / 100) + thermal_capacity_water * volumeWater / 100
