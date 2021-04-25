@@ -1,16 +1,16 @@
-import Tools.HE2_ABC as abc
+import Tools.HE2_ABC
+from Tools.HE2_ABC import oil_params
 import GraphEdges.HE2_Pipe as he2_pipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from GraphEdges.HE2_WellPump import HE2_WellPump
 import Fluids.HE2_Fluid as he2_fluid
-import Fluids.oil_params as oil_params
 import GraphNodes.HE2_Vertices
 
 class_aliases = ['OilPipeSegment', 'WaterPipeSegment', 'OilPipe', 'WaterPipe']
 class_aliases += ['DummyWater', 'DummyOil', 'OilWater', 'Plast', 'WellPump']
 
 classes = [he2_pipe.HE2_OilPipeSegment, he2_pipe.HE2_WaterPipeSegment, he2_pipe.HE2_OilPipe, he2_pipe.HE2_WaterPipe]
-classes += [he2_fluid.HE2_DummyWater, he2_fluid.HE2_DummyOil, he2_fluid.HE2_OilWater, HE2_Plast, HE2_WellPump]
+classes += [he2_fluid.HE2_DummyWater, he2_fluid.gimme_dummy_BlackOil, he2_fluid.HE2_BlackOil, HE2_Plast, HE2_WellPump]
 
 get_alias = dict(zip(map(str, classes), class_aliases))
 get_class = dict(zip(class_aliases, classes))
@@ -22,7 +22,7 @@ def fluid_to_dict(fluid):
         return None
     rez = dict(class_alias=class_alias)
     if class_alias in ['DummyOil', 'OilWater']:
-        flds = oil_params.fieldlist
+        flds = Tools.HE2_ABC.fieldlist
         d = {k: fluid.oil_params.__dict__[k] for k in flds}
         rez.update(d)
 
@@ -36,8 +36,8 @@ def dict_to_fluid(obj_dict):
         obj_dict.pop('currentP_bar')
         obj_dict.pop('currentT_C')
         obj_dict.pop('CurrentLiquidDensity_kg_m3')
-        oil_params = he2_fluid.oil_params(**obj_dict)
-        rez = he2_fluid.HE2_OilWater(oil_params)
+        oil_params = Tools.HE2_ABC.oil_params(**obj_dict)
+        rez = he2_fluid.HE2_BlackOil(oil_params)
         return rez
 
     init_kwargs = dict()
@@ -124,7 +124,7 @@ def test1():
 
 def test2():
     op = oil_params.dummy_oil_params(10, 50)
-    fluid = he2_fluid.HE2_OilWater(op)
+    fluid = he2_fluid.HE2_BlackOil(op)
     pseg = he2_pipe.HE2_OilPipeSegment(fluid, 0.5, 1e-5, 100, 10)
     d = pipesegment_to_dict(pseg)
     pseg2 = dict_to_pipesegment(d)
@@ -132,7 +132,7 @@ def test2():
 
 def test3():
     op = oil_params.dummy_oil_params(10, 50)
-    fluid = he2_fluid.HE2_OilWater(op)
+    fluid = he2_fluid.HE2_BlackOil(op)
     pipe = he2_pipe.HE2_OilPipe([100, 200], [-10, 20], [0.3, 0.4], [1e-5, 1e-5], [fluid, fluid])
     d = pipe_to_dict(pipe)
     pipe2 = dict_to_pipe(d)
@@ -140,7 +140,7 @@ def test3():
 
 def test4():
     op = oil_params.dummy_oil_params(10, 50)
-    fluid = he2_fluid.HE2_OilWater(op)
+    fluid = he2_fluid.HE2_BlackOil(op)
     plast = HE2_Plast(fluid=fluid, productivity=10)
     d = plast_to_dict(plast)
     plast2 = dict_to_plast(d)

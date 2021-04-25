@@ -2,9 +2,9 @@ import networkx as nx
 import pandas as pd
 from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
-from GraphEdges.HE2_WellPump import HE2_WellPump
+from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from GraphNodes import HE2_Vertices as vrtxs
-from Fluids.HE2_Fluid import HE2_DummyOil
+from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 
 def make_oilpipe_schema_from_OT_dataset(dataset):
     pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
@@ -66,7 +66,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     juncs_df = pd.concat((dataset["node_id_start"], dataset["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
         volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
-        inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"], HE2_DummyOil(volumewater), row["startT"])})
+        inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
+                                                                    gimme_dummy_BlackOil(), row["startT"])})
     for index, row in outletsdf.iterrows():
         outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
     for id in juncs_df:
@@ -89,14 +90,16 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
             diam_coef = row["effectiveD"]
             D = row["intD"]
             roughness = row["roughness" ]
-            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [HE2_DummyOil(volumewater)]))
+            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [
+                gimme_dummy_BlackOil()]))
         elif junctype == "plast":
             productivity = row["productivity" ]
-            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=HE2_DummyOil(volumewater)))
+            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil()))
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = HE2_WellPump(full_HPX=pump_curves, model=model, fluid=HE2_DummyOil(volumewater), frequency=frequency))
+            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=gimme_dummy_BlackOil(),
+                                                                                     frequency=frequency))
     return G
 
 
