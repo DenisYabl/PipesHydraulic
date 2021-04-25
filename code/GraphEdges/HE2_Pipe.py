@@ -1,8 +1,8 @@
 from Tools import HE2_ABC as abc
-from Fluids.HE2_Fluid import HE2_DummyWater, HE2_BlackOil, gimme_dummy_BlackOil
+from Fluids.HE2_Fluid import HE2_DummyWater, HE2_OilWater, HE2_DummyOil, gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
 import numpy as np
-
+import math
 import Hydraulics.Methodics.Mukherjee_Brill as mb
 from functools import lru_cache
 from Tools.HE2_Logger import check_for_nan, getLogger
@@ -26,13 +26,6 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         self.angle_dgr = None
         self.dx_m = None
         self.set_pipe_geometry(L=L_m, dy=uphill_m)
-        self.soil_thermal_conductivity = soil_thermal_conductivity
-        self.ins_thermal_conductivity = ins_thermal_conductivity
-        self.subsurface = subsurface
-        self.sub_depth = sub_depth
-        self.wind_velovity = wind_velocity
-        self.snow_depth = snow_depth
-
 
     def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
         if dx is not None and dy is not None:
@@ -182,19 +175,30 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
     '''
     Аналог HE2_WaterPipeSegment с реюзом Mishenko и Mukherjee_Brill
     '''
-    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None, uphill_m=None):
+    def __init__(self, fluid:HE2_OilWater=None, inner_diam_m=None, roughness_m=None, L_m=None,
+                 uphill_m=None, outer_diam_m = None, wall_thickness = 0.008, ins_thickness = 2, Outer_T_C = 0,
+                 soil_thermal_conductivity = 1.3, ins_thermal_conductivity = 0.045, subsurface = True, sub_depth = 2,
+                 wind_velocity = 3, snow_depth = 1.5):
         if fluid is None:
             fluid = gimme_dummy_BlackOil()
         self.fluid = fluid
-        self.outer_diam_m = outer_diam_m
+        self.outer_diam_m = outer_diam_m if outer_diam_m is not None else inner_diam_m + 2 * wall_thickness
         self.inner_diam_m =  inner_diam_m if inner_diam_m is not None else  outer_diam_m - 2 * wall_thickness
         self.outer_diam_ins_m = outer_diam_m + 2 * ins_thickness
         self.roughness_m = roughness_m
         self.L_m = L_m
         self.uphill_m = uphill_m
         self.angle_dgr = 90
+        self.outer_T_C = Outer_T_C
         self.dx_m = None
         self.set_pipe_geometry(L=L_m, dy=uphill_m)
+        self.soil_thermal_conductivity = soil_thermal_conductivity
+        self.ins_thermal_conductivity = ins_thermal_conductivity
+        self.subsurface = subsurface
+        self.sub_depth = sub_depth
+        self.wind_velovity = wind_velocity
+        self.snow_depth = snow_depth
+
 
     def set_pipe_geometry(self, dx=None, dy=None, L=None, angle=None):
         if dx is not None and dy is not None:
