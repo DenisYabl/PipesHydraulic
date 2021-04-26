@@ -40,15 +40,17 @@ startP, startT, endP, endT - расчетные поля, заполняемые
 Функция дополнительно отфильтровывает дуги, не связанные с основным графом (дуги с уникальным началом и концом, не соединенные с другими узлами)
 """
 
-dataset = pd.read_csv("../CommonData/DNS1_no_wells.csv")
+dataset = pd.read_csv("../CommonData/DNS3_example_well.csv")
 start_time = time.time()
 mdf = calculate_DF(dataset)
 print("--- %s seconds ---" % (time.time() - start_time))
-mdf.to_csv("../CommonData/showcaseDF.csv")
+mdf.to_csv("../CommonData/mdf.csv")
 
 
 """
 Также возможно создание расчетного графа из датафрейма без его расчета с помощью Tools.HE2_schema_maker.make_oilpipe_schema_from_OT_dataset
 Требования к датафрейму такие же, как для calculate_DF
 """
-G = make_oilpipe_schema_from_OT_dataset(dataset)
+
+G, df = make_oilpipe_schema_from_OT_dataset(dataset)
+pass

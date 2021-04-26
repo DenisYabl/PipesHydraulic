@@ -118,8 +118,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
 
         eff = get_eff(liquid_debit)
-        T_rez_C = T_C + self.calculate_temperature_raise(pressure_raise, eff, mishenko)
-
+        #T_rez_C = T_C + calc_direction * self.calculate_temperature_raise(pressure_raise, eff, mishenko)
+        T_rez_C = T_C
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
 
         return P_rez_bar, T_rez_C
@@ -151,9 +151,9 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
         self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
 
-        self.get_eff_1 = 0.001
+        self.get_eff_1 = lambda x: 5
         self.get_eff_2 = interp1d(self.q_vec, self.eff_vec, kind="quadratic")
-        self.get_eff_3 = 0.001
+        self.get_eff_3 = lambda x: 5
 
         self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
 

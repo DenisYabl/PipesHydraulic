@@ -1,3 +1,5 @@
+import pandas as pd
+
 from Tools import HE2_ABC as abc
 from Fluids.HE2_Fluid import HE2_DummyWater, HE2_BlackOil, gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
@@ -261,6 +263,9 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
 
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec, current_mishenko):
 
+        if pd.isna(self.outer_diam_m):
+             self.outer_diam_m = self.inner_diam_m + 2 * 8
+
         R_ins = self.outer_diam_m / (2 * self.ins_thermal_conductivity) * math.log(self.outer_diam_ins_m / self.outer_diam_m)
 
         h0 = self.sub_depth if ((self.sub_depth / self.inner_diam_m > 3) and (self.sub_depth > 0.7)) else \
@@ -282,6 +287,8 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         return T_grad_Cm
 
     def calc_segment_pressure_drop(self, P_bar, T_C, X_kgsec, calc_direction, unifloc_direction=-1):
+        if pd.isna(T_C):
+            T_C = 20
         check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
         current_mishenko = self.fluid.calc(P_bar, T_C, abs(X_kgsec), self.inner_diam_m)
         #Определяем направления расчета
@@ -294,7 +301,8 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         #Считаем полные потери давления по сегменту
         P_drop_bar = fric_sign * uc.Pa2bar(dP_full_Pa) + grav_sign * uc.Pa2bar(dP_full_grav_Pa)
         P_rez_bar = P_bar - P_drop_bar #temp solution
-        T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec, current_mishenko)
+        #T_grad_Cm = self.calc_T_gradient_Cm(P_bar, T_C, X_kgsec, current_mishenko)
+        T_grad_Cm = 0
         T_rez_C = T_C - t_sign * T_grad_Cm * self.L_m
         check_for_nan(P_rez_bar = P_rez_bar, T_rez_C = T_rez_C)
         return P_rez_bar, T_rez_C

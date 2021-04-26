@@ -118,9 +118,11 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         Nl = Lm
         Nlv = Lw
         Ngv = Lg
-        Ht = math.exp((C1 + C2 * math.sin(math.radians(angle)) + C3 * math.sin(math.radians(angle))
-                       ** 2 + C4 * Nl ** 2) * (Ngv ** C5 / Nlv ** C6))
-
+        try:
+            Ht = math.exp((C1 + C2 * math.sin(math.radians(angle)) + C3 * math.sin(math.radians(angle))
+                           ** 2 + C4 * Nl ** 2) * (Ngv ** C5 / Nlv ** C6))
+        except:
+            Ht = 0.5
         delta = 2 * math.cos(1 - 2 * Ht / tubing["IntDiameter"]) ** -1
         Dhg = tubing["IntDiameter"] * (2 * math.pi - (delta - math.sin(delta))) / (
                     2 * math.pi - delta + 2 * math.sin(delta / 2))

@@ -32,6 +32,7 @@ def calculate (mishenko : Mishenko, tubing):
 
     # Коэффициент по скорости жидкости
     TensionLiquidGas = mishenko.TensionWaterGas * mishenko.VolumeWater_fraction + mishenko.TensionOilGas * (1 + mishenko.VolumeWater_fraction)
+    TensionLiquidGas = abs(TensionLiquidGas)
     Lw = mishenko.oil_params.volumeoilcoeff * wm * (mishenko.SaturatedOilDensity_kg_m3/ (g * TensionLiquidGas)) ** 0.25
     # Коэффициент по скорости свободного газа
     Lg = mishenko.VolumeGas_fraction * wm * (mishenko.SaturatedOilDensity_kg_m3 / (g * TensionLiquidGas)) ** 0.25
@@ -59,7 +60,7 @@ def calculate (mishenko : Mishenko, tubing):
     # Число Фруда смеси
     Fr = count_Frud(mishenko, wm, tubing)
     # Объемные концентрации
-    wg = 3.3 * (g * mishenko.TensionOilGas / (mishenko.SaturatedOilDensity_kg_m3 - mishenko.CurrentFreeGasDensity_kg_m3)) ** 0.25 * (
+    wg = 3.3 *abs (g * mishenko.TensionOilGas / (mishenko.SaturatedOilDensity_kg_m3 - mishenko.CurrentFreeGasDensity_kg_m3)) ** 0.25 * abs(
             mishenko.SaturatedOilDensity_kg_m3 / mishenko.CurrentFreeGasDensity_kg_m3) ** 0.5
     # Относительная скорость реверса
     u = wm / wg
