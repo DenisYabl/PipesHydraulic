@@ -10,6 +10,7 @@ import pandas as pd
 from Tools.HE2_Logger import check_for_nan, getLogger
 import Fluids.HE2_MixFluids as mixer
 import Fluids.HE2_Fluid as fl
+from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord
 
 
 logger = getLogger(__name__)
@@ -48,7 +49,8 @@ class HE2_Solver():
 
         self.fluids_move_rate = 0.5
         self.known_Q = dict()
-
+        self.actual_x = None
+        self.actual_dx = None
 
     def set_known_Q(self, Q_dict):
         self.known_Q = Q_dict
@@ -152,16 +154,16 @@ class HE2_Solver():
         xs = np.matmul(A_inv, q_vec)
         self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
 
-        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
-        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
-        for key, cktl in cocktails.items():
-            initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
-            if key in edgelist:
-                u, v = key
-                obj = G[u][v]['obj']
-            else:
-                obj = G.nodes[key]['obj']
-            obj.fluid = initial_fluid
+        # cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        # src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        # for key, cktl in cocktails.items():
+        #     initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+        #     if key in edgelist:
+        #         u, v = key
+        #         obj = G[u][v]['obj']
+        #     else:
+        #         obj = G.nodes[key]['obj']
+        #     obj.fluid = initial_fluid
 
         logger.debug(f'initial_edges_x = {self.initial_edges_x}')
 
@@ -208,7 +210,6 @@ class HE2_Solver():
         self.ready_for_solve = True
 
     def target(self, x_chordes):
-        logger.debug(f'X = {x_chordes.flatten()}')
         check_for_nan(x_chordes=x_chordes)
 
         Q = self.Q_static
@@ -231,7 +232,6 @@ class HE2_Solver():
         if self.save_intermediate_results:
             self.do_save_intermediate_results()
 
-        logger.info(f'Y = {rez}')
         return rez
 
     def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
@@ -243,10 +243,19 @@ class HE2_Solver():
 
             x_chordes = self.get_initial_approximation()
             dx = np.zeros(x_chordes.shape)
+
             while True:
                 it_num += 1
+                self.actual_x = x_chordes
+                self.actual_dx = dx
+                # Best place to call plot_y(self) in debugger console
+                # plot_chord(self, node1, node2) in debugger console
+
                 x_chordes = x_chordes + step * dx
                 y = self.target(x_chordes)
+                logger.debug(f'X = {x_chordes.flatten()}')
+                logger.info(f'Y = {y}')
+
                 # if y < y_best:
                 #     self.evaluate_and_set_new_fluids()
 
@@ -545,7 +554,7 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
-            
+
             Q = 0
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
                 Q = self.edges_x[(Root, u)]
