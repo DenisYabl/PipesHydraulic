@@ -997,7 +997,7 @@ def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_c
     G.add_edge('UDR_2', 'UDR_1', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
 
 
-    G.add_edge('UDR_2', 'ZKL_98', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
+    # G.add_edge('UDR_2', 'ZKL_98', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
 
 
     G.add_edge('PAD_34', 'intake_pad_134', obj=HE2_OilPipe([818], [0.6], [0.143 * real_diam_coefficient], [roughness]))

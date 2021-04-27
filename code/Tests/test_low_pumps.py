@@ -253,8 +253,9 @@ def test5():
 
     G, inlets, juncs, outlets = build_DNS2_graph(PAD_33='P=5.9', PAD_34='Q=12.7', **graph_params)
     solver = HE2_Solver(G)
-    solver.solve(threshold=0.05, it_limit=10)
+    solver.solve(threshold=0.05, it_limit=100)
     draw_solution(G, None, None, inlets, outlets, juncs)
+    print_wells_pressures(G, inlets)
 
 
 if __name__ == '__main__':
