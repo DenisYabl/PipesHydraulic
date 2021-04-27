@@ -127,7 +127,7 @@ class HE2_WaterPipeSegment(abc.HE2_ABC_PipeSegment):
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         dP_fric_Pa = self.calc_P_friction_gradient_Pam(P_bar, T_C, abs(X_kgsec)) * self.L_m
         P_rez_bar = P_bar - uc.Pa2bar(grav_sign * self.fluid.rho_wat_kgm3 * uc.g * self.uphill_m + fric_sign * dP_fric_Pa)
-        check_for_nan(P_fric_grad_Pam=check_for_nan)
+        check_for_nan(P_fric_grad_Pam=dP_fric_Pa)
         return P_rez_bar, 20
 
 
