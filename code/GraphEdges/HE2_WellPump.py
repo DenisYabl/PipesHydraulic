@@ -38,6 +38,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.base_p = p_vec
         self.base_n = n_vec
         self.base_eff = eff_vec
+        self.stages_ratio = 1
 
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
         # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)
@@ -50,7 +51,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.p_vec_50hz = self.base_p * Cp_vec
         self.eff_vec = eff_vec * Ceff_vec
         self.n_vec_50hz = (self.q_vec * 9.81 * 1000 / 86400) * self.p_vec_50hz / (self.eff_vec/100)
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
 
         self.min_Q = self.q_vec.min()
@@ -139,7 +140,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 
+    def change_stages_ratio(self, new_ratio):
+        self.stages_ratio = new_ratio
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
+        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
+        self.make_extrapolators()
