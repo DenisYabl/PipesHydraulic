@@ -8,19 +8,109 @@ from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 
 def make_oilpipe_schema_from_OT_dataset(dataset):
     pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
+    inclination = pd.read_parquet("../CommonData/inclination")
+    HKT = pd.read_parquet("../CommonData/HKT")
+    wells_df = dataset[dataset["juncType"] == 'oilwell']
+    dataset = dataset[dataset["juncType"] != 'oilwell']
+
+    for i, row in wells_df.iterrows():
+        try:
+            wellNum = str(int(row["wellNum"]))
+        except:
+            wellNum = row["wellNum"]
+        padNum = str(int(row["padNum"]))
+        pumpdepth = row["pumpDepth"]
+        perforation = row["perforation"]
+
+        tubing = inclination[inclination["wellNum"] == wellNum]
+        tubing = tubing.sort_values(by = 'depth')
+        tubing["Roughness"] = 3e-5
+        tubing["IntDiameter"] = 0.57
+        tubing["NKTlength"] = 10
+        local_HKT = HKT[HKT['wellNum'] == wellNum]
+        fulldepth = 0
+        for stageNum in local_HKT['stageNum'].unique():
+            stage_HKT = local_HKT[local_HKT["stageNum"] == stageNum]
+            stage_HKT = stage_HKT[stage_HKT["_time"] == stage_HKT["_time"].max()]
+            fulldepth += stage_HKT["stageLength"].iloc[0]
+            tubing.loc[tubing["depth"] <= fulldepth, "IntDiameter"] = (stage_HKT["stageDiameter"].iloc[0] - 16) / 1000
+
+        pump_place = tubing[abs(tubing["depth"] - pumpdepth) == min(abs(tubing["depth"] - pumpdepth) )].iloc[0]
+        perforation_place = tubing[abs(tubing["depth"] - perforation) == min(abs(tubing["depth"] - perforation) )].iloc[0]
+
+        tempdf = row.copy()
+        #plast-zaboi
+        tempdf["juncType"] = "plast"
+        tempdf["effectiveD"] = 1
+        tempdf["roughness"] = 3e-5
+        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
+        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        tempdf["endIsOutlet"] = False
+        dataset = dataset.append(tempdf)
+
+        #zaboi-intake
+        tempdf["startIsSource"] = False
+        tempdf["juncType"] = "pipe"
+        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        absdiff = perforation_place["absMark"] - pump_place["absMark"]
+        Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
+        tempdf["L"] = Ldiff
+        tempdf['uphillM'] = absdiff
+        tempdf["intD"] = 0.127
+        dataset = dataset.append(tempdf)
+
+        #wellpump
+        tempdf["juncType"] = "wellpump"
+        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        dataset = dataset.append(tempdf)
+
+        #outlet-wellhead
+        tempdf["juncType"] = "pipe"
+        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        absdiff = pump_place["absMark"]
+        Ldiff = pump_place["prolongation"]
+        tempdf["L"] = Ldiff
+        tempdf['uphillM'] = absdiff
+        tempdf["intD"] = pump_place["IntDiameter"]
+        dataset = dataset.append(tempdf)
+
+        #wellhead-pad
+        tempdf["juncType"] = "pipe"
+        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        tempdf["node_id_end"] = row["node_id_end"]
+        absdiff = 50
+        tempdf["endIsOutlet"] = row["endIsOutlet"]
+        tempdf["L"] = 0
+        tempdf['uphillM'] = absdiff
+        tempdf["intD"] = 0.071
+        dataset = dataset.append(tempdf)
+
+
+
+    pass
+
     outlets = {}
     inlets = {}
     juncs = {}
     calc_df = dataset
-    ids_count =  pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
+    calc_df["startIsSource"] = calc_df["startIsSource"].fillna(False)
+    calc_df["endIsOutlet"] = calc_df["endIsOutlet"].fillna(False)
+    calc_df[['node_id_start', 'node_id_end']] = calc_df[['node_id_start', 'node_id_end']].astype(str)
+    ids_count = pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
     ids_count.rename('ids_count')
     calc_df = calc_df.join(ids_count.to_frame(), on='node_id_start', how='left')
     calc_df = calc_df.rename(columns = {0:'start_id_count'})
-    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_end', how='left')
-    calc_df = calc_df.rename(columns = {0:'end_id_count'})
 
+    ids_count = calc_df['node_id_start'].value_counts()
+    ids_count.rename('ids_count')
+    calc_df = calc_df.join(ids_count.to_frame().rename(columns = {"node_id_start":0}), on='node_id_end', how='left')
+    calc_df = calc_df.rename(columns = {0:'end_id_count'})
+    calc_df['end_id_count'] = calc_df["end_id_count"].fillna(0)
     calc_df['sourceByCount'] = calc_df['start_id_count'] == 1
-    calc_df['outletByCount'] = calc_df['end_id_count'] == 1
+    calc_df['outletByCount'] = calc_df['end_id_count']  == 0
 
     calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
     calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
@@ -34,6 +124,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     calc_df['inletBoundaryMistakes'] = True
     calc_df['outletBoundaryMistakes'] = True
 
+
+
     calc_df.loc[calc_df["startIsSource"], 'inletBoundaryMistakes'] = calc_df[calc_df["startIsSource"]]['sourceValueIsFilled'] & calc_df[calc_df["startIsSource"]]['sourceKindIsFilled']
 
     calc_df.loc[calc_df["endIsOutlet"], 'outletBoundaryMistakes'] = calc_df[calc_df["endIsOutlet"]]['outletValueIsFilled'] & calc_df[calc_df["endIsOutlet"]]['outletKindIsFilled']
@@ -41,22 +133,22 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
 
 
     calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
-    calc_df = calc_df[calc_df['sumOfCounts'] > 2]
+    calc_df = calc_df[calc_df['sumOfCounts'] >= 2]
 
     mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes']) | (~calc_df['inletBoundaryMistakes']) | (~calc_df['outletBoundaryMistakes'])]
 
     if not mistakes_df.empty :
         print(f"Following nodes: {mistakes_df[~mistakes_df['sourceMistakes']]['node_id_start'].values} should be sources")
         print(f"Following nodes: {mistakes_df[~mistakes_df['outletMistakes']]['node_id_start'].values} should be outlets")
-        print(f"Start kInd and value for following nodes: {mistakes_df[~mistakes_df['inletBoundaryMistakes']]['node_id_start'].values} should be filled")
-        print(f"End kInd and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
+        print(f"Start kind and value for following nodes: {mistakes_df[~mistakes_df['inletBoundaryMistakes']]['node_id_start'].values} should be filled")
+        print(f"End kind and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
         assert False
 
 
 
-    inlets_df = calc_df[dataset["startIsSource"]]
-    outletsdf = calc_df[dataset["endIsOutlet"]]
-    juncs_df = pd.concat((dataset["node_id_start"], dataset["node_id_end"])).unique()
+    inlets_df = calc_df[calc_df["startIsSource"]]
+    outletsdf = calc_df[calc_df["endIsOutlet"]]
+    juncs_df = pd.concat((calc_df["node_id_start"], calc_df["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
         volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
@@ -76,7 +168,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
-        volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        VolumeWater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
         if junctype == "pipe":
             L = row["L"]
             uphill = row["uphillM"]
@@ -84,16 +176,17 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
             D = row["intD"]
             roughness = row["roughness" ]
             G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [
-                gimme_dummy_BlackOil()]))
+                gimme_dummy_BlackOil(VolumeWater = VolumeWater)]))
+            pass
         elif junctype == "plast":
             productivity = row["productivity" ]
-            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil()))
+            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=gimme_dummy_BlackOil(),
+            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater),
                                                                                      frequency=frequency))
-    return G
+    return G, calc_df[dataset.columns]
 
 
 def make_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
