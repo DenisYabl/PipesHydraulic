@@ -11,6 +11,7 @@ from Tools.HE2_Logger import check_for_nan, getLogger
 import Fluids.HE2_MixFluids as mixer
 import Fluids.HE2_Fluid as fl
 from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord
+from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs
 
 
 logger = getLogger(__name__)
@@ -249,7 +250,8 @@ class HE2_Solver():
                 self.actual_x = x_chordes
                 self.actual_dx = dx
                 # Best place to call plot_y(self) in debugger console
-                # plot_chord(self, node1, node2) in debugger console
+                # or maybe plot_chord(self, node1, node2)
+                # plot_chord(self, 'Root', 'PAD_33')
 
                 x_chordes = x_chordes + step * dx
                 y = self.target(x_chordes)
@@ -308,15 +310,16 @@ class HE2_Solver():
             p, t = self.pt_on_tree[u]
             x = self.edges_x[(u, v)]
             dx = 1e-3
-            if (u, v) in self.span_tree:
-                p_, t_ = self.pt_on_tree[v]
-            elif (u, v) in self.chordes:
-                p_, t_ = self.pt_on_chords_ends[(u, v)]
-            else:
-                logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
-                assert False
+            # if (u, v) in self.span_tree:
+            #     p_, t_ = self.pt_on_tree[v]
+            # elif (u, v) in self.chordes:
+            #     p_, t_ = self.pt_on_chords_ends[(u, v)]
+            # else:
+            #     logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
+            #     assert False
 
             edge_func = self.forward_edge_functions[(u, v)]
+            p_, t_ =  edge_func(p, t, x)
             p__, t__ =  edge_func(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
             rez[(u, v)] = dpdx
