@@ -34,7 +34,9 @@ field_list = [
 'TensionOilWater',
 'Q_gas_m3_s',
 'Q_liq_and_gas_m3_s',
-'VolumeGas_fraction'
+'VolumeGas_fraction',
+'Thermal_capacity'
+
 ]
 
 Mishenko = namedtuple('Mishenko', field_list)
@@ -192,6 +194,7 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
 
     CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
 
+    Thermal_capacity = VolumeWater * 4183 + (1 - VolumeWater) * 2100
     return Mishenko(oil_params=calc_params, CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q,
                     g=g, SaturationPressure_MPa=Saturation_pressure,
                     DissolvedGasAmount=1, FreeGasDensity_kg_m3=0,
@@ -203,7 +206,7 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
                     CurrentFreeGasViscosity_Pa_s=0, CurrentLiquidDensity_kg_m3=CurrentLiquidDensity,
                     TensionOilGas=TensionOilGas,
                     TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q_gas_m3_s=0, Q_liq_and_gas_m3_s=Q,
-                    VolumeGas_fraction=0)
+                    VolumeGas_fraction=0, Thermal_capacity = Thermal_capacity)
 
 def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     """
@@ -331,8 +334,11 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     # Вязкость газа в рабочих условиях
     Mg = 28.97 * CurrentFreeGasDensity
     r = P0 / (0.29 * T0)
-    E = (CurrentT / T0) ** (1 / 6) * (P0 / CurrentP) ** (2 / 3) * Mg ** -0.5
-    mu0 = 0.0101 * (CurrentT - 273) ** 1.8 - 1.07e-1 * math.sqrt(abs(Mg))  # !!!!!!!!!!!!!
+    try:
+        E = (CurrentT / T0) ** (1 / 6) * (P0 / CurrentP) ** (2 / 3) * Mg ** -0.5
+    except:
+        E = 0.025
+    mu0 = 0.0101 * abs(CurrentT - 273) ** 1.8 - 1.07e-1 * math.sqrt(abs(Mg))  # !!!!!!!!!!!!!
     if CurrentP >= 5:
         CurrentFreeGasViscosity = (mu0 + 1.08e-4 / E * (math.exp(1.44 * r) - math.exp(-1.11 * r ** 1.86))) * 1e-6
     else:
@@ -369,8 +375,8 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     Q_gas = Q_oil * FreeGasFactor
 
     # Объемное расходное газосодержание
-    VolumeGas = Q_gas / Q_owg if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
-
+    VolumeGas = Q_gas / (Q_owg + Q_gas)if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
+    Thermal_capacity = VolumeWater * 4183 + (1 - VolumeWater) * 2100
 # TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
     return Mishenko(oil_params=calc_params, CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q_liquid,
                     g=g, SaturationPressure_MPa=Saturation_pressure,
@@ -383,4 +389,4 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
                     CurrentFreeGasViscosity_Pa_s=CurrentFreeGasViscosity, CurrentLiquidDensity_kg_m3=CurrentLiquidDensity,
                     TensionOilGas=TensionOilGas,
                     TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q_gas_m3_s=Q_gas, Q_liq_and_gas_m3_s=Q_owg,
-                    VolumeGas_fraction=VolumeGas)
+                    VolumeGas_fraction=VolumeGas, Thermal_capacity = Thermal_capacity)

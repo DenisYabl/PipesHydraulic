@@ -1,0 +1,398 @@
+{
+	"Defaults": {
+		"Inlets": ["Inlet0"],
+		"Outlets": ["Outlet0"],
+		"InletsOutletsPLink": "AllConnected",
+		"ConnectionPLink": "True"
+	},
+	"Objects": [{
+		"Id": 43,
+		"Name": "DNS-1102",
+		"Description": "ДНС-1102"
+	}, {
+		"Id": 1,
+		"Name": "DNS-1107",
+		"Description": "ДНС-1107"
+	}, {
+		"Id": 2,
+		"Name": "DNS-1103",
+		"Description": "ДНС-1103"
+	}, {
+		"Id": 3,
+		"Name": "DNS-1101",
+		"Description": "ДНС-1101"
+	}, {
+		"Id": 4,
+		"Name": "AGZU-XXXX",
+		"Description": "AGZU-XXXX"
+	}, {
+		"Id": 5,
+		"Name": "UPSV-1104",
+		"Description": "УПСВ-1104",
+		"Inlets": ["Inlet1"],
+		"InletsOutletsPLink": "AllDisconnected",
+		"Connections": [{
+			"Inlet0": "SeparationUnit_1.Inlet0"
+		}, {
+			"Inlet1": "SeparationUnit_1.Inlet0"
+		}, {
+			"Outlet0": "FlowmeterUnit_1.Outlet0"
+		}],
+		"Objects": [{
+				"Id": 19,
+				"Name": "SeparationUnit_1",
+				"Description": "Блок сепарации газа",
+				"Connections": [{
+					"Outlet0": "PumpUnit_1.Inlet0"
+				}]
+			},
+			{
+				"Id": 20,
+				"Name": "PumpUnit_1",
+				"Description": "Блок сырьевых насосов",
+				"Connections": [{
+					"Outlet0": "FlowmeterUnit_2.Inlet0"
+				}],
+				"Objects": [{
+						"Id": 28,
+						"Name": "Pump-1/5",
+						"Description": "Насос Н-1/5",
+						"Connections": [{
+							"Inlet0": "PumpUnit_1.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_1.Outlet0"
+						}]
+					},
+					{
+						"Id": 29,
+						"Name": "Pump-2/5",
+						"Description": "Насос Н-2/5",
+						"Connections": [{
+							"Inlet0": "PumpUnit_1.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_1.Outlet0"
+						}]
+					},
+					{
+						"Id": 30,
+						"Name": "Pump-3/5",
+						"Description": "Насос Н-3/5",
+						"Connections": [{
+							"Inlet0": "PumpUnit_1.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_1.Outlet0"
+						}]
+					},
+					{
+						"Id": 31,
+						"Name": "Pump-4/5",
+						"Description": "Насос Н-4/5",
+						"Connections": [{
+							"Inlet0": "PumpUnit_1.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_1.Outlet0"
+						}]
+					},
+					{
+						"Id": 32,
+						"Name": "Pump-5/5",
+						"Description": "Насос Н-5/5",
+						"Connections": [{
+							"Inlet0": "PumpUnit_1.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_1.Outlet0"
+						}]
+					}
+				]
+			},
+			{
+				"Id": 21,
+				"Name": "FlowmeterUnit_2",
+				"Description": "ОУУН-2",
+				"Connections": [{
+					"Outlet0": "HeaterUnit.Inlet0"
+				}]
+			},
+			{
+				"Id": 22,
+				"Name": "HeaterUnit",
+				"Description": "Блок ПТО",
+				"Connections": [{
+					"Outlet0": "SeparationUnit_2.Inlet0"
+				}]
+			},
+			{
+				"Id": 23,
+				"Name": "SeparationUnit_2",
+				"Description": "Блок отстойников",
+				"Connections": [{
+					"Outlet0": "SeparationUnit_3.Inlet0",
+					"PLink": "False"
+				}]
+			},
+			{
+				"Id": 24,
+				"Name": "SeparationUnit_3",
+				"Description": "Блок КСУ",
+				"Connections": [{
+					"Outlet0": "TankUnit.Inlet0"
+				}]
+			},
+			{
+				"Id": 25,
+				"Name": "TankUnit",
+				"Description": "Блок резервуаров",
+				"Connections": [{
+					"Outlet0": "PumpUnit_2.Inlet0"
+				}],
+				"Objects": [{
+						"Id": 33,
+						"Name": "Tank-2",
+						"Description": "РВС 2",
+						"Connections": [{
+							"Inlet0": "TankUnit.Inlet0",
+							"PLink": "False"
+						}, {
+							"Outlet0": "TankUnit.Outlet0",
+							"PLink": "False"
+						}]
+					},
+					{
+						"Id": 34,
+						"Name": "Tank-3",
+						"Description": "РВС 3",
+						"Connections": [{
+							"Inlet0": "TankUnit.Inlet0",
+							"PLink": "False"
+						}, {
+							"Outlet0": "TankUnit.Outlet0",
+							"PLink": "False"
+						}]
+					},
+					{
+						"Id": 35,
+						"Name": "Tank-4",
+						"Description": "РВС 4",
+						"Connections": [{
+							"Inlet0": "TankUnit.Inlet0",
+							"PLink": "False"
+						}, {
+							"Outlet0": "TankUnit.Outlet0",
+							"PLink": "False"
+						}]
+					}
+				]
+			},
+			{
+				"Id": 26,
+				"Name": "PumpUnit_2",
+				"Description": "Блок насосов внешнего транспорта",
+				"Connections": [{
+					"Outlet0": "FlowmeterUnit_1.Inlet0"
+				}],
+				"Objects": [{
+						"Id": 36,
+						"Name": "Pump-12/1",
+						"Description": "Насос Н12/1",
+						"Connections": [{
+							"Inlet0": "PumpUnit_2.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_2.Outlet0"
+						}]
+					},
+					{
+						"Id": 37,
+						"Name": "Pump-12/2",
+						"Description": "Насос Н12/2",
+						"Connections": [{
+							"Inlet0": "PumpUnit_2.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_2.Outlet0"
+						}]
+					},
+					{
+						"Id": 38,
+						"Name": "Pump-12/3",
+						"Description": "Насос Н12/3",
+						"Connections": [{
+							"Inlet0": "PumpUnit_2.Inlet0"
+						}, {
+							"Outlet0": "PumpUnit_2.Outlet0"
+						}]
+					}
+				]
+			},
+			{
+				"Id": 27,
+				"Name": "FlowmeterUnit_1",
+				"Description": "ОУУН-1"
+			}
+		]
+	}, {
+		"Id": 6,
+		"Name": "NPS-XXX1",
+		"Description": "NPS-XXX1"
+	}, {
+		"Id": 7,
+		"Name": "NPS-XXX2",
+		"Description": "NPS-XXX2"
+	}, {
+		"Id": 8,
+		"Name": "UPPN-XXXX",
+		"Description": "UPPN-XXXX"
+	}, {
+		"Id": 9,
+		"Name": "Destination",
+		"Description": "Пункт сдачи"
+	}, {
+		"Id": 10,
+		"Name": "Pipeline_DNS1107-JP",
+		"Description": "Трубопровод 273х17616 ДНС-1107 - т.вр.....",
+		"Connections": [{
+			"Inlet0": "DNS-1107.Outlet0"
+		}, {
+			"Outlet0": "Pipeline_DNS1103-JP.Inlet1"
+		}]
+	}, {
+		"Id": 11,
+		"Name": "Pipeline_DNS1103-JP",
+		"Description": "Трубопровод 273х12290 ДНС-1103 - т.вр.....",
+		"Inlets": [{
+			"Name": "JP1",
+			"Position": 1000
+		}],
+		"Objects": [{
+				"Id": 39,
+				"Name": "Segment_0",
+				"Description": "Сегмент 0-1000м",
+				"Connections": [{
+					"Inlet0": "Pipeline_DNS1103-JP.Inlet0",
+					"Outlet0": "Pipeline_DNS1103-JP.JP1"
+				}]
+			},
+			{
+				"Id": 40,
+				"Name": "Segment_1",
+				"Description": "Сегмент 1000-12290м",
+				"Connections": [{
+					"Inlet0": "Pipeline_DNS1103-JP.JP1",
+					"Outlet0": "Pipeline_DNS1103-JP.Outlet0"
+				}]
+			}
+		],
+		"Connections": [{
+			"Inlet0": "DNS-1103.Outlet0"
+		}, {
+			"Outlet0": "Pipeline_AGZUXXX-UPSV1104.Inlet1"
+		}]
+	}, {
+		"Id": 12,
+		"Name": "Pipeline_AGZUXXX-UPSV1104",
+		"Description": "Трубопровод 325х13580 ... - УПСВ-1104",
+		"Inlets": [{
+			"Name": "JP1",
+			"Position": 8380
+		}],
+		"Objects": [{
+				"Id": 41,
+				"Name": "Segment_0",
+				"Description": "Сегмент 0-8380",
+				"Connections": [{
+					"Inlet0": "Pipeline_AGZUXXX-UPSV1104.Inlet0",
+					"Outlet0": "Pipeline_AGZUXXX-UPSV1104.JP1"
+				}]
+			},
+			{
+				"Id": 42,
+				"Name": "Segment_1",
+				"Description": "Сегмент 8380-12290м",
+				"Connections": [{
+					"Inlet0": "Pipeline_AGZUXXX-UPSV1104.JP1",
+					"Outlet0": "Pipeline_AGZUXXX-UPSV1104.Outlet0"
+				}]
+			}
+		],
+		"Connections": [{
+			"Inlet0": "AGZU-XXXX.Outlet0"
+		}, {
+			"Outlet0": "UPSV1104.Inlet1"
+		}]
+	}, {
+		"Id": 13,
+		"Name": "Pipeline_DNS1102-DNS1101",
+		"Description": "Трубопровод 219х11737 ДНС-1102 - ДНС-1101",
+		"Connections": [{
+			"Inlet0": "DNS-1102.Outlet0"
+		}, {
+			"Outlet0": "DNS-1101.Inlet1"
+		}]
+	}, {
+		"Id": 14,
+		"Name": "Pipeline_DNS1101-UPSV1104",
+		"Description": "Трубопровод 273х5310 ДНС-1101 - УПСВ-1104",
+		"Connections": [{
+			"Inlet0": "DNS-1101.Outlet0"
+		}, {
+			"Outlet0": "UPSV1104.Inlet0"
+		}]
+	}, {
+		"Id": 15,
+		"Name": "Pipeline_UPSV1104-JP",
+		"Description": "Трубопровод 325х18600 УПСВ-1104 - т.вр...",
+		"Connections": [{
+			"Inlet0": "UPSV1104.Outlet0"
+		}, {
+			"Outlet0": "Pipeline_NPSXXX1-NPSXXX2.JP1"
+		}]
+	}, {
+		"Id": 16,
+		"Name": "Pipeline_NPSXXX1-NPSXXX2",
+		"Description": "Трубопровод 530х79846 НПС ... - НПС ...",
+		"Inlets": [{
+			"Name": "JP1",
+			"Position": 56073
+		}],
+		"Objects": [{
+				"Id": 43,
+				"Name": "Segment_0",
+				"Description": "Сегмент 0-56073",
+				"Connections": [{
+					"Inlet0": "Pipeline_NPSXXX1-NPSXXX2.Inlet0",
+					"Outlet0": "Pipeline_NPSXXX1-NPSXXX2.JP1"
+				}]
+			},
+			{
+				"Id": 44,
+				"Name": "Segment_1",
+				"Description": "Сегмент 56073-12290м",
+				"Connections": [{
+					"Inlet0": "Pipeline_NPSXXX1-NPSXXX2.JP1",
+					"Outlet0": "Pipeline_NPSXXX1-NPSXXX2.Outlet0"
+				}]
+			}
+		],
+		"Connections": [{
+			"Inlet0": "NPS-XXX1.Outlet0"
+		}, {
+			"Outlet0": "NPS-XXX2.Inlet0"
+		}]
+	}, {
+		"Id": 17,
+		"Name": "Pipeline_NPSXXX2-UPPNXXXX",
+		"Description": "Трубопровод 630х59000 НПС ... - УППН ...",
+		"Connections": [{
+			"Inlet0": "NPS-XXX2.Outlet0"
+		}, {
+			"Outlet0": "UPPN-XXXX.Inlet0"
+		}]
+	}, {
+		"Id": 18,
+		"Name": "Pipeline_UPPNXXXX-PNOS",
+		"Description": "Трубопровод 630х89000 УППН .... - пункт сдачи",
+		"Connections": [{
+			"Inlet0": "UPPN-XXXX.Outlet0"
+		}, {
+			"Outlet0": "Destination.Inlet0"
+		}]
+	}]
+}

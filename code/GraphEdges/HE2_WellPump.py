@@ -25,13 +25,17 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
     pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
     return pump
 
+# class HE2_WellPump(abc.HE2_ABC_GraphEdge):
+#     def __init__(self, Q_P_N_table=None, fluid = HE2_DummyOil, frequency = 50):
 
 class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
-    def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50):
+    def __init__(self, p_vec, q_vec, n_vec, eff_vec, model = "", fluid = None, frequency = 50, engine_efficiency = 0.92):
         if fluid is None:
             fluid = gimme_dummy_BlackOil()
+        self.engine_efficiency = engine_efficiency
         self.fluid = fluid
         self.model = model
+        self.intermediate_results = []
         self.frequency = frequency
         self._printstr = self.model
         self.base_q = q_vec # self.base_* - НРХ насоса по воде
@@ -61,7 +65,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = None
         self.get_pressure_raise_2 = None
         self.get_pressure_raise_3 = None
-        self.n_interpolator = None
         self.make_extrapolators()
 
 
@@ -73,6 +76,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         calc_direction = 1 if unifloc_direction >= 10 else -1
         flow_direction = 1 if unifloc_direction % 10 == 1 else - 1
 
+
+
         if calc_direction == 1:
             return self.perform_calc_forward(P_bar, T_C, X_kgsec)
         else:
@@ -82,6 +87,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         p, t = P_bar, T_C
         fl = self.fluid.calc(P_bar, T_C, X_kgsec)
         p, t = self.calculate_pressure_differrence(p, t, X_kgsec, 1, fl)
+        self.intermediate_results += [(p, t)]
         return p, t
 
     def perform_calc_backward(self, P_bar, T_C, X_kgsec):
@@ -98,13 +104,21 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.power = 0
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
+            get_eff = self.get_eff_1
         elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
+            get_eff = self.get_eff_2
             self.power = self.n_interpolator(liquid_debit)
         else:
             get_pressure_raise = self.get_pressure_raise_3
+            get_eff = self.get_eff_3
 
-        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
+        pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
+
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
+
+        eff = get_eff(liquid_debit)
+        #T_rez_C = T_C + calc_direction * self.calculate_temperature_raise(pressure_raise, eff, mishenko)
         T_rez_C = T_C
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
 
@@ -136,6 +150,11 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
         self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
         self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
+
+        self.get_eff_1 = lambda x: 5
+        self.get_eff_2 = interp1d(self.q_vec, self.eff_vec, kind="quadratic")
+        self.get_eff_3 = lambda x: 5
+
         self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
 
     def changeFrequency(self, new_frequency):
@@ -149,3 +168,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
+
+    def calculate_temperature_raise(self, deltaP, eff, mishenko):
+        deltaT = deltaP / (mishenko.CurrentLiquidDensity_kg_m3 * mishenko.Thermal_capacity) * (1 / (eff / 100 * self.engine_efficiency) - 1)
+        return deltaT

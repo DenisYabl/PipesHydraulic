@@ -134,7 +134,7 @@ def full_test():
     G, inlets, juncs, outlets = model_DNS_2(pressures=pressures, pumps=pumps, plasts=plasts,
                                             DNS_daily_debit=Full_system_daily_debit, pump_curves=pump_curves, fluid=fluid)
 
-    print_wells_pressures(G, inlets)
+    #print_wells_pressures(G, inlets)
 
     validity = check_solution(G)
     print(validity)

@@ -43,12 +43,23 @@ startP, startT, endP, endT - расчетные поля, заполняемые
 dataset = pd.read_csv("../CommonData/DNS3_example_well.csv")
 start_time = time.time()
 mdf = calculate_DF(dataset)
+mdf = mdf[['juncType', 'pipeline_purpose_id', 'simple_part_id', 'part_id', 'rs_schema_id', 'schema_id',
+           'pipeline_id', 'node_id_end', 'node_id_start', 'L', 'simple_part_creation_date', 'node_name_start',
+           'altitude_start',
+           'node_type_start', 'node_name_end', 'altitude_end', 'node_type_end', 'D', 'S', 'thread_number', 'uphillM',
+           'startIsSource', 'VolumeWater',
+           'startKind', 'startValue', 'endIsOutlet', 'endKind', 'endValue', 'startP', 'startT', 'endP', 'endT',
+           'effectiveD', 'intD', 'roughness',
+           'productivity', 'model', 'frequency', 'perforation', 'pumpDepth', 'wellNum', 'padNum']]
+mdf = mdf.fillna(0)
 print("--- %s seconds ---" % (time.time() - start_time))
-# mdf.to_csv("../CommonData/DNS3_example_well.csv")
+mdf.to_csv("../CommonData/mdf.csv")
 
 
 """
 Также возможно создание расчетного графа из датафрейма без его расчета с помощью Tools.HE2_schema_maker.make_oilpipe_schema_from_OT_dataset
 Требования к датафрейму такие же, как для calculate_DF
 """
-G = make_oilpipe_schema_from_OT_dataset(dataset)
+
+G, df = make_oilpipe_schema_from_OT_dataset(dataset)
+pass
