@@ -12,6 +12,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     HKT = pd.read_parquet("../CommonData/HKT")
     wells_df = dataset[dataset["juncType"] == 'oilwell']
     dataset = dataset[dataset["juncType"] != 'oilwell']
+    dataset[['node_id_start', 'node_id_end']] = dataset[['node_id_start', 'node_id_end']].astype(int).astype(str)
 
     for i, row in wells_df.iterrows():
         try:
