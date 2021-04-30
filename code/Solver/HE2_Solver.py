@@ -180,7 +180,7 @@ class HE2_Solver():
                     logger.info(f'y {y} is better than y_best {y_best}')
                     y_best = y
                     x_best = x_chordes
-                elif step > 0.1:
+                elif step > 0.25:
                     step = step/2
                 else:
                     step = self.gimme_random_step(rnd_seed)
@@ -224,15 +224,16 @@ class HE2_Solver():
             p, t = self.pt_on_tree[u]
             x = self.edges_x[(u, v)]
             dx = 1e-3
-            if (u, v) in self.span_tree:
-                p_, t_ = self.pt_on_tree[v]
-            elif (u, v) in self.chordes:
-                p_, t_ = self.pt_on_chords_ends[(u, v)]
-            else:
-                logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
-                assert False
+            # if (u, v) in self.span_tree:
+            #     p_, t_ = self.pt_on_tree[v]
+            # elif (u, v) in self.chordes:
+            #     p_, t_ = self.pt_on_chords_ends[(u, v)]
+            # else:
+            #     logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
+            #     assert False
 
             edge_func = self.forward_edge_functions[(u, v)]
+            p_, t_ =  edge_func(p, t, x)
             p__, t__ =  edge_func(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
             rez[(u, v)] = dpdx
@@ -535,4 +536,4 @@ class HE2_Solver():
     def gimme_random_step(self, rand_seed):
         logger.info(f'randseed is {rand_seed}')
         np.random.seed(rand_seed)
-        return np.random.uniform(0.1, 0.5)
+        return np.random.uniform(0.25, 0.5)
