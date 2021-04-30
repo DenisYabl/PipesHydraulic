@@ -1026,10 +1026,10 @@ def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pump
 
     G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, roughness,
                                                  real_diam_coefficient, DNS_daily_debit, DNS_pressure=4.8)
-    inlets_Q = gimme_DNS2_inlets_outlets_Q()
+    # inlets_Q = gimme_DNS2_inlets_outlets_Q()
     #Создаем солвер и решаем полученный расчетный граф
     solver = HE2_Solver(G)
-    solver.set_known_Q(inlets_Q)
+    # solver.set_known_Q(inlets_Q)
     solver.solve(threshold=0.25)
     return G, inlets, juncs, outlets
 

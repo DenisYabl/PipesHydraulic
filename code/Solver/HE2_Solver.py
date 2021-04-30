@@ -11,7 +11,7 @@ from Tools.HE2_Logger import check_for_nan, getLogger
 import Fluids.HE2_MixFluids as mixer
 import Fluids.HE2_Fluid as fl
 from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord
-from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs
+from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs, plot_residuals_toward_gradient as plot_resd
 
 
 logger = getLogger(__name__)
@@ -230,12 +230,10 @@ class HE2_Solver():
         check_for_nan(chordes_pt_residual_vec=self.pt_residual_vec)
 
         rez = np.linalg.norm(self.pt_residual_vec)
-        if self.save_intermediate_results:
-            self.do_save_intermediate_results()
 
         return rez
 
-    def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
+    def solve(self, threshold=0.05, it_limit = 100, step = 1):
         logger.info('is started')
         y_best, x_best, it_num, rnd_seed = 100500100500, None, 0, 42
         try:
@@ -325,6 +323,13 @@ class HE2_Solver():
             rez[(u, v)] = dpdx
             rez_vec[i] = dpdx
         return rez, rez_vec
+
+    def save_edge_func_result(self, **kwargs):
+        if self.imd_rez_df is None:
+            cols = list(kwargs.keys())
+            self.imd_rez_df = pd.DataFrame(columns=cols) #, dtype=['obj', 'obj', 'obj', 'obj', 'float', 'float'])
+        self.imd_rez_df.append(kwargs)
+
 
     def do_save_intermediate_results(self):
         if self.imd_rez_df is None:
@@ -510,15 +515,13 @@ class HE2_Solver():
                 edge_func = self.backward_edge_functions[(u, v)]
             p_unk, t_unk = edge_func(p_kn, t_kn, x)
 
-            # row = dict(known=known, unknown=unknown, x=x, p_known=p_kn, p_unknown=p_unk)
-            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
-            # if known == 'PAD_39' and unknown == 'intake_pad_59':
-            #     print(x, p_kn, p_unk)
-
             if np.isnan(p_unk):
                 logger.warning(f'edge_func returns NaN! Edge is ({u}, {v}), known is {known}')
 
             pt[unknown] = (p_unk, t_unk)
+
+            if self.save_intermediate_results:
+                self.save_edge_func_result(u=u, v=v, x=x, unknown=unknown, p_kn=p_kn, p_unk=p_unk)
         return pt
 
     def evalute_chordes_pressure_residual(self):
@@ -536,8 +539,8 @@ class HE2_Solver():
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
 
-            # row = dict(known=u, unknown=v, x=x, p_known=p_u, p_unknown=p_v)
-            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
+            if self.save_intermediate_results:
+                self.save_edge_func_result(u=u, v=v, x=x, unknown=v, p_kn=p_u, p_unk=p_v)
 
             pt_v1[i,0] = p_v
             pt_v1[i,1] = t_v

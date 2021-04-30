@@ -19,6 +19,39 @@ def plot_y_toward_gradient_from_actual_x(solver, start=-0.1, stop=1, points=111)
     plt.scatter(steps, ys)
     plt.show()
 
+
+# def plot_residuals_toward_gradient(solver : HE2_Solver, start=-0.1, stop=1, points=111):
+def plot_residuals_toward_gradient(solver, start=-0.1, stop=1, points=111):
+    x0 = solver.actual_x.copy()
+    grad = solver.actual_dx
+    steps = np.linspace(start, stop, points)
+    ys = []
+    G = solver.graph
+    ptts = {n: [] for n in G.nodes}
+    ptcs = {n: [] for n in G.nodes}
+
+    for step in steps:
+        x = x0 + step * grad
+        y = solver.target(x)
+        ys += [y]
+        ptt = solver.pt_on_tree
+        ptc = solver.pt_on_chords_ends
+        for n in ptt:
+            ptts[n] += [ptt[n][0]]
+            if n in ptc:
+                ptcs[n] += [ptc[n][0]]
+
+    fig = plt.figure(constrained_layout=True, figsize=(12, 8))
+    ax = fig.add_subplot(1, 1, 1)
+    for n in ptts:
+        plt.scatter(steps, ptts[n], s=2)
+    for n in ptcs:
+        if ptcs[n]:
+            plt.scatter(steps, ptcs[n], s=2, marker='*')
+
+    plt.scatter(steps, ys)
+    plt.show()
+
 def make_node_labels(G, solver, pos, keys_to_plot):
 # def make_node_labels(G, solver : HE2_Solver, pos, keys_to_plot):
     nodes = set(G.nodes) & set(pos.keys())
