@@ -995,11 +995,6 @@ def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_c
     G.add_edge('PAD_33', 'intake_pad_33',obj=HE2_OilPipe([440], [-1.9], [0.139 * real_diam_coefficient], [roughness]))
     G.add_edge('intake_pad_33', 'UDR_2', obj=HE2_OilPipe([4394], [-4.6], [0.199 * real_diam_coefficient], [roughness]))
     G.add_edge('UDR_2', 'UDR_1', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
-
-
-    # G.add_edge('UDR_2', 'ZKL_98', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
-
-
     G.add_edge('PAD_34', 'intake_pad_134', obj=HE2_OilPipe([818], [0.6], [0.143 * real_diam_coefficient], [roughness]))
     G.add_edge('intake_pad_134', 'UDR_2', obj=HE2_OilPipe([3344], [10.2], [0.203 * real_diam_coefficient], [roughness]))
     G.add_edge('PAD_39', 'intake_pad_59', obj=HE2_OilPipe([7568], [1.6], [0.139 * real_diam_coefficient], [roughness]))
@@ -1141,5 +1136,42 @@ def print_wells_pressures(G, wells):
             prefix = Back.RED if P <= 1 else Style.RESET_ALL
             print(prefix + f'{P:8.3f}', end= ' ')
         print(Style.RESET_ALL + '   up to pad collector')
+
+def print_solution(G):
+    colorama.init()
+    table_header = f' {"start":>20} {"P_bar":>7} {"Q kg/s":>8}   {"end":>20} {"P_bar":>7} {"Q kg/s":>8}    {"X kg/s":>7}'
+    print(table_header)
+    for e in G.edges:
+        u, v = e
+        obj = G[u][v]['obj']
+        u_obj = G.nodes[u]['obj']
+        v_obj = G.nodes[v]['obj']
+        x = obj.result['x']
+        p_u = u_obj.result['P_bar']
+        pu_str = f'{p_u:8.3f}'
+        if p_u <= 1:
+            pu_str = Back.RED + pu_str + Style.RESET_ALL
+
+        p_v = v_obj.result['P_bar']
+        pv_str = f'{p_v:8.3f}'
+        if p_v <= 1:
+            pv_str = Back.RED + pv_str + Style.RESET_ALL
+
+        q_u = u_obj.result['Q']
+        q_u_str = ''
+        if abs(q_u) > 1e-5:
+            q_u_str = f"{q_u:8.3f}"
+
+        q_v = v_obj.result['Q']
+        q_v_str = ''
+        if abs(q_v) > 1e-5:
+            q_v_str = f"{q_v:8.3f}"
+
+        row = f' {u:>20} {pu_str:>8} {q_u_str:>8}   {v:>20} {pv_str:>8} {q_v_str:>8}    {x:7.3f}{Style.RESET_ALL}'
+        print(row)
+
+
+
+
 
 
