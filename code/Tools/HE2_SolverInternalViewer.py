@@ -2,6 +2,7 @@ import numpy as np
 # from Solver.HE2_Solver import HE2_Solver
 import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 
 def plot_y_toward_gradient_from_actual_x(solver, start=-0.1, stop=1, points=111):
     x0 = solver.actual_x.copy()
@@ -21,36 +22,45 @@ def plot_y_toward_gradient_from_actual_x(solver, start=-0.1, stop=1, points=111)
 
 
 # def plot_residuals_toward_gradient(solver : HE2_Solver, start=-0.1, stop=1, points=111):
-def plot_residuals_toward_gradient(solver, start=-0.1, stop=1, points=111):
+def plot_residuals_toward_gradient(solver, start=-0.1, stop=1, points=111, filter=0.1):
     x0 = solver.actual_x.copy()
     grad = solver.actual_dx
     steps = np.linspace(start, stop, points)
     ys = []
-    G = solver.graph
-    ptts = {n: [] for n in G.nodes}
-    ptcs = {n: [] for n in G.nodes}
+    edgelist = solver.edge_list
+    n = len(solver.edge_list)
+    traces = np.zeros((points, n))
+    xs = np.zeros((points, n))
 
-    for step in steps:
+    stash_here_solver_itermediate_results_flag = solver.save_intermediate_results
+    solver.save_intermediate_results = True
+
+    for i, step in enumerate(steps):
         x = x0 + step * grad
         y = solver.target(x)
         ys += [y]
-        ptt = solver.pt_on_tree
-        ptc = solver.pt_on_chords_ends
-        for n in ptt:
-            ptts[n] += [ptt[n][0]]
-            if n in ptc:
-                ptcs[n] += [ptc[n][0]]
+        for j, e in enumerate(edgelist):
+            edge_func_result = solver.edge_func_last_results[e]
+            xx, unknown, p_kn, p_unk = edge_func_result
+            traces[i, j] = p_unk - p_kn
+            xs[i, j] = xx
 
     fig = plt.figure(constrained_layout=True, figsize=(12, 8))
     ax = fig.add_subplot(1, 1, 1)
-    for n in ptts:
-        plt.scatter(steps, ptts[n], s=2)
-    for n in ptcs:
-        if ptcs[n]:
-            plt.scatter(steps, ptcs[n], s=2, marker='*')
-
-    plt.scatter(steps, ys)
+    hndls = []
+    for i, e in enumerate(edgelist):
+        trace = traces[:,i]
+        x = xs[:,i]
+        if max(trace) - min(trace) < filter:
+            continue
+        hndl, = ax.plot(x, trace, linewidth=1, label=str(e), alpha=0.2)
+        hndls += [hndl]
+        ax.scatter(x, trace)
+    ax.legend(handles=hndls)
     plt.show()
+
+    solver.save_intermediate_results = stash_here_solver_itermediate_results_flag
+
 
 def make_node_labels(G, solver, pos, keys_to_plot):
 # def make_node_labels(G, solver : HE2_Solver, pos, keys_to_plot):

@@ -39,7 +39,8 @@ class HE2_Solver():
         self.pt_on_chords_ends = None
         self.pt_residual_vec = None
 
-        self.imd_rez_df = None
+        # self.imd_rez_df = None
+        self.edge_func_last_results = dict()
         self.save_intermediate_results = False
         self.initial_edges_x = None
         self.ready_for_solve = False
@@ -250,6 +251,7 @@ class HE2_Solver():
                 # Best place to call plot_y(self) in debugger console
                 # or maybe plot_chord(self, node1, node2)
                 # plot_chord(self, 'Root', 'PAD_33')
+                # plot_resd(self, filter = 150)
 
                 x_chordes = x_chordes + step * dx
                 y = self.target(x_chordes)
@@ -324,19 +326,23 @@ class HE2_Solver():
             rez_vec[i] = dpdx
         return rez, rez_vec
 
-    def save_edge_func_result(self, **kwargs):
-        if self.imd_rez_df is None:
-            cols = list(kwargs.keys())
-            self.imd_rez_df = pd.DataFrame(columns=cols) #, dtype=['obj', 'obj', 'obj', 'obj', 'float', 'float'])
-        self.imd_rez_df.append(kwargs)
+    def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
+        self.edge_func_last_results[(u, v)] = (x, unknown, p_kn, p_unk)
+
+    # def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
+    #     if self.imd_rez_df is None:
+    #         cols = ['u', 'v', 'x', 'unknown', 'p_kn', 'p_unk']
+    #         self.imd_rez_df = pd.DataFrame(columns=cols) #, dtype=['obj', 'obj', 'obj', 'obj', 'float', 'float'])
+    #     row=dict(u=u, v=v, x=x, unknown=unknown, p_kn=p_kn, p_unk=p_unk)
+    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
 
 
-    def do_save_intermediate_results(self):
-        if self.imd_rez_df is None:
-            cols = list(self.pt_on_tree.keys())
-            self.imd_rez_df = pd.DataFrame(columns=cols)
-        row = {k:v[0] for k, v in self.pt_on_tree.items()}
-        self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
+    # def do_save_intermediate_results(self):
+    #     if self.imd_rez_df is None:
+    #         cols = list(self.pt_on_tree.keys())
+    #         self.imd_rez_df = pd.DataFrame(columns=cols)
+    #     row = {k:v[0] for k, v in self.pt_on_tree.items()}
+    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
 
 
     def perform_self_test_for_1stCL(self):
