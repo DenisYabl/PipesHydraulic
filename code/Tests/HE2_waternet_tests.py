@@ -15,12 +15,14 @@ from Solver import HE2_Fit
 from Tools import HE2_Visualize as vis, HE2_tools as tools
 from Tools.cachespline import create_lazy_spline_cache_f_wrapper
 from Tools.HE2_tools import draw_solution
+import random
+from Tests.Optimization_test import print_solution
 
 class TestWaterNet(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_1(self):
+    def generate_water_graph(self):
         fluid = HE2_DummyWater()
         roughness = 1e-5
         real_diam_coefficient = 0.85
@@ -100,13 +102,165 @@ class TestWaterNet(unittest.TestCase):
                    obj=HE2_WaterPipe([3852], [-4.3], [0.309 * real_diam_coefficient], [roughness]))
         G.add_edge('PAD_57', 'intake_pad_57',
                    obj=HE2_WaterPipe([370], [-1], [0.203 * real_diam_coefficient], [roughness]))
+        return G
+
+    def test_1(self):
+        G = self.generate_water_graph()
+        solver = HE2_Solver(G)
+        solver.solve(threshold=0.05, it_limit=20)
+        print_solution(G)
+
+        G = random_reverse_edge_in_graph(G)
+        solver = HE2_Solver(G)
+        solver.solve(threshold=0.05, it_limit=20)
+        print_solution(G)
+
+    def test_2(self):
+        G = self.generate_water_graph()
+        G = add_random_edge(G)
+        G = add_random_edge(G)
 
         solver = HE2_Solver(G)
         solver.solve(threshold=0.05, it_limit=20)
-        draw_solution(G, None, None, inlets, outlets, juncs)
+        print_solution(G)
+
+        G = random_reverse_edge_in_graph(G)
+        G = random_reverse_edge_in_graph(G)
+        solver = HE2_Solver(G)
+        solver.solve(threshold=0.05, it_limit=20)
+        print_solution(G)
+
+    def test_3(self):
+        f = open('randoms.txt')
+
+        diffs = []
+        not_solved = []
+        for i, sss in enumerate(f):
+            print(f'-----------------------------------------{i}----------------------------------')
+            params = sss[:-1].split(';')
+            G = self.generate_water_graph()
+
+            u, v = params[0:2]
+            dx, dy, diam, rgh = tuple(map(float, params[2:6]))
+            G.add_edge(u, v, obj=HE2_WaterPipe([dx],[dy],[diam],[rgh]))
+
+            u, v = params[6:8]
+            dx, dy, diam, rgh = tuple(map(float, params[8:12]))
+            G.add_edge(u, v, obj=HE2_WaterPipe([dx],[dy],[diam],[rgh]))
+
+            u1, v1, u2, v2 = params[12:16]
+
+            solver = HE2_Solver(G)
+            solver.solve(threshold=0.25, it_limit=100)
+            # print_solution(G)
+            x1 = solver.op_result.x
+            ch1 = list(solver.chordes)
+            if not solver.op_result.success:
+                not_solved += [i]
+
+            G = reverse_edge_in_graph(G, u1, v1)
+            G = reverse_edge_in_graph(G, u2, v2)
+
+            solver = HE2_Solver(G)
+            solver.solve(threshold=0.25, it_limit=100)
+            # print_solution(G)
+
+            l1 = sorted(list(abs(x1.flatten())))
+            l2 = []
+            for u, v in ch1:
+                if (u, v) in solver.edges_x:
+                    l2 += [abs(solver.edges_x[(u, v)])]
+                elif (v, u) in solver.edges_x:
+                    l2 += [abs(solver.edges_x[(v, u)])]
+                else:
+                    assert False
+            l2 = sorted(l2)
+
+            diff = np.linalg.norm(np.array(l1) - np.array(l2))
+            if diff > 5e-3:
+                diffs += [i]
+
+            print(diffs)
+            print(not_solved)
 
 
+def random_reverse_edge_in_graph(G):
+    edgelist = list(G.edges)
+    e = random.choice(edgelist)
+    u, v = e
+    G = reverse_edge_in_graph(G, u, v)
+    return G
+
+def reverse_edge_in_graph(G: nx.DiGraph, u, v):
+    obj = G[u][v]['obj']
+    if isinstance(obj, HE2_WaterPipe):
+        dxs, dys, diams, rghs = [], [], [], []
+        for seg in obj.segments:
+            dxs += [seg.dx_m]
+            dys += [-1 * seg.uphill_m]
+            diams += [seg.inner_diam_m]
+            rghs += [seg.roughness_m]
+        new_obj = HE2_WaterPipe(dxs[::-1], dys[::-1], diams[::-1], rghs[::-1])
+        G.remove_edge(u, v)
+        G.add_edge(v, u, obj=new_obj)
+    return G
+
+def add_random_edge(G: nx.DiGraph):
+    nodes = list(G.nodes)
+    u = random.choice(nodes)
+    nodes.remove(u)
+    v = random.choice(list(G.nodes))
+    dx = random.uniform(10, 1000)
+    dy = random.uniform(-50, 50)
+    diam = random.uniform(0.05, 0.5)
+    rgh = 1e-5
+    obj = HE2_WaterPipe([dx], [dy], [diam], [rgh])
+    G.add_edge(u, v, obj=obj)
+    return G
+
+def generate_random_edges_and_swaps(G):
+    edgelist = list(G.edges)
+    nodelist = list(G.nodes)
+    f = open('randoms.txt', 'w')
+    for i in range(1000):
+        u1 = random.choice(nodelist)
+        v1 = random.choice(list(G.nodes))
+        if u1==v1 or (u1, v1) in edgelist or (v1, u1) in edgelist:
+            continue
+
+        u2 = random.choice(nodelist)
+        v2 = random.choice(list(G.nodes))
+        if u2==v2 or (u2, v2) in edgelist or (v2, u2) in edgelist:
+            continue
+
+        if (u1, v1) == (u2, v2) or (v1, u1) == (u2, v2):
+            continue
+
+        u3, v3 = random.choice(edgelist)
+        u4, v4 = random.choice(edgelist)
+
+        if (u3, v3) == (u4, v4) or (v3, u3) == (u4, v4):
+            continue
+
+        dx = random.uniform(10, 1000)
+        dy = random.uniform(-50, 50)
+        diam = random.uniform(0.05, 0.5)
+        rgh = 1e-5
+        tpl1 = (u1, v1, dx, dy, diam, rgh)
+
+        dx = random.uniform(10, 1000)
+        dy = random.uniform(-50, 50)
+        diam = random.uniform(0.05, 0.5)
+        rgh = 1e-5
+        tpl2 = (u2, v2, dx, dy, diam, rgh)
+
+        tpl3 = (u3, v3, u4, v4)
+        lst = list(tpl1) + list(tpl2) + list(tpl3)
+        print(';'.join(map(str, lst)), file=f)
 
 if __name__ == "__main__":
+
     test = TestWaterNet()
-    test.test_1()
+    # G = test.generate_water_graph()
+    # generate_random_edges_and_swaps(G)
+    test.test_3()
