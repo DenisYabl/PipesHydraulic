@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
+from Tools.HE2_tools import make_oilupstream_graph_layout
 
 def plot_y_toward_gradient_from_actual_x(solver, start=-0.1, stop=1, points=111):
     x0 = solver.actual_x.copy()
@@ -208,7 +209,8 @@ def make_node_neighbours_graph(solver, node, deep = 1):
 def plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot):
     fig = plt.figure(constrained_layout=True, figsize=(8, 8))
     ax = fig.add_subplot(1, 1, 1)
-    pos = nx.drawing.layout.circular_layout(G)
+    # pos = nx.drawing.layout.circular_layout(G)
+    pos = make_oilupstream_graph_layout(G)
     nx.draw_networkx_nodes(G, node_size=15, node_color='black', ax=ax,pos=pos, alpha=0.9)
     nx.draw_networkx_edges(G, edgelist=G_tree, pos=pos, width=1, ax=ax, edge_color='black')
     nx.draw_networkx_edges(G, edgelist=G_chordes, pos=pos, width=1, ax=ax, edge_color='black', style='dashed')
@@ -228,5 +230,11 @@ def plot_chord_cycle(solver, u, v, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx',
 
 def plot_neighbours_subgraph(solver, u, deep = 1, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
     G, G_tree, G_chordes = make_node_neighbours_graph(solver, u, deep)
+    plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
+
+def plot_all(solver, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
+    G = solver.graph
+    G_tree = solver.span_tree
+    G_chordes = solver.chordes
     plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
 
