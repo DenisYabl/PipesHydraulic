@@ -16,13 +16,17 @@ B_keff = 1.4
 # И рядом сделать конструктор, который берет уже датафрейм, выделяет из него три вектора и создает объект HE2_WellPump
 
 def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
-    base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
-    base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
-    p_vec = base_HPX["pressure"].values
-    q_vec = base_HPX["debit"].values
-    n_vec = base_HPX["power"].values
-    eff_vec = base_HPX["eff"].values
-    pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+    try:
+        base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
+        base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
+        p_vec = base_HPX["pressure"].values
+        q_vec = base_HPX["debit"].values
+        n_vec = base_HPX["power"].values
+        eff_vec = base_HPX["eff"].values
+        pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+    except Exception as e:
+        logger.error(f'Fail to create HE2_WellPump. Model is {model}')
+        raise e
     return pump
 
 # class HE2_WellPump(abc.HE2_ABC_GraphEdge):
