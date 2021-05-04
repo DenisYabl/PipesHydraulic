@@ -10,8 +10,9 @@ import pandas as pd
 from Tools.HE2_Logger import check_for_nan, getLogger
 import Fluids.HE2_MixFluids as mixer
 import Fluids.HE2_Fluid as fl
-from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord
+from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord, plot_all
 from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs, plot_residuals_toward_gradient as plot_resd
+from Tools.HE2_SolverInternalViewer import plot_all, plot_all_wo_root
 
 
 logger = getLogger(__name__)
@@ -252,6 +253,7 @@ class HE2_Solver():
                 # or maybe plot_chord(self, node1, node2)
                 # plot_chord(self, 'Root', 'PAD_33')
                 # plot_resd(self, filter = 150)
+                # plot_all_wo_root(self)
 
                 x_chordes = x_chordes + step * dx
                 y = self.target(x_chordes)

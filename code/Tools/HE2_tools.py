@@ -549,17 +549,15 @@ def make_oilupstream_graph_layout(G):
     nodes = list(G.nodes)
     long_wells = {}
     for n in nodes:
-        if G.in_edges(n) == 0 and G.out_edges(n) == 1:
+        if len(G.in_edges(n)) == 0 and len(G.out_edges(n)) == 1:
             long_wells[n]=[]
 
     for l in long_wells:
         n = l
         while True:
-            out_edges = G.out_edges(n)
-            e = out_edges[0]
-            if len(out_edges) > 1:
+            if not (len(G.in_edges(n)) <= 1 and len(G.out_edges(n)) == 1):
                 break
-            u, n = out_edges[0]
+            u, n = list(G.out_edges(n))[0]
             long_wells[l] += [n]
 
     pads = dict()
@@ -572,13 +570,13 @@ def make_oilupstream_graph_layout(G):
     R, r = 1, 0.5
     rad_pos = dict()
     if len(long_wells) > 0:
-        well_step = 360 / len(long_wells)
+        well_step = 2*np.pi / len(long_wells)
         well_a = 0
         for p in pads:
             for w in pads[p]:
-                well_points = long_wells[w][:-1]
+                well_points = [w] + long_wells[w][:-1]
                 nn = len(well_points)
-                if nn > 0:
+                if nn > 1:
                     step = (R-r)/(nn-1)
                     for i, n in enumerate(well_points):
                         rad_pos[n] = (well_a, R-i*step)
@@ -599,6 +597,14 @@ def make_oilupstream_graph_layout(G):
             other_G.add_edge(u, v)
     other_pos = nx.kamada_kawai_layout(other_G)
 
+    pos = dict()
+    for n in rad_pos:
+        a, rr = rad_pos[n]
+        x = np.sin(a) * rr
+        y = np.cos(a) * rr
+        pos[n] = np.array([x, y])
 
-# Делим все узлы на 3 кольца - скважины, кусты, трубы нефтесбора, и центр - ДНС
-# Скважины еще и вытягиваем
+    for n in other_pos:
+        pos[n] = other_pos[n] * r
+
+    return pos

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
 from Tools.HE2_tools import make_oilupstream_graph_layout
+from Tools.HE2_ABC import Root
 
 def plot_y_toward_gradient_from_actual_x(solver, start=-0.1, stop=1, points=111):
     x0 = solver.actual_x.copy()
@@ -236,5 +237,20 @@ def plot_all(solver, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', '
     G = solver.graph
     G_tree = solver.span_tree
     G_chordes = solver.chordes
+    plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
+
+def plot_all_wo_root(solver, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
+    nodelist = solver.node_list[::]
+    nodelist.remove(Root)
+    G = nx.DiGraph()
+    G.add_nodes_from(nodelist)
+    edgelist = []
+    for u, v in solver.edge_list:
+        if u == Root or v == Root:
+            continue
+        edgelist += [(u, v)]
+    G.add_edges_from(edgelist)
+    G_tree = list(set(solver.span_tree) & set(edgelist))
+    G_chordes = list(set(solver.chordes) & set(edgelist))
     plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
 
