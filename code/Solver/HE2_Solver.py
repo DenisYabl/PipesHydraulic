@@ -51,6 +51,7 @@ class HE2_Solver():
         self.backward_edge_functions = dict()
 
         self.fluids_move_rate = 0.5
+        self.sources_fluids = None
         self.known_Q = dict()
         self.actual_x = None
         self.actual_dx = None
@@ -157,16 +158,17 @@ class HE2_Solver():
         xs = np.matmul(A_inv, q_vec)
         self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
 
-        # cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
-        # src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
-        # for key, cktl in cocktails.items():
-        #     initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
-        #     if key in edgelist:
-        #         u, v = key
-        #         obj = G[u][v]['obj']
-        #     else:
-        #         obj = G.nodes[key]['obj']
-        #     obj.fluid = initial_fluid
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        for key, cktl in cocktails.items():
+            initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            if key in edgelist:
+                u, v = key
+                obj = G[u][v]['obj']
+            else:
+                obj = G.nodes[key]['obj']
+            obj.fluid = initial_fluid
+        self.sources_fluids = dict(zip(srcs, src_fluids))
 
         logger.debug(f'initial_edges_x = {self.initial_edges_x}')
 
@@ -260,8 +262,8 @@ class HE2_Solver():
                 logger.debug(f'X = {x_chordes.flatten()}')
                 logger.info(f'Y = {y}')
 
-                # if y < y_best:
-                #     self.evaluate_and_set_new_fluids()
+                if y < y_best:
+                    self.evaluate_and_set_new_fluids()
 
                 logger.info(f'it_num = {it_num}, y = {y}, step = {step}')
                 if y < y_best:
@@ -638,13 +640,20 @@ class HE2_Solver():
 
 
     def evaluate_and_set_new_fluids(self):
+        # TODO оптимизировать надо, очень часто вычисленый флюид совпадает с тем что там уже есть и ничего делать не надо
         G = self.graph
         mr = self.fluids_move_rate
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
-        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
-        for (u, v), cktl in cocktails.items():
-            obj = G.nodes[u][v]['obj']
-            fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
-            fluidB = obj.fluid
-            fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
-            obj.fluid = fluidC
+        src_fluids = [self.sources_fluids[n] for n in srcs]
+        for key, cktl in cocktails.items():
+            if key in self.node_list:
+                pass
+                #TODO Здесь нужно будет ставить флюид на узлах стоках
+            else:
+                u, v = key
+                obj = G[u][v]['obj']
+                fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
+                fluidB = obj.fluid
+                fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
+                obj.fluid = fluidC
+        pass
