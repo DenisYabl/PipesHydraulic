@@ -6,6 +6,7 @@ from Tools.HE2_ABC import oil_params
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_tools import check_solution
 from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
+import numpy as np
 
 """
 oil_params - описание ФХС водонефтяной смеси, но данном этапе - усредненные ФХС Тайлаковского месторождения
@@ -19,12 +20,12 @@ plasts - описание свойств пласта используемых �
 
 pumps - описание насосов скважин, задается моделью насоса и частотой работы
 """
-oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
-                        waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
+Tailaki_oil_params = oil_params(sat_P_bar=67, plastT_C=84, gasFactor=36, oildensity_kg_m3=826,
+                                        waterdensity_kg_m3=1015, gasdensity_kg_m3=1, oilviscosity_Pa_s=35e-3, volumewater_percent=50, volumeoilcoeff=1.017)
 
 pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
 
-fluid = HE2_BlackOil(oil_params)
+fluid = HE2_BlackOil(Tailaki_oil_params)
 pressures = {"PAD_5": {"WELL_1523" : 270.5, "WELL_146" : 270.5, "WELL_142" : 270.5, "WELL_1562" : 268.5},
              "PAD_33":  {"WELL_1385" : 268.5, "WELL_736" : 268.5, "WELL_739" : 270.5, "WELL_1383" : 270.5, "WELL_738" : 268.5,"WELL_725" : 268.5},
              "PAD_34": {"WELL_731" : 270.5, "WELL_196" : 268.5, "WELL_734" : 270.5, "WELL_198" : 270.5, "WELL_199" : 270.5,"WELL_197" : 268.5,
@@ -261,9 +262,28 @@ def test_2pads_with_change_graph():
     for n in outlets:
         print(n, G.nodes[n]["obj"].result)
 
+def fluids_full_test():
+    Full_system_daily_debit = 5200
+    G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, 1e-5, 0.8, Full_system_daily_debit, DNS_pressure=4.8)
+    np.random.seed(5)
+    wcs = np.random.uniform(0, 100, len(inlets))
+    for i, n in enumerate(inlets):
+        obj = G.nodes[n]['obj']
+        op_dict = obj.fluid.oil_params._asdict()
+        op_dict.update(volumewater_percent = wcs[i])
+        new_op = oil_params(**op_dict)
+        obj.fluid = HE2_BlackOil(new_op)
+
+    solver = HE2_Solver(G)
+    solver.solve(threshold=0.05)
+
+    print_wells_pressures(G, inlets)
+    validity = check_solution(G)
+    print(validity.first_CL_OWG_resd)
+
 
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
     # test_with_change_graph_on_the_fly()
-    full_test()
+    fluids_full_test()
     #part_test()

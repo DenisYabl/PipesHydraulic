@@ -76,7 +76,6 @@ def evalute_network_fluids_wo_root(_G, x_dict):
 
 
 def evalute_network_fluids_with_root(G, x_dict):
-    # Возможно здесь нужно еще подтаскивать флюиды из схемы, так как они могли отвалится при перестроении графа
     edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
     edges2 = []
     x_dict2 = {}
