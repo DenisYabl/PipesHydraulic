@@ -83,7 +83,8 @@ def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOi
     Xo_vec = Qo_vec * oil_ro_vec
     Xw_vec = Qw_vec * wat_ro_vec
     Xg_vec = Qg_vec * gas_ro_vec
-    np.testing.assert_almost_equal(Xo_vec + Xw_vec + Xg_vec, xs_vec)
+    # np.testing.assert_almost_equal(Xo_vec + Xw_vec + Xg_vec, xs_vec)
+
     Xo = sum(Xo_vec)
     Xw = sum(Xw_vec)
     Xg = sum(Xg_vec)
@@ -96,13 +97,13 @@ def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOi
     wc = Qw / (Qo + Qw)
     gf = Qg / Qo
 
-    norm_keff = 1/sum(xs_vec)
-    oil_ro2 = norm_keff * np.dot(xs_vec, oil_ro_vec)
-    wat_ro2 = norm_keff * np.dot(xs_vec, wat_ro_vec)
-    gas_ro2 = norm_keff * np.dot(xs_vec, gas_ro_vec)
-    np.testing.assert_almost_equal(oil_ro, oil_ro2)
-    np.testing.assert_almost_equal(wat_ro, wat_ro2)
-    np.testing.assert_almost_equal(gas_ro, gas_ro2)
+    # norm_keff = 1/sum(xs_vec)
+    # oil_ro2 = norm_keff * np.dot(xs_vec, oil_ro_vec)
+    # wat_ro2 = norm_keff * np.dot(xs_vec, wat_ro_vec)
+    # gas_ro2 = norm_keff * np.dot(xs_vec, gas_ro_vec)
+    # np.testing.assert_almost_equal(oil_ro, oil_ro2)
+    # np.testing.assert_almost_equal(wat_ro, wat_ro2)
+    # np.testing.assert_almost_equal(gas_ro, gas_ro2)
 
     rez_oil_params = oil_params(sat_P, plast_T, gf, oil_ro, wat_ro, gas_ro, oil_Visc, wc*100, Volume_keff)
     rez = HE2_BlackOil(rez_oil_params)
