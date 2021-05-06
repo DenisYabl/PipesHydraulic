@@ -358,11 +358,12 @@ def check_1stKL_by_OWG_separately(graph):
         Xw_sum_dict[v] += xw
         Xg_sum_dict[v] += xg
 
-    residual = 0
+    res_o, res_w, res_g = 0, 0, 0
     for n in Qo_dict:
-        residual += abs(Qo_dict[n] + Xo_sum_dict[n])
-        residual += abs(Qw_dict[n] + Xw_sum_dict[n])
-        residual += abs(Qg_dict[n] + Xg_sum_dict[n])
+        res_o += abs(Qo_dict[n] + Xo_sum_dict[n])
+        res_w += abs(Qw_dict[n] + Xw_sum_dict[n])
+        res_g += abs(Qg_dict[n] + Xg_sum_dict[n])
+        pass
 
     Qo_net_balance = sum(Qo_dict.values())
     Qw_net_balance = sum(Qw_dict.values())
@@ -373,9 +374,11 @@ def check_1stKL_by_OWG_separately(graph):
         p_xw_sum += Xw_sum_dict[n]
         p_xg_sum += Xg_sum_dict[n]
 
-    residual += abs(p_xo_sum - Qo_net_balance)
-    residual += abs(p_xw_sum - Qw_net_balance)
-    residual += abs(p_xg_sum - Qg_net_balance)
+    res_o += abs(p_xo_sum - Qo_net_balance)
+    res_w += abs(p_xw_sum - Qw_net_balance)
+    res_g += abs(p_xg_sum - Qg_net_balance)
+
+    residual = res_o + res_w + res_g
 
     return residual
 
