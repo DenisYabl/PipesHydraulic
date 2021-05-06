@@ -6,6 +6,7 @@ from Tools.HE2_ABC import oil_params
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_tools import check_solution
 from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
+from GraphEdges.HE2_Pipe import HE2_OilPipe
 import numpy as np
 
 """
@@ -282,8 +283,86 @@ def fluids_full_test():
     print(validity.first_CL_OWG_resd)
 
 
+def full_test_with_fluids_and_random_edges():
+    Full_system_daily_debit = 5200
+    np.random.seed(5)
+    wcs = np.random.uniform(0, 100, 100)
+
+    f = open('randoms.txt')
+
+    diffs = []
+    not_solved = []
+    invalid_OWG = dict()
+    for i, sss in enumerate(f):
+        # if not (i in [80, 98, 370, 450, 680]):
+        if not (i in [450]):
+            continue
+        print(f'-----------------------------------------{i}----------------------------------')
+        params = sss[:-1].split(';')
+        G, inlets, juncs, outlets = build_DNS2_graph(pressures, plasts, pumps, pump_curves, fluid, 1e-5, 0.8,
+                                                     Full_system_daily_debit, DNS_pressure=4.8)
+
+        for j, n in enumerate(inlets):
+            obj = G.nodes[n]['obj']
+            op_dict = obj.fluid.oil_params._asdict()
+            op_dict.update(volumewater_percent=wcs[j])
+            new_op = oil_params(**op_dict)
+            obj.fluid = HE2_BlackOil(new_op)
+
+        u, v = params[0:2]
+        dx, dy, diam, rgh = tuple(map(float, params[2:6]))
+        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh]))
+
+        u, v = params[6:8]
+        dx, dy, diam, rgh = tuple(map(float, params[8:12]))
+        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh]))
+
+        u1, v1, u2, v2 = params[12:16]
+
+        solver = HE2_Solver(G)
+        solver.solve(threshold=0.25, it_limit=100)
+        # print_solution(G)
+        x1 = solver.op_result.x
+        ch1 = list(solver.chordes)
+        if not solver.op_result.success:
+            not_solved += [i]
+            continue
+
+        validity = check_solution(G)
+        print(validity.first_CL_OWG_resd)
+        if validity.first_CL_OWG_resd > 0.1:
+            invalid_OWG[i] = validity.first_CL_OWG_resd
+
+        # G = reverse_edge_in_graph(G, u1, v1)
+        # G = reverse_edge_in_graph(G, u2, v2)
+        #
+        # solver = HE2_Solver(G)
+        # solver.solve(threshold=0.25, it_limit=100)
+        # # print_solution(G)
+        #
+        # l1 = sorted(list(abs(x1.flatten())))
+        # l2 = []
+        # for u, v in ch1:
+        #     if (u, v) in solver.edges_x:
+        #         l2 += [abs(solver.edges_x[(u, v)])]
+        #     elif (v, u) in solver.edges_x:
+        #         l2 += [abs(solver.edges_x[(v, u)])]
+        #     else:
+        #         assert False
+        # l2 = sorted(l2)
+        #
+        # diff = np.linalg.norm(np.array(l1) - np.array(l2))
+        # if diff > 5e-3:
+        #     diffs += [i]
+        #
+        # print(diffs)
+    print(not_solved)
+    print(invalid_OWG)
+
+
 if __name__ == '__main__':
     # test_2pads_with_change_graph()
     # test_with_change_graph_on_the_fly()
-    fluids_full_test()
+    # fluids_full_test()
     #part_test()
+    full_test_with_fluids_and_random_edges()
