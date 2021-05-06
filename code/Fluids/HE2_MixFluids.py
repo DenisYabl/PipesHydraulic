@@ -71,7 +71,8 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     cocktails = {}
     for k, i in var_idx.items():
         cocktails[k] = rez_mx[i, :S]
-        np.testing.assert_almost_equal(sum(cocktails[k]), 1)
+        sck = sum(cocktails[k])
+        np.testing.assert_almost_equal(sck, 1)
     return cocktails, srcs
 
 
