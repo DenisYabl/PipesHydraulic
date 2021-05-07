@@ -147,8 +147,11 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
 
     tempdf = pd.DataFrame.from_dict(dict_list)
     dataset = dataset.append(tempdf)
-
-    pass
+    dataset_cols = set(dataset.columns)
+    well_cols = ['perforation', 'frequency', 'wellNum', 'padNum', 'pumpDepth', 'productivity', 'model']
+    for col in well_cols:
+        if not col in dataset_cols:
+            dataset[col] = None
 
     outlets = {}
     inlets = {}
