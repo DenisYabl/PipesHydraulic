@@ -56,6 +56,8 @@ class HE2_Solver():
         self.actual_x = None
         self.actual_dx = None
 
+        self.it_num = 0
+
     def set_known_Q(self, Q_dict):
         self.known_Q = Q_dict
 
@@ -237,9 +239,11 @@ class HE2_Solver():
 
         return rez
 
-    def solve(self, threshold=0.05, it_limit = 100, step = 1):
+    def solve(self, threshold=0.05, it_limit=100, step=1):
         logger.info('is started')
-        y_best, x_best, it_num, rnd_seed = 100500100500, None, 0, 42
+        y_best, x_best, self.it_num = 100500100500, None, 0
+        np.random.seed(42)
+        random_steps = list(np.random.uniform(0.1, 0.5, it_limit))
         try:
             if not self.ready_for_solve:
                 self.prepare_for_solve()
@@ -248,7 +252,7 @@ class HE2_Solver():
             dx = np.zeros(x_chordes.shape)
 
             while True:
-                it_num += 1
+                self.it_num += 1
                 self.actual_x = x_chordes
                 self.actual_dx = dx
                 # Best place to call plot_y(self) in debugger console
@@ -265,7 +269,7 @@ class HE2_Solver():
                 if y < y_best:
                     self.evaluate_and_set_new_fluids()
 
-                logger.info(f'it_num = {it_num}, y = {y}, step = {step}')
+                logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
                 if y < y_best:
                     logger.info(f'y {y} is better than y_best {y_best}')
                     y_best = y
@@ -273,12 +277,12 @@ class HE2_Solver():
                 elif step > 0.1:
                     step = step/2
                 else:
-                    step = self.gimme_random_step(rnd_seed)
+                    step = random_steps.pop()
 
                 if y_best < threshold:
                     logger.info(f'Solution is found, cause threshold {threshold} is touched')
                     break
-                if it_num > it_limit:
+                if self.it_num > it_limit:
                     logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
                     break
 
@@ -288,7 +292,6 @@ class HE2_Solver():
                 F_ = np.diag(der_vec)
                 B_F_Bt = np.dot(np.dot(self.B, F_), self.Bt)
                 det_B_F_Bt = np.linalg.det(B_F_Bt)
-                rnd_seed = int(det_B_F_Bt) % 65536
                 p_residuals = self.pt_residual_vec[:,0]
                 logger.debug(f'det B = {det_B_F_Bt}')
 
@@ -632,12 +635,6 @@ class HE2_Solver():
             p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
             residual += abs(p - p_v)
         return residual
-
-    def gimme_random_step(self, rand_seed):
-        logger.info(f'randseed is {rand_seed}')
-        np.random.seed(rand_seed)
-        return np.random.uniform(0.1, 0.5)
-
 
     def evaluate_and_set_new_fluids(self):
         # TODO оптимизировать надо, очень часто вычисленый флюид совпадает с тем что там уже есть и ничего делать не надо
