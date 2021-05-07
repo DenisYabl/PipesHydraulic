@@ -1,0 +1,7 @@
+__author__ = "Andrey Starchenkov"
+__copyright__ = "Copyright 2020, ISG neuro"
+__license__ = "LICENSE.md"
+__version__ = "0.1.1"
+__maintainer__ = "Andrey Starchenkov"
+__email__ = "astarchenkov@isgneuro.com"
+__status__ = "Development"
