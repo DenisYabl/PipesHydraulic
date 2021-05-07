@@ -306,7 +306,7 @@ class HE2_Solver():
         except Exception as e:
             logger.error(e, exc_info=True)
 
-        self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=it_num)
+        self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=self.it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
 
 
