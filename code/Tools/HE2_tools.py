@@ -12,7 +12,7 @@ from Tools.HE2_Logger import check_for_nan, getLogger
 
 logger = getLogger(__name__)
 
-CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow', 'first_CL_OWG_resd'])
+CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'misdirected_flow', 'bad_directions', 'first_CL_OWG_resd'])
 
 
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
