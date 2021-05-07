@@ -8,6 +8,12 @@ from Tools import HE2_ABC as abc
 from Tools.HE2_ABC import Root
 import pandas as pd
 from Tools.HE2_Logger import check_for_nan, getLogger
+import Fluids.HE2_MixFluids as mixer
+import Fluids.HE2_Fluid as fl
+from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord, plot_all
+from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs, plot_residuals_toward_gradient as plot_resd
+from Tools.HE2_SolverInternalViewer import plot_all, plot_all_wo_root
+
 
 logger = getLogger(__name__)
 
@@ -34,7 +40,8 @@ class HE2_Solver():
         self.pt_on_chords_ends = None
         self.pt_residual_vec = None
 
-        self.imd_rez_df = None
+        # self.imd_rez_df = None
+        self.edge_func_last_results = dict()
         self.save_intermediate_results = False
         self.initial_edges_x = None
         self.ready_for_solve = False
@@ -43,25 +50,128 @@ class HE2_Solver():
         self.forward_edge_functions = dict()
         self.backward_edge_functions = dict()
 
+        self.fluids_move_rate = 0.5
+        self.sources_fluids = None
+        self.known_Q = dict()
+        self.actual_x = None
+        self.actual_dx = None
 
-    def prepare_initial_approximation(self, G, Q_dict):
-        if len(G.nodes) != len(G.edges)+1:
-            logger.error('This way works only on a tree graph')
-            assert False
+        self.it_num = 0
+
+    def set_known_Q(self, Q_dict):
+        self.known_Q = Q_dict
+
+
+    def fill_known_Q(self):
+        G = self.graph
+        Q_dict = self.known_Q
         nodelist = [n for n in G.nodes()]
+        known_src, unknown_src = dict(), dict()
+        known_snk, unknown_snk = dict(), dict()
+        for n in nodelist:
+            obj = G.nodes[n]['obj']
+            if isinstance(obj, vrtxs.HE2_Source_Vertex):
+                d_kn, d_unk = known_src, unknown_src
+            elif isinstance(obj, vrtxs.HE2_Boundary_Vertex):
+                d_kn, d_unk = known_snk, unknown_snk
+            else:
+                continue
+
+            if obj.Q:
+                d_kn[n] = abs(obj.Q)
+            elif n in Q_dict:
+                d_kn[n] = abs(Q_dict[n])
+            else:
+                d_unk[n] = None
+
+        if len(known_snk) == 0 and len(known_src) == 0:
+            for n in unknown_src:
+                known_src[n] = 1
+            unknown_src = dict()
+
+        known_src_sum = sum(known_src.values())
+        known_snk_sum = sum(known_snk.values())
+        if len(unknown_src) > 0 and len(unknown_snk) > 0: # Известны не все сорцы, и не все синки
+            if known_src_sum > known_snk_sum: # В этом случае делаем все сорцы известными, дозаполняя средними значениями
+                avg_src_Q = known_src_sum / len(known_src)
+                for n in unknown_src:
+                    known_src[n] = avg_src_Q
+                unknown_src = dict()
+            else: # тут делаем все синки известными, дозаполняя средними значениями
+                avg_snk_Q = known_snk_sum / len(known_snk)
+                for n in unknown_snk:
+                    known_snk[n] = avg_snk_Q
+                unknown_snk = dict()
+
+        if len(unknown_src) == 0 and len(unknown_snk) > 0: # Известны все сорцы, надо дополнить все синки так чтобы сбилась сумма
+            known_delta_Q = sum(known_src.values()) - sum(known_snk.values())
+            avg_Q = known_delta_Q / len(unknown_snk)
+            for n in unknown_snk:
+                known_snk[n] = avg_Q
+            unknown_snk = dict()
+        elif len(unknown_snk) == 0 and len(unknown_src) > 0:
+            known_delta_Q = sum(known_snk.values()) - sum(known_src.values())
+            avg_Q = known_delta_Q / len(unknown_src)
+            for n in unknown_src:
+                known_src[n] = avg_Q
+            unknown_src = dict()
+        else:
+            pass
+
+        assert len(unknown_src) == 0
+        assert len(unknown_snk) == 0
+
+        known_src_sum = sum(known_src.values())
+        known_snk_sum = sum(known_snk.values())
+        if abs(known_src_sum - known_snk_sum) > 1e-3: # Такое может случится если снаружи пришли кривые данные. Выправим, чтобы суммы совпадали
+            if known_src_sum > known_snk_sum:
+                k = known_src_sum / known_snk_sum
+                for n in known_snk:
+                    known_snk[n] = known_snk[n] * k
+            elif known_src_sum < known_snk_sum:
+                k = known_snk_sum / known_src_sum
+                for n in known_src:
+                    known_src[n] = known_src[n] * k
+
+        for n in known_snk:
+            known_snk[n] = -1 * known_snk[n]
+
+        self.known_Q = dict()
+        self.known_Q.update(known_src)
+        self.known_Q.update(known_snk)
+
+
+    def make_initial_approximation(self):
+        G = self.graph
+        self.fill_known_Q()
+        Q_dict = self.known_Q
+        nodelist = [n for n in G.nodes()]
+        assert not (Root in nodelist), 'better call this method before Root add'
         edgelist = [(u, v) for (u, v) in G.edges()]
         A_full = nx.incidence_matrix(G, nodelist=nodelist, edgelist=edgelist, oriented=True)
         A_full = -1 * A_full.toarray()
-        q_vec = np.zeros((len(nodelist)-1, 1))
+        q_vec = np.zeros((len(nodelist), 1))
         for i, node in enumerate(nodelist):
             if node in Q_dict:
                 q_vec[i] = Q_dict[node]
 
         logger.debug(f'q_vec = {q_vec.flatten()}')
-        A_truncated = A_full[:-1]
-        A_inv = np.linalg.inv(A_truncated)
-        x_tree = np.matmul(A_inv, q_vec)
-        self.initial_edges_x = dict(zip(edgelist, x_tree.flatten()))
+        A_inv = np.linalg.pinv(A_full)
+        xs = np.matmul(A_inv, q_vec)
+        self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
+
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        for key, cktl in cocktails.items():
+            initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            if key in edgelist:
+                u, v = key
+                obj = G[u][v]['obj']
+            else:
+                obj = G.nodes[key]['obj']
+            obj.fluid = initial_fluid
+        self.sources_fluids = dict(zip(srcs, src_fluids))
+
         logger.debug(f'initial_edges_x = {self.initial_edges_x}')
 
     def get_initial_approximation(self):
@@ -79,6 +189,8 @@ class HE2_Solver():
     def prepare_for_solve(self):
         logger.debug('is started')
         self.graph = self.transform_multi_di_graph_to_equal_di_graph(self.schema)
+        self.make_initial_approximation()
+
         self.graph = self.add_root_to_graph(self.graph)
         self.span_tree, self.chordes = self.split_graph(self.graph)
         self.edge_list = self.span_tree + self.chordes
@@ -105,7 +217,6 @@ class HE2_Solver():
         self.ready_for_solve = True
 
     def target(self, x_chordes):
-        logger.debug(f'X = {x_chordes.flatten()}')
         check_for_nan(x_chordes=x_chordes)
 
         Q = self.Q_static
@@ -125,57 +236,40 @@ class HE2_Solver():
         check_for_nan(chordes_pt_residual_vec=self.pt_residual_vec)
 
         rez = np.linalg.norm(self.pt_residual_vec)
-        if self.save_intermediate_results:
-            self.do_save_intermediate_results()
 
-        logger.info(f'Y = {rez}')
         return rez
 
-    # def solve(self):
-    def solve_wo_jacobian(self):
-        logger.debug('is started')
-
-        if not self.ready_for_solve:
-            self.prepare_for_solve()
-
-        target = lambda x: self.target(x)
-        x0 = self.get_initial_approximation()
-
-        # Newton-CG, dogleg, trust-ncg, trust-krylov, trust-exact не хочут, Jacobian is required
-        # SLSQP           7/50 6.34s  [15, 18, 23, 26, 34, 35, 43]
-        # BFGS            7/50 11.8s  [5, 15, 18, 23, 34, 36, 46]
-        # L-BFGS-B,       13/50
-        # Powell          14/50
-        # CG              15/50 44
-        # trust-constr    15/50
-        # Nelder-Mead     25/50
-        # TNC             bullshit
-        # COBYLA          bullshit
-        if self.chordes:
-            logger.debug('Scipy minimization is starting now')
-            self.op_result = scop.minimize(target, x0, method='Powell')
-            logger.debug('Scipy minimization completed')
-            x0 = self.op_result.x
-            logger.info('Optimization result is', self.op_result)
-        target(x0)
-
-        self.attach_results_to_schema()
-
-    def solve(self, save_intermediate_results=False, threshold=0.05, it_limit = 100, step = 1):
+    def solve(self, threshold=0.05, it_limit=100, step=1):
         logger.info('is started')
-        y_best, x_best, it_num, rnd_seed = 100500100500, None, 0, 42
+        y_best, x_best, self.it_num = 100500100500, None, 0
+        np.random.seed(42)
+        random_steps = list(np.random.uniform(0.1, 0.5, it_limit))
         try:
             if not self.ready_for_solve:
                 self.prepare_for_solve()
 
             x_chordes = self.get_initial_approximation()
             dx = np.zeros(x_chordes.shape)
+
             while True:
-                it_num += 1
+                self.it_num += 1
+                self.actual_x = x_chordes
+                self.actual_dx = dx
+                # Best place to call plot_y(self) in debugger console
+                # or maybe plot_chord(self, node1, node2)
+                # plot_chord(self, 'Root', 'PAD_33')
+                # plot_resd(self, filter = 150)
+                # plot_all_wo_root(self)
+
                 x_chordes = x_chordes + step * dx
                 y = self.target(x_chordes)
+                logger.debug(f'X = {x_chordes.flatten()}')
+                logger.info(f'Y = {y}')
 
-                logger.info(f'it_num = {it_num}, y = {y}, step = {step}')
+                if y < y_best:
+                    self.evaluate_and_set_new_fluids()
+
+                logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
                 if y < y_best:
                     logger.info(f'y {y} is better than y_best {y_best}')
                     y_best = y
@@ -183,12 +277,12 @@ class HE2_Solver():
                 elif step > 0.1:
                     step = step/2
                 else:
-                    step = self.gimme_random_step(rnd_seed)
+                    step = random_steps.pop()
 
                 if y_best < threshold:
                     logger.info(f'Solution is found, cause threshold {threshold} is touched')
                     break
-                if it_num > it_limit:
+                if self.it_num > it_limit:
                     logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
                     break
 
@@ -198,7 +292,6 @@ class HE2_Solver():
                 F_ = np.diag(der_vec)
                 B_F_Bt = np.dot(np.dot(self.B, F_), self.Bt)
                 det_B_F_Bt = np.linalg.det(B_F_Bt)
-                rnd_seed = int(det_B_F_Bt) % 65536
                 p_residuals = self.pt_residual_vec[:,0]
                 logger.debug(f'det B = {det_B_F_Bt}')
 
@@ -240,12 +333,23 @@ class HE2_Solver():
             rez_vec[i] = dpdx
         return rez, rez_vec
 
-    def do_save_intermediate_results(self):
-        if self.imd_rez_df is None:
-            cols = list(self.pt_on_tree.keys())
-            self.imd_rez_df = pd.DataFrame(columns=cols)
-        row = {k:v[0] for k, v in self.pt_on_tree.items()}
-        self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
+    def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
+        self.edge_func_last_results[(u, v)] = (x, unknown, p_kn, p_unk)
+
+    # def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
+    #     if self.imd_rez_df is None:
+    #         cols = ['u', 'v', 'x', 'unknown', 'p_kn', 'p_unk']
+    #         self.imd_rez_df = pd.DataFrame(columns=cols) #, dtype=['obj', 'obj', 'obj', 'obj', 'float', 'float'])
+    #     row=dict(u=u, v=v, x=x, unknown=unknown, p_kn=p_kn, p_unk=p_unk)
+    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
+
+
+    # def do_save_intermediate_results(self):
+    #     if self.imd_rez_df is None:
+    #         cols = list(self.pt_on_tree.keys())
+    #         self.imd_rez_df = pd.DataFrame(columns=cols)
+    #     row = {k:v[0] for k, v in self.pt_on_tree.items()}
+    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
 
 
     def perform_self_test_for_1stCL(self):
@@ -362,6 +466,7 @@ class HE2_Solver():
                 new_obj = vrtxs.HE2_ABC_GraphVertex()
                 G.nodes[n]['obj'] = new_obj
                 G.add_edge(Root, n, obj=HE2_MockEdge(obj.value))
+                self.initial_edges_x[(Root, n)] = self.known_Q[n]
                 self.mock_edges += [(Root, n)]
                 p_node_found = True
         if not p_node_found:
@@ -423,15 +528,13 @@ class HE2_Solver():
                 edge_func = self.backward_edge_functions[(u, v)]
             p_unk, t_unk = edge_func(p_kn, t_kn, x)
 
-            # row = dict(known=known, unknown=unknown, x=x, p_known=p_kn, p_unknown=p_unk)
-            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
-            # if known == 'PAD_39' and unknown == 'intake_pad_59':
-            #     print(x, p_kn, p_unk)
-
             if np.isnan(p_unk):
                 logger.warning(f'edge_func returns NaN! Edge is ({u}, {v}), known is {known}')
 
             pt[unknown] = (p_unk, t_unk)
+
+            if self.save_intermediate_results:
+                self.save_edge_func_result(u=u, v=v, x=x, unknown=unknown, p_kn=p_kn, p_unk=p_unk)
         return pt
 
     def evalute_chordes_pressure_residual(self):
@@ -449,8 +552,8 @@ class HE2_Solver():
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
 
-            # row = dict(known=u, unknown=v, x=x, p_known=p_u, p_unknown=p_v)
-            # self.df_edge_func = self.df_edge_func.append(row, ignore_index=True)
+            if self.save_intermediate_results:
+                self.save_edge_func_result(u=u, v=v, x=x, unknown=v, p_kn=p_u, p_unk=p_v)
 
             pt_v1[i,0] = p_v
             pt_v1[i,1] = t_v
@@ -470,7 +573,7 @@ class HE2_Solver():
                 continue
             obj = self.schema.nodes[u]['obj']
             obj.result = dict(P_bar=pt[0], T_C=pt[1])
-            
+
             Q = 0
             if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
                 Q = self.edges_x[(Root, u)]
@@ -533,7 +636,21 @@ class HE2_Solver():
             residual += abs(p - p_v)
         return residual
 
-    def gimme_random_step(self, rand_seed):
-        logger.info(f'randseed is {rand_seed}')
-        np.random.seed(rand_seed)
-        return np.random.uniform(0.1, 0.5)
+    def evaluate_and_set_new_fluids(self):
+        # TODO оптимизировать надо, очень часто вычисленый флюид совпадает с тем что там уже есть и ничего делать не надо
+        G = self.graph
+        mr = self.fluids_move_rate
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+        src_fluids = [self.sources_fluids[n] for n in srcs]
+        for key, cktl in cocktails.items():
+            if key in self.node_list:
+                pass
+                #TODO Здесь нужно будет ставить флюид на узлах стоках
+            else:
+                u, v = key
+                obj = G[u][v]['obj']
+                fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
+                fluidB = obj.fluid
+                fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
+                obj.fluid = fluidC
+        pass

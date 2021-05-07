@@ -7,8 +7,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from collections import namedtuple
+from Fluids.HE2_Fluid import HE2_BlackOil
+from Tools.HE2_Logger import check_for_nan, getLogger
 
-CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow'])
+logger = getLogger(__name__)
+
+CheckSolutionResults = namedtuple('CheckSolutionResults', ['first_CL_resd', 'second_CL_resd', 'negative_P', 'bad_directions', 'misdirected_flow', 'first_CL_OWG_resd'])
 
 
 def generate_random_net_v0(N=15, E=20, SRC=3, SNK=3, Q=20, P=200, D=0.5, H=50, L=1000, RGH=1e-4, SEGS=10,
@@ -183,19 +187,21 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     #TODO Не однообразно формирую лейблы для узлов и для дуг, тоже просит рефакторинга
     fig = plt.figure(constrained_layout=True, figsize=(12, 8))
     ax = fig.add_subplot(1, 1, 1)
-    # pos = nx.drawing.layout.planar_layout(G)
     pos = nx.drawing.layout.planar_layout(G)
+    # pos = nx.drawing.circular_layout(G)
     g_nodes = set(G.nodes)
-    # params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
-    params = zip([sources, sinks], [50, 10], ['blue','black'], [['Q'], ['Q']])
+    params = zip([p_nodes, sources, sinks, juncs], [50, 50, 50, 10], ['red', 'blue','blue','black'], [[], ['Q'], ['Q'], []])
+    # params = zip([sources, sinks], [50, 10], ['blue','black'], [['Q'], ['Q']])
     label_pos = {k:(pos[k][0] + shifts[k][0], pos[k][1] + shifts[k][1]) for k in pos} if shifts is not None else pos
     for nodelist, node_size, node_color, ks in params:
-        nx.draw_networkx_nodes(G, nodelist=list(set(nodelist) & g_nodes), node_size=node_size, node_color=node_color, ax=ax, pos=pos)
-        HE2_draw_node_labels(G, g_nodes, list(set(nodelist) & g_nodes), keys=['P_bar']+ks, ax=ax, pos=label_pos)
+        if nodelist:
+            nx.draw_networkx_nodes(G, nodelist=list(set(nodelist) & g_nodes), node_size=node_size, node_color=node_color, ax=ax, pos=pos, alpha=0.3)
+            HE2_draw_node_labels(G, g_nodes, list(set(nodelist) & g_nodes), keys=['P_bar']+ks, ax=ax, pos=label_pos)
 
 
     # edge_labels = {(u,v): str(G[u][v]['obj'])+f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
-    edge_labels = {(u,v): f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges()}
+    edgs = [(u, v) for (u, v) in G.edges() if 'result' in G[u][v]['obj'].__dict__]
+    edge_labels = {(u,v): f"\n{G[u][v]['obj'].result['x']:.2f}" for u, v in edgs}
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=7)
 
     # if type(G) == nx.MultiDiGraph:
@@ -206,9 +212,9 @@ def draw_solution(G, shifts, p_nodes, sources, sinks, juncs):
     if type(G) == nx.MultiDiGraph:
         edge_labels = {(u,v): f"{G[u][v][k]['obj'].result['x']:.2f}" for u, v, k in G.edges}
     else:
-        edge_labels = {(u, v): f"{G[u][v]['obj'].result['x']:.2f}" for u, v in G.edges}
+        edge_labels = {(u, v): f"{G[u][v]['obj'].result['x']:.2f}" for u, v in edgs}
 
-    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9)
+    nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels, font_size=9, alpha=0.3 )
 
     nx.draw_networkx_edges(G, pos=pos, width=2, ax=ax, edge_color='black')
     plt.show()
@@ -295,6 +301,88 @@ def check_directions(graph):
     return violations_flow_sum, violations_count
 
 
+def split_mass_flow_to_OWG(x, fluid: HE2_BlackOil):
+    oil_params = fluid.oil_params
+    oil_ro, wat_ro, gas_ro = oil_params.oildensity_kg_m3, oil_params.waterdensity_kg_m3, oil_params.gasdensity_kg_m3
+    wc = oil_params.volumewater_percent / 100
+    gf = oil_params.gasFactor
+    owg_mix_pseudo_density = oil_ro * (1 - wc) + wat_ro * wc + gas_ro * (1 - wc) * gf
+    Q_owg = x / owg_mix_pseudo_density
+    Qo = (1 - wc) * Q_owg
+    Qw = wc * Q_owg
+    Qg = (1 - wc) * gf* Q_owg
+    Xo = Qo * oil_ro
+    Xw = Qw * wat_ro
+    Xg = Qg * gas_ro
+    if abs(x - Xo - Xw - Xg) > 1e-4:
+        logger.warning('OWG mass flows doesnt match total mass flow!')
+        raise ValueError
+    return Xo, Xw, Xg
+
+
+def check_1stKL_by_OWG_separately(graph):
+    G = nx.MultiDiGraph(graph)
+    Qo_dict = {}
+    Qw_dict = {}
+    Qg_dict = {}
+    Xo_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
+    Xw_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
+    Xg_sum_dict = dict(zip(G.nodes, [0]*len(G.nodes)))
+    p_nodes = []
+    for n in G.nodes:
+        obj = G.nodes[n]['obj']
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'P':
+            p_nodes += [n]
+            continue
+
+        Qo_dict[n] = 0
+        Qw_dict[n] = 0
+        Qg_dict[n] = 0
+        if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.kind == 'Q':
+            Q = obj.value if obj.is_source else -obj.value
+            Qo, Qw, Qg = split_mass_flow_to_OWG(Q, obj.fluid)
+            Qo_dict[n] = Qo
+            Qw_dict[n] = Qw
+            Qg_dict[n] = Qg
+
+    for u, v, k in G.edges:
+        obj = G[u][v][k]['obj']
+        x = obj.result['x']
+        xo, xw, xg = split_mass_flow_to_OWG(x, obj.fluid)
+
+        Xo_sum_dict[u] -= xo
+        Xw_sum_dict[u] -= xw
+        Xg_sum_dict[u] -= xg
+
+        Xo_sum_dict[v] += xo
+        Xw_sum_dict[v] += xw
+        Xg_sum_dict[v] += xg
+
+    res_o, res_w, res_g = 0, 0, 0
+    for n in Qo_dict:
+        res_o += abs(Qo_dict[n] + Xo_sum_dict[n])
+        res_w += abs(Qw_dict[n] + Xw_sum_dict[n])
+        res_g += abs(Qg_dict[n] + Xg_sum_dict[n])
+        pass
+
+    Qo_net_balance = sum(Qo_dict.values())
+    Qw_net_balance = sum(Qw_dict.values())
+    Qg_net_balance = sum(Qg_dict.values())
+    p_xo_sum, p_xw_sum, p_xg_sum = 0, 0, 0
+    for n in p_nodes:
+        p_xo_sum += Xo_sum_dict[n]
+        p_xw_sum += Xw_sum_dict[n]
+        p_xg_sum += Xg_sum_dict[n]
+
+    res_o += abs(p_xo_sum - Qo_net_balance)
+    res_w += abs(p_xw_sum - Qw_net_balance)
+    res_g += abs(p_xg_sum - Qg_net_balance)
+
+    residual = res_o + res_w + res_g
+
+    return residual
+
+
 def check_solution(G):
     '''
     :param G: HE2 graph with results
@@ -312,7 +400,8 @@ def check_solution(G):
     res2 = evaluate_2ndCL_residual(G)
     res3 = evalute_pressures_below_zero(G)
     res4, res5 = check_directions(G)
-    rez = CheckSolutionResults(res1, res2, res3, res4, res5)
+    res6 = check_1stKL_by_OWG_separately(G)
+    rez = CheckSolutionResults(res1, res2, res3, res4, res5, res6)
     return rez
 
 def check_fluid_mixation(G, x_dict, cocktails, sources):
@@ -542,3 +631,67 @@ def split_result_df_to_pipes_and_nodes(df):
     df_pipes = df.drop(columns=to_drop)
     # assert len(df_nodes) == len(df_nodes.node_id.unique())
     return df_pipes, df_nodes
+
+def make_oilupstream_graph_layout(G):
+    nodes = list(G.nodes)
+    long_wells = {}
+    for n in nodes:
+        if len(G.in_edges(n)) == 0 and len(G.out_edges(n)) == 1:
+            long_wells[n]=[]
+
+    for l in long_wells:
+        n = l
+        while True:
+            if not (len(G.in_edges(n)) <= 1 and len(G.out_edges(n)) == 1):
+                break
+            u, n = list(G.out_edges(n))[0]
+            long_wells[l] += [n]
+
+    pads = dict()
+    for l in long_wells:
+        p = long_wells[l][-1]
+        wells = pads.get(p, [])
+        wells += [l]
+        pads[p] = wells
+
+    R, r = 1, 0.5
+    rad_pos = dict()
+    if len(long_wells) > 0:
+        well_step = 2*np.pi / len(long_wells)
+        well_a = 0
+        for p in pads:
+            for w in pads[p]:
+                well_points = [w] + long_wells[w][:-1]
+                nn = len(well_points)
+                if nn > 1:
+                    step = (R-r)/(nn-1)
+                    for i, n in enumerate(well_points):
+                        rad_pos[n] = (well_a, R-i*step)
+                else:
+                    rad_pos[w] = (well_a, R)
+                well_a += well_step
+            w0 = pads[p][0]
+            w1 = pads[p][-1]
+            pad_a = (rad_pos[w0][0] + rad_pos[w1][0])/2
+            rad_pos[p] = (pad_a, r)
+
+    wells_and_pads = list(rad_pos.keys())
+    other_nodes = set(G.nodes) - set(wells_and_pads)
+    other_G = nx.DiGraph()
+    other_G.add_nodes_from(other_nodes)
+    for u, v in G.edges():
+        if u in other_nodes and v in other_nodes:
+            other_G.add_edge(u, v)
+    other_pos = nx.kamada_kawai_layout(other_G)
+
+    pos = dict()
+    for n in rad_pos:
+        a, rr = rad_pos[n]
+        x = np.sin(a) * rr
+        y = np.cos(a) * rr
+        pos[n] = np.array([x, y])
+
+    for n in other_pos:
+        pos[n] = other_pos[n] * r
+
+    return pos

@@ -369,7 +369,7 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     Q_gas = Q_oil * FreeGasFactor
 
     # Объемное расходное газосодержание
-    VolumeGas = Q_gas / Q_owg if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
+    VolumeGas = Q_gas / (Q_gas + Q_liquid) if Q_owg!=0 else 0  # if CurrentP < SaturationPressure_MPa else 0
 
 # TODO Separate input and output fluid parameters. It is not necessary to return all, most of them aint used
     return Mishenko(oil_params=calc_params, CurrentP_MPa=CurrentP, CurrentT_K=CurrentT, VolumeWater_fraction=VolumeWater, Q_liq_m3_s=Q_liquid,
