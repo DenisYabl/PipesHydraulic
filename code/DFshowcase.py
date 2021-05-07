@@ -40,7 +40,7 @@ startP, startT, endP, endT - расчетные поля, заполняемые
 Функция дополнительно отфильтровывает дуги, не связанные с основным графом (дуги с уникальным началом и концом, не соединенные с другими узлами)
 """
 
-dataset = pd.read_csv("../CommonData/DNS3_example_well.csv")
+dataset = pd.read_csv("../CommonData/DNS2_with_wells.csv")
 start_time = time.time()
 mdf = calculate_DF(dataset)
 mdf = mdf[['juncType', 'pipeline_purpose_id', 'simple_part_id', 'part_id', 'rs_schema_id', 'schema_id',
