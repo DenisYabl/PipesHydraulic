@@ -12,8 +12,7 @@ logger = getLogger(__name__)
 A_keff = 1
 B_keff = 1.4
 
-# TODO Нужно сузить класс HE2_WellPump. Не надо таскать в него датафрейм. Нужно создавать его от трех векторов Q, H, Eff
-# И рядом сделать конструктор, который берет уже датафрейм, выделяет из него три вектора и создает объект HE2_WellPump
+# TODO Оптимизировать создание насосов из датафрейма. Один раз сделать нарезку полного датафрейма по моделям и закешировать кривые
 
 def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
     base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
