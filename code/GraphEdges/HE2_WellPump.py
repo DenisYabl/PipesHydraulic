@@ -15,13 +15,17 @@ B_keff = 1.4
 # TODO Оптимизировать создание насосов из датафрейма. Один раз сделать нарезку полного датафрейма по моделям и закешировать кривые
 
 def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
-    base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
-    base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
-    p_vec = base_HPX["pressure"].values
-    q_vec = base_HPX["debit"].values
-    n_vec = base_HPX["power"].values
-    eff_vec = base_HPX["eff"].values
-    pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+    try:
+        base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
+        base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
+        p_vec = base_HPX["pressure"].values
+        q_vec = base_HPX["debit"].values
+        n_vec = base_HPX["power"].values
+        eff_vec = base_HPX["eff"].values
+        pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+    except Exception as e:
+        logger.error(f'Fail to create HE2_WellPump. Model is {model}')
+        raise e
     return pump
 
 
@@ -37,6 +41,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.base_p = p_vec
         self.base_n = n_vec
         self.base_eff = eff_vec
+        self.stages_ratio = 1
 
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
         # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)
@@ -49,7 +54,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.p_vec_50hz = self.base_p * Cp_vec
         self.eff_vec = eff_vec * Ceff_vec
         self.n_vec_50hz = (self.q_vec * 9.81 * 1000 / 86400) * self.p_vec_50hz / (self.eff_vec/100)
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
 
         self.min_Q = self.q_vec.min()
@@ -59,7 +64,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = None
         self.get_pressure_raise_2 = None
         self.get_pressure_raise_3 = None
-        self.n_interpolator = None
         self.make_extrapolators()
 
 
@@ -96,13 +100,21 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.power = 0
         if liquid_debit <= 0:
             get_pressure_raise = self.get_pressure_raise_1
+            get_eff = self.get_eff_1
         elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
+            get_eff = self.get_eff_2
             self.power = self.n_interpolator(liquid_debit)
         else:
             get_pressure_raise = self.get_pressure_raise_3
+            get_eff = self.get_eff_3
 
-        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3)
+        pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
+
+        P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
+
+        eff = get_eff(liquid_debit)
+        #T_rez_C = T_C + calc_direction * self.calculate_temperature_raise(pressure_raise, eff, mishenko)
         T_rez_C = T_C
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
 
@@ -134,11 +146,22 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
         self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
         self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
+
+        self.get_eff_1 = lambda x: 5
+        self.get_eff_2 = interp1d(self.q_vec, self.eff_vec, kind="quadratic")
+        self.get_eff_3 = lambda x: 5
+
         self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
 
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
+        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
+        self.make_extrapolators()
+
+    def change_stages_ratio(self, new_ratio):
+        self.stages_ratio = new_ratio
+        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 

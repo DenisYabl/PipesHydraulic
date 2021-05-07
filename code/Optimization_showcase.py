@@ -294,8 +294,7 @@ def full_test_with_fluids_and_random_edges():
     not_solved = []
     invalid_OWG = dict()
     for i, sss in enumerate(f):
-        # if not (i in [80, 98, 370, 450, 680]):
-        if not (i in [450]):
+        if i in [80, 98, 370, 450, 680]:
             continue
         print(f'-----------------------------------------{i}----------------------------------')
         params = sss[:-1].split(';')

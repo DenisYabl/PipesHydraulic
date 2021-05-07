@@ -331,8 +331,11 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     # Вязкость газа в рабочих условиях
     Mg = 28.97 * CurrentFreeGasDensity
     r = P0 / (0.29 * T0)
-    E = (CurrentT / T0) ** (1 / 6) * (P0 / CurrentP) ** (2 / 3) * Mg ** -0.5
-    mu0 = 0.0101 * (CurrentT - 273) ** 1.8 - 1.07e-1 * math.sqrt(abs(Mg))  # !!!!!!!!!!!!!
+    try:
+        E = (CurrentT / T0) ** (1 / 6) * (P0 / CurrentP) ** (2 / 3) * Mg ** -0.5
+    except:
+        E = 0.025
+    mu0 = 0.0101 * abs(CurrentT - 273) ** 1.8 - 1.07e-1 * math.sqrt(abs(Mg))  # !!!!!!!!!!!!!
     if CurrentP >= 5:
         CurrentFreeGasViscosity = (mu0 + 1.08e-4 / E * (math.exp(1.44 * r) - math.exp(-1.11 * r ** 1.86))) * 1e-6
     else:
