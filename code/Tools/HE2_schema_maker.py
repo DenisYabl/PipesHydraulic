@@ -14,6 +14,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     dataset = dataset[dataset["juncType"] != 'oilwell']
     dataset[['node_id_start', 'node_id_end']] = dataset[['node_id_start', 'node_id_end']].astype(int).astype(str)
 
+    dict_list = []
+
     for i, row in wells_df.iterrows():
         try:
             wellNum = str(int(row["wellNum"]))
@@ -39,57 +41,112 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
         pump_place = tubing[abs(tubing["depth"] - pumpdepth) == min(abs(tubing["depth"] - pumpdepth) )].iloc[0]
         perforation_place = tubing[abs(tubing["depth"] - perforation) == min(abs(tubing["depth"] - perforation) )].iloc[0]
 
-        tempdf = row.copy()
+        # tempdf = row.copy()
+        row_d = row.to_dict()
         #plast-zaboi
-        tempdf["juncType"] = "plast"
-        tempdf["effectiveD"] = 1
-        tempdf["roughness"] = 3e-5
-        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
-        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        tempdf["endIsOutlet"] = False
-        dataset = dataset.append(tempdf)
+        # tempdf["juncType"] = "plast"
+        # tempdf["effectiveD"] = 1
+        # tempdf["roughness"] = 3e-5
+        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
+        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        # tempdf["endIsOutlet"] = False
+        # dataset = dataset.append(tempdf)
+
+        #plast-zaboi
+        dct = row_d.copy()
+        dct["juncType"] = "plast"
+        dct["effectiveD"] = 1
+        dct["roughness"] = 3e-5
+        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
+        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        dct["endIsOutlet"] = False
+        dict_list += [dct]
+
+        # #zaboi-intake
+        # tempdf["startIsSource"] = False
+        # tempdf["juncType"] = "pipe"
+        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        # absdiff = perforation_place["absMark"] - pump_place["absMark"]
+        # Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
+        # tempdf["L"] = Ldiff
+        # tempdf['uphillM'] = absdiff
+        # tempdf["intD"] = 0.127
+        # dataset = dataset.append(tempdf)
 
         #zaboi-intake
-        tempdf["startIsSource"] = False
-        tempdf["juncType"] = "pipe"
-        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        dct = dct.copy()
+        dct["startIsSource"] = False
+        dct["juncType"] = "pipe"
+        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
         absdiff = perforation_place["absMark"] - pump_place["absMark"]
         Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
-        tempdf["L"] = Ldiff
-        tempdf['uphillM'] = absdiff
-        tempdf["intD"] = 0.127
-        dataset = dataset.append(tempdf)
+        dct["L"] = Ldiff
+        dct['uphillM'] = absdiff
+        dct["intD"] = 0.127
+        dict_list += [dct]
+
 
         #wellpump
-        tempdf["juncType"] = "wellpump"
-        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
-        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        dataset = dataset.append(tempdf)
+        # tempdf["juncType"] = "wellpump"
+        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        # dataset = dataset.append(tempdf)
+        
+        #wellpump
+        dct = dct.copy()
+        dct["juncType"] = "wellpump"
+        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        dict_list += [dct]
 
         #outlet-wellhead
-        tempdf["juncType"] = "pipe"
-        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        # tempdf["juncType"] = "pipe"
+        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        # absdiff = pump_place["absMark"]
+        # Ldiff = pump_place["prolongation"]
+        # tempdf["L"] = Ldiff
+        # tempdf['uphillM'] = absdiff
+        # tempdf["intD"] = pump_place["IntDiameter"]
+        # dataset = dataset.append(tempdf)
+
+        #outlet-wellhead
+        dct = dct.copy()
+        dct["juncType"] = "pipe"
+        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
         absdiff = pump_place["absMark"]
         Ldiff = pump_place["prolongation"]
-        tempdf["L"] = Ldiff
-        tempdf['uphillM'] = absdiff
-        tempdf["intD"] = pump_place["IntDiameter"]
-        dataset = dataset.append(tempdf)
+        dct["L"] = Ldiff
+        dct['uphillM'] = absdiff
+        dct["intD"] = pump_place["IntDiameter"]
+        dict_list += [dct]
 
         #wellhead-pad
-        tempdf["juncType"] = "pipe"
-        tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
-        tempdf["node_id_end"] = row["node_id_end"]
-        absdiff = 50
-        tempdf["endIsOutlet"] = row["endIsOutlet"]
-        tempdf["L"] = 0
-        tempdf['uphillM'] = absdiff
-        tempdf["intD"] = 0.071
-        dataset = dataset.append(tempdf)
+        # tempdf["juncType"] = "pipe"
+        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        # tempdf["node_id_end"] = row["node_id_end"]
+        # tempdf["endIsOutlet"] = row["endIsOutlet"]
+        # tempdf["L"] = 50
+        # tempdf['uphillM'] = 0
+        # tempdf["intD"] = 0.1
+        # dataset = dataset.append(tempdf)
 
+        #wellhead-pad
+        dct = dct.copy()
+        dct["juncType"] = "pipe"
+        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+        dct["node_id_end"] = row["node_id_end"]
+        dct["endIsOutlet"] = row["endIsOutlet"]
+        dct["L"] = 50
+        dct['uphillM'] = 0
+        dct["intD"] = 0.1
+        dict_list += [dct]
 
+    tempdf = pd.DataFrame.from_dict(dict_list)
+    dataset = dataset.append(tempdf)
 
     pass
 
@@ -176,8 +233,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
             diam_coef = row["effectiveD"]
             D = row["intD"]
             roughness = row["roughness" ]
-            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], [
-                gimme_dummy_BlackOil(VolumeWater = VolumeWater)]))
+            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness],
+                gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
             pass
         elif junctype == "plast":
             productivity = row["productivity" ]
