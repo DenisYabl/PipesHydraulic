@@ -16,6 +16,8 @@ B_keff = 1.4
 
 def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
     try:
+        if model == 'ЭЦН5А-125-2600':
+            model = 'ЭЦН5-125-2600'
         base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
         base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
         p_vec = base_HPX["pressure"].values
