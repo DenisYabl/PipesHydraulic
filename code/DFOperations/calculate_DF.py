@@ -10,10 +10,11 @@ def calculate_DF(dataframe):
     G, calc_df = make_oilpipe_schema_from_OT_dataset(dataframe)
     solver = HE2_Solver(G)
     solver.solve(threshold = 0.2)
-    validity = check_solution(G)
-    print(validity)
     modified_dataframe = dataframe.copy()
     if solver.op_result.success == True:
+        validity = check_solution(G)
+        print(validity)
+
         for n in G.nodes:
             calc_df.loc[calc_df["node_id_start"] == n, "startP"] = G.nodes[n]["obj"].result["P_bar"]
             calc_df.loc[calc_df["node_id_start"] == n, "startT"] = G.nodes[n]["obj"].result["T_C"]
