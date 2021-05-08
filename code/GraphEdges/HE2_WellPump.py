@@ -12,19 +12,32 @@ logger = getLogger(__name__)
 A_keff = 1
 B_keff = 1.4
 
-# TODO Оптимизировать создание насосов из датафрейма. Один раз сделать нарезку полного датафрейма по моделям и закешировать кривые
+pumps_cache = None
 
-def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
-    try:
-        if model == 'ЭЦН5А-125-2600':
-            model = 'ЭЦН5-125-2600'
+def split_pumps_dataframe_to_models(full_HPX:pd.DataFrame):
+    models = full_HPX.pumpModel.unique()
+    pc = dict()
+    for model in models:
         base_HPX = full_HPX[full_HPX["pumpModel"] == model].sort_values('debit')
         base_HPX = base_HPX.drop(base_HPX[base_HPX.eff == 0].index)
         p_vec = base_HPX["pressure"].values
         q_vec = base_HPX["debit"].values
         n_vec = base_HPX["power"].values
         eff_vec = base_HPX["eff"].values
-        pump = HE2_WellPump(p_vec, q_vec, n_vec, eff_vec, model, fluid, frequency)
+        model_curves = dict(p_vec=p_vec, q_vec=q_vec, n_vec=n_vec, eff_vec=eff_vec)
+        pc[model] = model_curves
+    return pc
+
+
+def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
+    global pumps_cache
+    if pumps_cache is None:
+        pumps_cache = split_pumps_dataframe_to_models(full_HPX)
+    try:
+        if model == 'ЭЦН5А-125-2600':
+            model = 'ЭЦН5-125-2600'
+        curves = pumps_cache[model]
+        pump = HE2_WellPump(**curves, model=model, fluid=fluid, frequency=frequency)
     except Exception as e:
         logger.error(f'Fail to create HE2_WellPump. Model is {model}')
         raise e
