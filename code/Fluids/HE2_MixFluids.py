@@ -1,6 +1,8 @@
 import networkx as nx
 import numpy as np
 from Tools.HE2_ABC import Root
+from Tools.HE2_Logger import getLogger
+logger = getLogger(__name__)
 
 
 def evalute_network_fluids_wo_root(_G, x_dict):
@@ -10,7 +12,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
         assert x_dict[(u, v)] >= 0
     G = nx.DiGraph(_G)
     for (u, v) in x_dict:
-        if x_dict[(u, v)] == 0:
+        if abs(x_dict[(u, v)]) < 1e-7:
             G.remove_edge(u, v)
     for node in _G.nodes:
         if (len(G.in_edges(node)) == 0) and (len(G.out_edges(node)) == 0):
@@ -25,7 +27,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     A = -1 * nx.incidence_matrix(G, nodelist=nodes, edgelist=edges, oriented=True).toarray()
     Q = np.matmul(A, x)
     var_idx = {e:i for i, e in enumerate(edges)}
-    sinks = [n for i, n in enumerate(nodes) if Q[i] < 0]
+    sinks = [n for i, n in enumerate(nodes) if Q[i] < -1e-7]
     var_idx.update({n:i+EN for i, n in enumerate(sinks)})
     M = len(var_idx)
     mx1 = np.zeros((N, M)) # the first partition of matrix is for 1stCL
@@ -33,7 +35,7 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     i2 = 0
     for i, node in enumerate(nodes):
         these_vars_are_the_same = []
-        if Q[i] < 0: # n is sink, so there is an unknown (equation variable) for outbound flow
+        if node in sinks: # n is sink, so there is an unknown (equation variable) for outbound flow
             j = var_idx[node] # get the unknown index in matrix
             mx1[i, j] = Q[i]
             these_vars_are_the_same += [j] # remember the unknown for a while
@@ -72,7 +74,9 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     for k, i in var_idx.items():
         cocktails[k] = rez_mx[i, :S]
         sck = sum(cocktails[k])
-        np.testing.assert_almost_equal(sck, 1)
+        if abs(sck - 1) > 1e-7:
+            logger.error('Cocktail matrix is invalid')
+            raise ValueError
     return cocktails, srcs
 
 
