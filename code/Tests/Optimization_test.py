@@ -782,247 +782,247 @@ def build_DNS2_graph(pressures: dict = {}, plasts: dict = {}, pumps=None, pump_c
     
     #Инклинометрия скважин
     #Куст 5
-    G.add_edge('Pump_outlet_1523', 'Wellhead_1523', obj=HE2_OilPipe([32.6], [2561], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1523', 'Pump_intake_1523',obj=HE2_OilPipe([267.3], [202.7], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1523', 'Wellhead_1523', obj=HE2_OilPipe([32.6], [2561], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1523', 'Pump_intake_1523',obj=HE2_OilPipe([267.3], [202.7], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_146', 'Wellhead_146', obj=HE2_OilPipe([ 47.569], [2575.43], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_146', 'Pump_intake_146',obj=HE2_OilPipe([161.39], [210.56], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_146', 'Wellhead_146', obj=HE2_OilPipe([ 47.569], [2575.43], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_146', 'Pump_intake_146',obj=HE2_OilPipe([161.39], [210.56], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_142', 'Wellhead_142', obj=HE2_OilPipe([324.89], [2511.1], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_142', 'Pump_intake_142',obj=HE2_OilPipe([242.24], [249.7599], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_142', 'Wellhead_142', obj=HE2_OilPipe([324.89], [2511.1], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_142', 'Pump_intake_142',obj=HE2_OilPipe([242.24], [249.7599], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_1562', 'Wellhead_1562', obj=HE2_OilPipe([549.92], [2392.08], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1562', 'Pump_intake_1562',obj=HE2_OilPipe([36.4499], [325.55], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1562', 'Wellhead_1562', obj=HE2_OilPipe([549.92], [2392.08], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1562', 'Pump_intake_1562',obj=HE2_OilPipe([36.4499], [325.55], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Wellhead_1562', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1523', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_146', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_142', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_1562', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1523', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_146', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_142', 'PAD_5',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
 
 
     #Куст 33
-    G.add_edge('Pump_outlet_1385', 'Wellhead_1385', obj=HE2_OilPipe([395.8], [2139.2], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1385', 'Pump_intake_1385',obj=HE2_OilPipe([80], [584], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1385', 'Wellhead_1385', obj=HE2_OilPipe([395.8], [2139.2], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1385', 'Pump_intake_1385',obj=HE2_OilPipe([80], [584], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_736', 'Wellhead_736', obj=HE2_OilPipe([216], [2532], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_736', 'Pump_intake_736',obj=HE2_OilPipe([448], [155], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_736', 'Wellhead_736', obj=HE2_OilPipe([216], [2532], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_736', 'Pump_intake_736',obj=HE2_OilPipe([448], [155], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_739', 'Wellhead_739', obj=HE2_OilPipe([323.45], [2356.55], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_739', 'Pump_intake_739',obj=HE2_OilPipe([396.35], [290.6], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_739', 'Wellhead_739', obj=HE2_OilPipe([323.45], [2356.55], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_739', 'Pump_intake_739',obj=HE2_OilPipe([396.35], [290.6], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_1383', 'Wellhead_1383', obj=HE2_OilPipe([526], [2353.99], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1383', 'Pump_intake_1383',obj=HE2_OilPipe([30.16], [377.84], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1383', 'Wellhead_1383', obj=HE2_OilPipe([526], [2353.99], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1383', 'Pump_intake_1383',obj=HE2_OilPipe([30.16], [377.84], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_738', 'Wellhead_738', obj=HE2_OilPipe([243.83], [2128.17], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_738', 'Pump_intake_738',obj=HE2_OilPipe([402.45], [526.85], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_738', 'Wellhead_738', obj=HE2_OilPipe([243.83], [2128.17], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_738', 'Pump_intake_738',obj=HE2_OilPipe([402.45], [526.85], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_725', 'Wellhead_725', obj=HE2_OilPipe([495.76], [2329.24], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_725', 'Pump_intake_725',obj=HE2_OilPipe([28.7], [384.3], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_725', 'Wellhead_725', obj=HE2_OilPipe([495.76], [2329.24], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_725', 'Pump_intake_725',obj=HE2_OilPipe([28.7], [384.3], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Wellhead_1385', 'PAD_33',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_736', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_739', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1383', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_738', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_725', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_1385', 'PAD_33',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_736', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_739', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1383', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_738', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_725', 'PAD_33', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
 
     #Куст 34
-    G.add_edge('Pump_outlet_731', 'Wellhead_731', obj=HE2_OilPipe([285.7], [2414.27], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_731', 'Pump_intake_731',obj=HE2_OilPipe([13.5], [330], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_731', 'Wellhead_731', obj=HE2_OilPipe([285.7], [2414.27], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_731', 'Pump_intake_731',obj=HE2_OilPipe([13.5], [330], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_196', 'Wellhead_196', obj=HE2_OilPipe([172.6], [2504.43], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_196', 'Pump_intake_196',obj=HE2_OilPipe([7.38], [245.12], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_196', 'Wellhead_196', obj=HE2_OilPipe([172.6], [2504.43], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_196', 'Pump_intake_196',obj=HE2_OilPipe([7.38], [245.12], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_734', 'Wellhead_734', obj=HE2_OilPipe([32.21], [2362.8], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_734', 'Pump_intake_734',obj=HE2_OilPipe([282], [286.88], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_734', 'Wellhead_734', obj=HE2_OilPipe([32.21], [2362.8], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_734', 'Pump_intake_734',obj=HE2_OilPipe([282], [286.88], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_198', 'Wellhead_198', obj=HE2_OilPipe([244], [2586], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_198', 'Pump_intake_198',obj=HE2_OilPipe([4.82], [169.18], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_198', 'Wellhead_198', obj=HE2_OilPipe([244], [2586], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_198', 'Pump_intake_198',obj=HE2_OilPipe([4.82], [169.18], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_199', 'Wellhead_199', obj=HE2_OilPipe([228.11], [2520.89], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_199', 'Pump_intake_199',obj=HE2_OilPipe([198.34], [241.56], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_199', 'Wellhead_199', obj=HE2_OilPipe([228.11], [2520.89], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_199', 'Pump_intake_199',obj=HE2_OilPipe([198.34], [241.56], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_197', 'Wellhead_197', obj=HE2_OilPipe([668.11], [2345.89], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_197', 'Pump_intake_197',obj=HE2_OilPipe([52.91], [403.09], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_197', 'Wellhead_197', obj=HE2_OilPipe([668.11], [2345.89], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_197', 'Pump_intake_197',obj=HE2_OilPipe([52.91], [403.09], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_195', 'Wellhead_195', obj=HE2_OilPipe([610.82], [2372.96], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_195', 'Pump_intake_195',obj=HE2_OilPipe([50.06], [357.93], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_195', 'Wellhead_195', obj=HE2_OilPipe([610.82], [2372.96], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_195', 'Pump_intake_195',obj=HE2_OilPipe([50.06], [357.93], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_191', 'Wellhead_191', obj=HE2_OilPipe([254.37], [2585.63], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_191', 'Pump_intake_191',obj=HE2_OilPipe([251.19], [166.221], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_191', 'Wellhead_191', obj=HE2_OilPipe([254.37], [2585.63], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_191', 'Pump_intake_191',obj=HE2_OilPipe([251.19], [166.221], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_729', 'Wellhead_729', obj=HE2_OilPipe([92.78], [2345.22], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_729', 'Pump_intake_729',obj=HE2_OilPipe([247.95], [399.048], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_729', 'Wellhead_729', obj=HE2_OilPipe([92.78], [2345.22], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_729', 'Pump_intake_729',obj=HE2_OilPipe([247.95], [399.048], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_730', 'Wellhead_730', obj=HE2_OilPipe([75.76], [2218.24], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_730', 'Pump_intake_730',obj=HE2_OilPipe([99.72], [532.78], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_730', 'Wellhead_730', obj=HE2_OilPipe([75.76], [2218.24], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_730', 'Pump_intake_730',obj=HE2_OilPipe([99.72], [532.78], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_192', 'Wellhead_192', obj=HE2_OilPipe([337.39], [2177.61], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_192', 'Pump_intake_192',obj=HE2_OilPipe([255.33], [531.87], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_192', 'Wellhead_192', obj=HE2_OilPipe([337.39], [2177.61], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_192', 'Pump_intake_192',obj=HE2_OilPipe([255.33], [531.87], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_148', 'Wellhead_148', obj=HE2_OilPipe([337.39], [2177.61], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_148', 'Pump_intake_148',obj=HE2_OilPipe([255.33], [531.87], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_148', 'Wellhead_148', obj=HE2_OilPipe([337.39], [2177.61], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_148', 'Pump_intake_148',obj=HE2_OilPipe([255.33], [531.87], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Wellhead_731', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_196', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_734', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_198', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_199', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_197', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_195', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_191', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_729', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_730', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_192', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_148', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_731', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_196', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_734', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_198', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_199', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_197', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_195', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_191', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_729', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_730', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_192', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_148', 'PAD_34',obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
 
     # Куст 39
-    G.add_edge('Pump_outlet_3552', 'Wellhead_3552', obj=HE2_OilPipe([130.37], [2169.63], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3552', 'Pump_intake_3552',obj=HE2_OilPipe([155.83], [687.06], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3552', 'Wellhead_3552', obj=HE2_OilPipe([130.37], [2169.63], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3552', 'Pump_intake_3552',obj=HE2_OilPipe([155.83], [687.06], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_617', 'Wellhead_617', obj=HE2_OilPipe([461.4], [2409.6], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_617', 'Pump_intake_617',obj=HE2_OilPipe([8], [333], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_617', 'Wellhead_617', obj=HE2_OilPipe([461.4], [2409.6], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_617', 'Pump_intake_617',obj=HE2_OilPipe([8], [333], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_567', 'Wellhead_567', obj=HE2_OilPipe([674.06], [2165.94], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_567', 'Pump_intake_567',obj=HE2_OilPipe([112.83], [554.17], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_567', 'Wellhead_567', obj=HE2_OilPipe([674.06], [2165.94], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_567', 'Pump_intake_567',obj=HE2_OilPipe([112.83], [554.17], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_614', 'Wellhead_614', obj=HE2_OilPipe([128.89], [2529.07], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_614', 'Pump_intake_614',obj=HE2_OilPipe([156.93], [215.51], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_614', 'Wellhead_614', obj=HE2_OilPipe([128.89], [2529.07], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_614', 'Pump_intake_614',obj=HE2_OilPipe([156.93], [215.51], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_619', 'Wellhead_619', obj=HE2_OilPipe([269.27], [2343.73], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_619', 'Pump_intake_619',obj=HE2_OilPipe([110.95], [384.75], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_619', 'Wellhead_619', obj=HE2_OilPipe([269.27], [2343.73], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_619', 'Pump_intake_619',obj=HE2_OilPipe([110.95], [384.75], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_609', 'Wellhead_609', obj=HE2_OilPipe([117.42], [2291.58], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_609', 'Pump_intake_609',obj=HE2_OilPipe([202.87], [535.23], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_609', 'Wellhead_609', obj=HE2_OilPipe([117.42], [2291.58], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_609', 'Pump_intake_609',obj=HE2_OilPipe([202.87], [535.23], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Wellhead_3552', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_617', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_567', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_614', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_619', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_609', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_3552', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_617', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_567', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_614', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_619', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_609', 'PAD_39', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
     
     # Куст 49    
 
-    G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([811.92], [67.67], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1816', 'Wellhead_1816', obj=HE2_OilPipe([61.69], [2508.31], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1816', 'Pump_intake_1816',obj=HE2_OilPipe([811.92], [67.67], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_2630', 'Wellhead_2630', obj=HE2_OilPipe([419.86], [2370.14], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_2630', 'Pump_intake_2630',obj=HE2_OilPipe([570.43], [310.38], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_2630', 'Wellhead_2630', obj=HE2_OilPipe([419.86], [2370.14], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_2630', 'Pump_intake_2630',obj=HE2_OilPipe([570.43], [310.38], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_1815', 'Wellhead_1815', obj=HE2_OilPipe([113.77], [2516.23], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1815', 'Pump_intake_1815',obj=HE2_OilPipe([482.82], [333.82], [0.143 * real_diam_coefficient], [5 * roughness]))
-
-
-    G.add_edge('Pump_outlet_676', 'Wellhead_676', obj=HE2_OilPipe([248.29], [2433.71], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_676', 'Pump_intake_676',obj=HE2_OilPipe([537.87], [336.76], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1815', 'Wellhead_1815', obj=HE2_OilPipe([113.77], [2516.23], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1815', 'Pump_intake_1815',obj=HE2_OilPipe([482.82], [333.82], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_3270', 'Wellhead_3270', obj=HE2_OilPipe([310.83], [2080.17], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3270', 'Pump_intake_3270',obj=HE2_OilPipe([315.89], [637.11], [0.143 * real_diam_coefficient], [5 * roughness]))
-
-    G.add_edge('Pump_outlet_3266', 'Wellhead_3266', obj=HE2_OilPipe([119.76], [2500.24], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3266', 'Pump_intake_3266',obj=HE2_OilPipe([280.05], [489.3], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_676', 'Wellhead_676', obj=HE2_OilPipe([248.29], [2433.71], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_676', 'Pump_intake_676',obj=HE2_OilPipe([537.87], [336.76], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_1814', 'Wellhead_1814', obj=HE2_OilPipe([205.63], [2455.37], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1814', 'Pump_intake_1814',obj=HE2_OilPipe([186], [600.24], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3270', 'Wellhead_3270', obj=HE2_OilPipe([310.83], [2080.17], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3270', 'Pump_intake_3270',obj=HE2_OilPipe([315.89], [637.11], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
+
+    G.add_edge('Pump_outlet_3266', 'Wellhead_3266', obj=HE2_OilPipe([119.76], [2500.24], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3266', 'Pump_intake_3266',obj=HE2_OilPipe([280.05], [489.3], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_1817', 'Wellhead_1817', obj=HE2_OilPipe([324.58], [2443.42], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1817', 'Pump_intake_1817',obj=HE2_OilPipe([690.26], [244.53], [0.143 * real_diam_coefficient], [5 * roughness]))
-
-    G.add_edge('Pump_outlet_4532', 'Wellhead_4532', obj=HE2_OilPipe([363.75], [2482.25], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_4532', 'Pump_intake_4532',obj=HE2_OilPipe([403.62], [509.5], [0.143 * real_diam_coefficient], [5 * roughness]))
-
-    G.add_edge('Pump_outlet_2631', 'Wellhead_2631', obj=HE2_OilPipe([67.5], [2394.5], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_2631', 'Pump_intake_2631',obj=HE2_OilPipe([626.2], [278.96], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1814', 'Wellhead_1814', obj=HE2_OilPipe([205.63], [2455.37], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1814', 'Pump_intake_1814',obj=HE2_OilPipe([186], [600.24], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_677', 'Wellhead_677', obj=HE2_OilPipe([248.2], [2351.8], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_677', 'Pump_intake_677',obj=HE2_OilPipe([728.15], [217.82], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1817', 'Wellhead_1817', obj=HE2_OilPipe([324.58], [2443.42], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1817', 'Pump_intake_1817',obj=HE2_OilPipe([690.26], [244.53], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
+
+    G.add_edge('Pump_outlet_4532', 'Wellhead_4532', obj=HE2_OilPipe([363.75], [2482.25], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_4532', 'Pump_intake_4532',obj=HE2_OilPipe([403.62], [509.5], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
+
+    G.add_edge('Pump_outlet_2631', 'Wellhead_2631', obj=HE2_OilPipe([67.5], [2394.5], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_2631', 'Pump_intake_2631',obj=HE2_OilPipe([626.2], [278.96], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
+
+
+    G.add_edge('Pump_outlet_677', 'Wellhead_677', obj=HE2_OilPipe([248.2], [2351.8], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_677', 'Pump_intake_677',obj=HE2_OilPipe([728.15], [217.82], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_2630', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1815', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_676', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3270', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3266', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1814', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1817', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_4532', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_2631', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_677', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_1816', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_2630', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1815', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_676', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3270', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3266', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1814', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1817', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_4532', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_2631', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_677', 'PAD_49', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
     # Куст 57
 
-    G.add_edge('Pump_outlet_3113', 'Wellhead_3113', obj=HE2_OilPipe([382.13], [2367.87], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3113', 'Pump_intake_3113',obj=HE2_OilPipe([652.87], [230.96], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3113', 'Wellhead_3113', obj=HE2_OilPipe([382.13], [2367.87], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3113', 'Pump_intake_3113',obj=HE2_OilPipe([652.87], [230.96], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_3118', 'Wellhead_3118', obj=HE2_OilPipe([152.43], [2458.57], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3118', 'Pump_intake_3118',obj=HE2_OilPipe([670.7], [109], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3118', 'Wellhead_3118', obj=HE2_OilPipe([152.43], [2458.57], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3118', 'Pump_intake_3118',obj=HE2_OilPipe([670.7], [109], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_3112', 'Wellhead_3112', obj=HE2_OilPipe([55.74], [2481.26], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3112', 'Pump_intake_3112',obj=HE2_OilPipe([753.03], [-3], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3112', 'Wellhead_3112', obj=HE2_OilPipe([55.74], [2481.26], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3112', 'Pump_intake_3112',obj=HE2_OilPipe([753.03], [-3], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_4235', 'Wellhead_4235', obj=HE2_OilPipe([351.06], [2514.94], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_4235', 'Pump_intake_4235',obj=HE2_OilPipe([511.21], [253.89], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_4235', 'Wellhead_4235', obj=HE2_OilPipe([351.06], [2514.94], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_4235', 'Pump_intake_4235',obj=HE2_OilPipe([511.21], [253.89], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_3117', 'Wellhead_3117', obj=HE2_OilPipe([117.8], [2477.2], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3117', 'Pump_intake_3117',obj=HE2_OilPipe([527.58], [255.96], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3117', 'Wellhead_3117', obj=HE2_OilPipe([117.8], [2477.2], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3117', 'Pump_intake_3117',obj=HE2_OilPipe([527.58], [255.96], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_1493', 'Wellhead_1493', obj=HE2_OilPipe([403.96], [2442.04], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1493', 'Pump_intake_1493',obj=HE2_OilPipe([409.48], [399.746], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1493', 'Wellhead_1493', obj=HE2_OilPipe([403.96], [2442.04], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1493', 'Pump_intake_1493',obj=HE2_OilPipe([409.48], [399.746], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
 
-    G.add_edge('Pump_outlet_1574', 'Wellhead_1574', obj=HE2_OilPipe([130.42], [2514.58], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1574', 'Pump_intake_1574',obj=HE2_OilPipe([679.53], [-18.46], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1574', 'Wellhead_1574', obj=HE2_OilPipe([130.42], [2514.58], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1574', 'Pump_intake_1574',obj=HE2_OilPipe([679.53], [-18.46], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
 
-    G.add_edge('Pump_outlet_1579', 'Wellhead_1579', obj=HE2_OilPipe([425.39], [2494.6], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_1579', 'Pump_intake_1579',obj=HE2_OilPipe([345.25], [281.16], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_1579', 'Wellhead_1579', obj=HE2_OilPipe([425.39], [2494.6], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_1579', 'Pump_intake_1579',obj=HE2_OilPipe([345.25], [281.16], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Pump_outlet_3116', 'Wellhead_3116', obj=HE2_OilPipe([167.57], [2453.43], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Zaboi_3116', 'Pump_intake_3116',obj=HE2_OilPipe([715.74], [81.184], [0.143 * real_diam_coefficient], [5 * roughness]))
+    G.add_edge('Pump_outlet_3116', 'Wellhead_3116', obj=HE2_OilPipe([167.57], [2453.43], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Zaboi_3116', 'Pump_intake_3116',obj=HE2_OilPipe([715.74], [81.184], [0.143 * real_diam_coefficient], [5 * roughness], fluid))
     
-    G.add_edge('Wellhead_3113', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3118', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3112', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_4235', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3117', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1493', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1574', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_1579', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
-    G.add_edge('Wellhead_3116', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness]))
+    G.add_edge('Wellhead_3113', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3118', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3112', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_4235', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3117', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1493', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1574', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_1579', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('Wellhead_3116', 'PAD_57', obj=HE2_OilPipe([100], [0], [0.125 * real_diam_coefficient], [roughness], fluid))
     
     
     #Трубопроводная система
-    G.add_edge('PAD_5', 'intake_pad_5', obj=HE2_OilPipe([10], [-0.2], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_5', 'intake_pad_9_36', obj=HE2_OilPipe([785], [-0.6], [0.199 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_9_36', 'intake_pad_35', obj=HE2_OilPipe([2326], [4.6], [0.199 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_35', 'UDR_1',obj=HE2_OilPipe([2648], [13.6], [0.199 * real_diam_coefficient], [roughness]))
-    G.add_edge('UDR_1', 'DNS_2',obj=HE2_OilPipe([200], [0.2], [0.305 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_33', 'intake_pad_33',obj=HE2_OilPipe([440], [-1.9], [0.139 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_33', 'UDR_2', obj=HE2_OilPipe([4394], [-4.6], [0.199 * real_diam_coefficient], [roughness]))
-    G.add_edge('UDR_2', 'UDR_1', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_34', 'intake_pad_134', obj=HE2_OilPipe([818], [0.6], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_134', 'UDR_2', obj=HE2_OilPipe([3344], [10.2], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_39', 'intake_pad_59', obj=HE2_OilPipe([7568], [1.6], [0.139 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_59', 'intake_pad_59_46', obj=HE2_OilPipe([4601], [4.4], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_59_46', 'intake_pad_47',obj=HE2_OilPipe([2625], [18.4], [0.139 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_47', 'intake_pad_53',obj=HE2_OilPipe([2250], [-1.3], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_53', 'intake_pad_41',obj=HE2_OilPipe([1391], [9], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_41', 'ZKL_98',obj=HE2_OilPipe([9290], [-13.5], [0.257 * real_diam_coefficient], [roughness]))
-    G.add_edge('ZKL_98', 'intake_pad_49',obj=HE2_OilPipe([600], [3], [0.257 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_49', 'intake_node_33', obj=HE2_OilPipe([4001], [0], [0.410 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_node_33', 'intake_pad_46', obj=HE2_OilPipe([2920], [2.1], [0.410 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_46', 'node_15',obj=HE2_OilPipe([1181], [-5.9], [0.410 * real_diam_coefficient], [roughness]))
-    G.add_edge('node_15', 'UDR_2',obj=HE2_OilPipe([92], [0.2], [0.199 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_49', 'intake_node_49', obj=HE2_OilPipe([492], [-0.8], [0.139 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_node_49', 'intake_pad_57', obj=HE2_OilPipe([3737], [-5.7], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_57', 'intake_pad_49',obj=HE2_OilPipe([3852], [-4.3], [0.309 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_57', 'intake_pad_57',obj=HE2_OilPipe([370], [-1], [0.203 * real_diam_coefficient], [roughness]))
+    G.add_edge('PAD_5', 'intake_pad_5', obj=HE2_OilPipe([10], [-0.2], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_5', 'intake_pad_9_36', obj=HE2_OilPipe([785], [-0.6], [0.199 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_9_36', 'intake_pad_35', obj=HE2_OilPipe([2326], [4.6], [0.199 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_35', 'UDR_1',obj=HE2_OilPipe([2648], [13.6], [0.199 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('UDR_1', 'DNS_2',obj=HE2_OilPipe([200], [0.2], [0.305 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_33', 'intake_pad_33',obj=HE2_OilPipe([440], [-1.9], [0.139 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_33', 'UDR_2', obj=HE2_OilPipe([4394], [-4.6], [0.199 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('UDR_2', 'UDR_1', obj=HE2_OilPipe([1087], [3.4], [0.253 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_34', 'intake_pad_134', obj=HE2_OilPipe([818], [0.6], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_134', 'UDR_2', obj=HE2_OilPipe([3344], [10.2], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_39', 'intake_pad_59', obj=HE2_OilPipe([7568], [1.6], [0.139 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_59', 'intake_pad_59_46', obj=HE2_OilPipe([4601], [4.4], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_59_46', 'intake_pad_47',obj=HE2_OilPipe([2625], [18.4], [0.139 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_47', 'intake_pad_53',obj=HE2_OilPipe([2250], [-1.3], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_53', 'intake_pad_41',obj=HE2_OilPipe([1391], [9], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_41', 'ZKL_98',obj=HE2_OilPipe([9290], [-13.5], [0.257 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('ZKL_98', 'intake_pad_49',obj=HE2_OilPipe([600], [3], [0.257 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_49', 'intake_node_33', obj=HE2_OilPipe([4001], [0], [0.410 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_node_33', 'intake_pad_46', obj=HE2_OilPipe([2920], [2.1], [0.410 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_46', 'node_15',obj=HE2_OilPipe([1181], [-5.9], [0.410 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('node_15', 'UDR_2',obj=HE2_OilPipe([92], [0.2], [0.199 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_49', 'intake_node_49', obj=HE2_OilPipe([492], [-0.8], [0.139 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_node_49', 'intake_pad_57', obj=HE2_OilPipe([3737], [-5.7], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_57', 'intake_pad_49',obj=HE2_OilPipe([3852], [-4.3], [0.309 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_57', 'intake_pad_57',obj=HE2_OilPipe([370], [-1], [0.203 * real_diam_coefficient], [roughness], fluid))
 
     return G, inlets, juncs, outlets
 
@@ -1120,12 +1120,12 @@ def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, rea
         G.add_node(k, obj=v)
 
 
-    G.add_edge('PAD_55', 'intake_pad_40', obj=HE2_OilPipe([4871], [2.4], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_40', 'intake_pad_45', obj=HE2_OilPipe([3562], [5], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('PAD_88', 'intake_pad_45', obj=HE2_OilPipe([5234], [0], [0.143 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_45', 'intake_pad_43',obj=HE2_OilPipe([3042], [-6.5], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_43', 'intake_pad_44',obj=HE2_OilPipe([2652], [2.1], [0.203 * real_diam_coefficient], [roughness]))
-    G.add_edge('intake_pad_44', 'DNS_3',obj=HE2_OilPipe([15], [-1.5], [0.203 * real_diam_coefficient], [roughness]))
+    G.add_edge('PAD_55', 'intake_pad_40', obj=HE2_OilPipe([4871], [2.4], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_40', 'intake_pad_45', obj=HE2_OilPipe([3562], [5], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('PAD_88', 'intake_pad_45', obj=HE2_OilPipe([5234], [0], [0.143 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_45', 'intake_pad_43',obj=HE2_OilPipe([3042], [-6.5], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_43', 'intake_pad_44',obj=HE2_OilPipe([2652], [2.1], [0.203 * real_diam_coefficient], [roughness], fluid))
+    G.add_edge('intake_pad_44', 'DNS_3',obj=HE2_OilPipe([15], [-1.5], [0.203 * real_diam_coefficient], [roughness], fluid))
     solver = HE2_Solver(G)
     solver.solve()
     return G

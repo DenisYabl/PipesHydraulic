@@ -294,7 +294,8 @@ def full_test_with_fluids_and_random_edges():
     not_solved = []
     invalid_OWG = dict()
     for i, sss in enumerate(f):
-        if i in [80, 98, 370, 450, 680]:
+        # if not (i in [80, 98, 370, 450, 680]):
+        if not (i in [370, 680]):
             continue
         print(f'-----------------------------------------{i}----------------------------------')
         params = sss[:-1].split(';')
@@ -310,11 +311,11 @@ def full_test_with_fluids_and_random_edges():
 
         u, v = params[0:2]
         dx, dy, diam, rgh = tuple(map(float, params[2:6]))
-        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh]))
+        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh], fluid))
 
         u, v = params[6:8]
         dx, dy, diam, rgh = tuple(map(float, params[8:12]))
-        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh]))
+        G.add_edge(u, v, obj=HE2_OilPipe([dx], [dy], [diam], [rgh], fluid))
 
         u1, v1, u2, v2 = params[12:16]
 
