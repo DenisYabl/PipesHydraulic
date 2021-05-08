@@ -57,6 +57,7 @@ class HE2_Solver():
         self.actual_dx = None
 
         self.it_num = 0
+        self.random_steps = []
 
     def set_known_Q(self, Q_dict):
         self.known_Q = Q_dict
@@ -241,9 +242,7 @@ class HE2_Solver():
 
     def solve(self, threshold=0.05, it_limit=100, step=1):
         logger.info('is started')
-        y_best, x_best, self.it_num = 100500100500, None, 0
-        np.random.seed(42)
-        random_steps = list(np.random.uniform(0.1, 0.5, it_limit))
+        y, y_best, x_best, self.it_num = 100500100500, 100500100500, None, 0
         try:
             if not self.ready_for_solve:
                 self.prepare_for_solve()
@@ -262,29 +261,22 @@ class HE2_Solver():
                 # plot_all_wo_root(self)
 
                 x_chordes = x_chordes + step * dx
-                y = self.target(x_chordes)
+                y, y_prev = self.target(x_chordes), y
                 logger.debug(f'X = {x_chordes.flatten()}')
                 logger.info(f'Y = {y}')
+                logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
 
                 if y < y_best:
                     self.evaluate_and_set_new_fluids()
 
-                logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
                 if y < y_best:
                     logger.info(f'y {y} is better than y_best {y_best}')
-                    y_best = y
-                    x_best = x_chordes
-                elif step > 0.1:
-                    step = step/2
-                else:
-                    step = random_steps.pop()
+                    y_best, x_best = y, x_chordes
 
-                if y_best < threshold:
-                    logger.info(f'Solution is found, cause threshold {threshold} is touched')
+                if (y_best < threshold) or (self.it_num > it_limit):
                     break
-                if self.it_num > it_limit:
-                    logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
-                    break
+
+                step = self.step_heuristic(y, y_prev, self.it_num, step)
 
                 self.derivatives, der_vec = self.evaluate_derivatives_on_edges()
                 check_for_nan(der_vec=der_vec)
@@ -305,6 +297,11 @@ class HE2_Solver():
             self.attach_results_to_schema()
         except Exception as e:
             logger.error(e, exc_info=True)
+
+        if y_best < threshold:
+            logger.info(f'Solution is found, cause threshold {threshold} is touched')
+        if self.it_num > it_limit:
+            logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
 
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=self.it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
@@ -654,3 +651,23 @@ class HE2_Solver():
                 fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
                 obj.fluid = fluidC
         pass
+
+    def step_heuristic(self, y, y_prev, it_num, step):
+        if not self.random_steps:
+            np.random.seed(42)
+            self.random_steps = list(np.random.uniform(0.25, 0.75, 1000))
+        random_steps = self.random_steps
+
+        if it_num <= 2:
+            return 1
+
+        if y <= y_prev and step > 0.5:
+            return step
+
+        if y <= y_prev:
+            return random_steps.pop()
+
+        if y > y_prev and step > 0.1:
+            return step/2
+
+        return random_steps.pop()
