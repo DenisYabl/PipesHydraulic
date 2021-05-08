@@ -1,6 +1,33 @@
 from DFOperations import HE2_DateframeWrapper as model
 import scipy.optimize as scop
 import numpy as np
+import pandas as pd
+import os
+from Solver.HE2_Solver import HE2_Solver
+from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
+from Tools.HE2_tools import check_solution
+import logging
+
+class HE2_OilGatheringNetwork_Model():
+    def __init__(self, folder):
+        # tree = os.walk(folder)
+        # for fld, subfolders, files in tree:
+        #     print(fld, subfolders, files)
+
+        self.dfs = []
+        self.solvers = []
+        for i in range(32):
+            filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
+            try:
+                df = pd.read_csv(filename)
+            except:
+                print('Fail to open ' + filename)
+                continue
+            self.dfs += [df]
+            G, calc_df = make_oilpipe_schema_from_OT_dataset(df, folder + 'CommonData/')
+            print(i)
+            solver = HE2_Solver(G)
+            self.solvers = []
 
 
 class HE2_PMNetwork_Model():
@@ -290,3 +317,7 @@ class HE2_PMNetwork_Model():
         fits = {0:self.fit_v0, 1:self.fit_v1, 2:self.fit_v2, 3:self.fit_v3, 4:self.fit_v4, 5:self.fit_v5}
         meth = fits.get(self.fit_version, self.fit_v0)
         return meth()
+
+
+if __name__ == '__main__':
+    model = HE2_OilGatheringNetwork_Model("../../")
