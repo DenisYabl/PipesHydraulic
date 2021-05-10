@@ -6,206 +6,27 @@ from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_f
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 
-def make_oilpipe_schema_from_OT_dataset(dataset):
-    pump_curves = pd.read_csv("../CommonData/PumpChart.csv")
-    inclination = pd.read_parquet("../CommonData/inclination")
-    HKT = pd.read_parquet("../CommonData/HKT")
-    wells_df = dataset[dataset["juncType"] == 'oilwell']
-    dataset = dataset[dataset["juncType"] != 'oilwell']
-    dataset[['node_id_start', 'node_id_end']] = dataset[['node_id_start', 'node_id_end']].astype(int).astype(str)
+pump_curves = None
+inclination = None
+HKT = None
 
-    dict_list = []
+def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None):
+    global pump_curves
+    if pump_curves is None:
+        pump_curves = pd.read_csv(folder + "PumpChart.csv")
 
-    for i, row in wells_df.iterrows():
-        try:
-            wellNum = str(int(row["wellNum"]))
-        except:
-            wellNum = row["wellNum"]
-        padNum = str(int(row["padNum"]))
-        pumpdepth = row["pumpDepth"]
-        perforation = row["perforation"]
-
-        tubing = inclination[inclination["wellNum"] == wellNum]
-        tubing = tubing.sort_values(by = 'depth')
-        tubing["Roughness"] = 3e-5
-        tubing["IntDiameter"] = 0.57
-        tubing["NKTlength"] = 10
-        local_HKT = HKT[HKT['wellNum'] == wellNum]
-        fulldepth = 0
-        for stageNum in local_HKT['stageNum'].unique():
-            stage_HKT = local_HKT[local_HKT["stageNum"] == stageNum]
-            stage_HKT = stage_HKT[stage_HKT["_time"] == stage_HKT["_time"].max()]
-            fulldepth += stage_HKT["stageLength"].iloc[0]
-            tubing.loc[tubing["depth"] <= fulldepth, "IntDiameter"] = (stage_HKT["stageDiameter"].iloc[0] - 16) / 1000
-
-        pump_place = tubing[abs(tubing["depth"] - pumpdepth) == min(abs(tubing["depth"] - pumpdepth) )].iloc[0]
-        perforation_place = tubing[abs(tubing["depth"] - perforation) == min(abs(tubing["depth"] - perforation) )].iloc[0]
-
-        # tempdf = row.copy()
-        row_d = row.to_dict()
-        #plast-zaboi
-        # tempdf["juncType"] = "plast"
-        # tempdf["effectiveD"] = 1
-        # tempdf["roughness"] = 3e-5
-        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
-        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        # tempdf["endIsOutlet"] = False
-        # dataset = dataset.append(tempdf)
-
-        #plast-zaboi
-        dct = row_d.copy()
-        dct["juncType"] = "plast"
-        dct["effectiveD"] = 1
-        dct["roughness"] = 3e-5
-        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
-        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        dct["endIsOutlet"] = False
-        dict_list += [dct]
-
-        # #zaboi-intake
-        # tempdf["startIsSource"] = False
-        # tempdf["juncType"] = "pipe"
-        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
-        # absdiff = perforation_place["absMark"] - pump_place["absMark"]
-        # Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
-        # tempdf["L"] = Ldiff
-        # tempdf['uphillM'] = absdiff
-        # tempdf["intD"] = 0.127
-        # dataset = dataset.append(tempdf)
-
-        #zaboi-intake
-        dct = dct.copy()
-        dct["startIsSource"] = False
-        dct["juncType"] = "pipe"
-        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
-        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
-        absdiff = perforation_place["absMark"] - pump_place["absMark"]
-        Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
-        dct["L"] = Ldiff
-        dct['uphillM'] = absdiff
-        dct["intD"] = 0.127
-        dict_list += [dct]
-
-
-        #wellpump
-        # tempdf["juncType"] = "wellpump"
-        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
-        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        # dataset = dataset.append(tempdf)
-        
-        #wellpump
-        dct = dct.copy()
-        dct["juncType"] = "wellpump"
-        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
-        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        dict_list += [dct]
-
-        #outlet-wellhead
-        # tempdf["juncType"] = "pipe"
-        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        # tempdf["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
-        # absdiff = pump_place["absMark"]
-        # Ldiff = pump_place["prolongation"]
-        # tempdf["L"] = Ldiff
-        # tempdf['uphillM'] = absdiff
-        # tempdf["intD"] = pump_place["IntDiameter"]
-        # dataset = dataset.append(tempdf)
-
-        #outlet-wellhead
-        dct = dct.copy()
-        dct["juncType"] = "pipe"
-        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
-        dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
-        absdiff = pump_place["absMark"]
-        Ldiff = pump_place["prolongation"]
-        dct["L"] = Ldiff
-        dct['uphillM'] = absdiff
-        dct["intD"] = pump_place["IntDiameter"]
-        dict_list += [dct]
-
-        #wellhead-pad
-        # tempdf["juncType"] = "pipe"
-        # tempdf["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
-        # tempdf["node_id_end"] = row["node_id_end"]
-        # tempdf["endIsOutlet"] = row["endIsOutlet"]
-        # tempdf["L"] = 50
-        # tempdf['uphillM'] = 0
-        # tempdf["intD"] = 0.1
-        # dataset = dataset.append(tempdf)
-
-        #wellhead-pad
-        dct = dct.copy()
-        dct["juncType"] = "pipe"
-        dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
-        dct["node_id_end"] = row["node_id_end"]
-        dct["endIsOutlet"] = row["endIsOutlet"]
-        dct["L"] = 50
-        dct['uphillM'] = 0
-        dct["intD"] = 0.1
-        dict_list += [dct]
-
-    tempdf = pd.DataFrame.from_dict(dict_list)
-    dataset = dataset.append(tempdf)
     dataset_cols = set(dataset.columns)
     well_cols = ['perforation', 'frequency', 'wellNum', 'padNum', 'pumpDepth', 'productivity', 'model']
     for col in well_cols:
         if not col in dataset_cols:
             dataset[col] = None
 
+    if calc_df is None:
+        calc_df = make_calc_df(dataset, folder)
+
     outlets = {}
     inlets = {}
     juncs = {}
-    calc_df = dataset
-    calc_df["startIsSource"] = calc_df["startIsSource"].fillna(False)
-    calc_df["endIsOutlet"] = calc_df["endIsOutlet"].fillna(False)
-    calc_df[['node_id_start', 'node_id_end']] = calc_df[['node_id_start', 'node_id_end']].astype(str)
-    ids_count = pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
-    ids_count.rename('ids_count')
-    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_start', how='left')
-    calc_df = calc_df.rename(columns = {0:'start_id_count'})
-
-    ids_count = calc_df['node_id_start'].value_counts()
-    ids_count.rename('ids_count')
-    calc_df = calc_df.join(ids_count.to_frame().rename(columns = {"node_id_start":0}), on='node_id_end', how='left')
-    calc_df = calc_df.rename(columns = {0:'end_id_count'})
-    calc_df['end_id_count'] = calc_df["end_id_count"].fillna(0)
-    calc_df['sourceByCount'] = calc_df['start_id_count'] == 1
-    calc_df['outletByCount'] = calc_df['end_id_count']  == 0
-
-    calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
-    calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
-
-    calc_df['sourceValueIsFilled'] = pd.notna(calc_df['startValue'])
-    calc_df['outletValueIsFilled'] = pd.notna(calc_df['endValue'])
-
-    calc_df['sourceKindIsFilled'] = pd.notna(calc_df['startKind'])
-    calc_df['outletKindIsFilled'] = pd.notna(calc_df['endKind'])
-
-    calc_df['inletBoundaryMistakes'] = True
-    calc_df['outletBoundaryMistakes'] = True
-
-
-
-    calc_df.loc[calc_df["startIsSource"], 'inletBoundaryMistakes'] = calc_df[calc_df["startIsSource"]]['sourceValueIsFilled'] & calc_df[calc_df["startIsSource"]]['sourceKindIsFilled']
-
-    calc_df.loc[calc_df["endIsOutlet"], 'outletBoundaryMistakes'] = calc_df[calc_df["endIsOutlet"]]['outletValueIsFilled'] & calc_df[calc_df["endIsOutlet"]]['outletKindIsFilled']
-
-
-
-    calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
-    calc_df = calc_df[calc_df['sumOfCounts'] >= 2]
-
-    mistakes_df = calc_df[(~calc_df['sourceMistakes']) | (~calc_df['outletMistakes']) | (~calc_df['inletBoundaryMistakes']) | (~calc_df['outletBoundaryMistakes'])]
-
-    if not mistakes_df.empty :
-        print(f"Following nodes: {mistakes_df[~mistakes_df['sourceMistakes']]['node_id_start'].values} should be sources")
-        print(f"Following nodes: {mistakes_df[~mistakes_df['outletMistakes']]['node_id_start'].values} should be outlets")
-        print(f"Start kind and value for following nodes: {mistakes_df[~mistakes_df['inletBoundaryMistakes']]['node_id_start'].values} should be filled")
-        print(f"End kind and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
-        assert False
-
-
 
     inlets_df = calc_df[calc_df["startIsSource"]]
     outletsdf = calc_df[calc_df["endIsOutlet"]]
@@ -225,7 +46,9 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
 
+    iiii = 0
     for index, row in calc_df.iterrows():
+        iiii += 1
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
@@ -245,9 +68,159 @@ def make_oilpipe_schema_from_OT_dataset(dataset):
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater),
-                                                                                     frequency=frequency))
-    return G, calc_df[dataset.columns]
+            fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
+            pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
+            G.add_edge(start, end, obj=pump)
+    return G, calc_df
+
+
+def make_calc_df(dataset, folder):
+    global inclination, HKT
+    if inclination is None:
+        inclination = pd.read_parquet(folder + "inclination")
+    if HKT is None:
+        HKT = pd.read_parquet(folder + "HKT")
+    wells_df = dataset[dataset["juncType"] == 'oilwell']
+    dataset = dataset[dataset["juncType"] != 'oilwell']
+    dataset[['node_id_start', 'node_id_end']] = dataset[['node_id_start', 'node_id_end']].astype(int).astype(str)
+    dict_list = []
+    tempdf = populate_wells_df(HKT, dict_list, inclination, wells_df)
+    dataset = dataset.append(tempdf)
+    calc_df = dataset
+    calc_df["startIsSource"] = calc_df["startIsSource"].fillna(False)
+    calc_df["endIsOutlet"] = calc_df["endIsOutlet"].fillna(False)
+    calc_df[['node_id_start', 'node_id_end']] = calc_df[['node_id_start', 'node_id_end']].astype(str)
+    ids_count = pd.concat((calc_df['node_id_start'], calc_df['node_id_end'])).value_counts()
+    ids_count.rename('ids_count')
+    calc_df = calc_df.join(ids_count.to_frame(), on='node_id_start', how='left')
+    calc_df = calc_df.rename(columns={0: 'start_id_count'})
+    ids_count = calc_df['node_id_start'].value_counts()
+    ids_count.rename('ids_count')
+    calc_df = calc_df.join(ids_count.to_frame().rename(columns={"node_id_start": 0}), on='node_id_end', how='left')
+    calc_df = calc_df.rename(columns={0: 'end_id_count'})
+    calc_df['end_id_count'] = calc_df["end_id_count"].fillna(0)
+    calc_df['sourceByCount'] = calc_df['start_id_count'] == 1
+    calc_df['outletByCount'] = calc_df['end_id_count'] == 0
+    calc_df['sourceMistakes'] = calc_df['sourceByCount'] == calc_df['startIsSource']
+    calc_df['outletMistakes'] = calc_df['outletByCount'] == calc_df['endIsOutlet']
+    calc_df['sourceValueIsFilled'] = pd.notna(calc_df['startValue'])
+    calc_df['outletValueIsFilled'] = pd.notna(calc_df['endValue'])
+    calc_df['sourceKindIsFilled'] = pd.notna(calc_df['startKind'])
+    calc_df['outletKindIsFilled'] = pd.notna(calc_df['endKind'])
+    calc_df['inletBoundaryMistakes'] = True
+    calc_df['outletBoundaryMistakes'] = True
+    calc_df.loc[calc_df["startIsSource"], 'inletBoundaryMistakes'] = calc_df[calc_df["startIsSource"]][
+                                                                         'sourceValueIsFilled'] & \
+                                                                     calc_df[calc_df["startIsSource"]][
+                                                                         'sourceKindIsFilled']
+    calc_df.loc[calc_df["endIsOutlet"], 'outletBoundaryMistakes'] = calc_df[calc_df["endIsOutlet"]][
+                                                                        'outletValueIsFilled'] & \
+                                                                    calc_df[calc_df["endIsOutlet"]][
+                                                                        'outletKindIsFilled']
+    calc_df['sumOfCounts'] = calc_df['start_id_count'] + calc_df['end_id_count']
+    calc_df = calc_df[calc_df['sumOfCounts'] >= 2]
+    mistakes_df = calc_df[
+        (~calc_df['sourceMistakes']) | (~calc_df['outletMistakes']) | (~calc_df['inletBoundaryMistakes']) | (
+            ~calc_df['outletBoundaryMistakes'])]
+    if not mistakes_df.empty:
+        print(
+            f"Following nodes: {mistakes_df[~mistakes_df['sourceMistakes']]['node_id_start'].values} should be sources")
+        print(
+            f"Following nodes: {mistakes_df[~mistakes_df['outletMistakes']]['node_id_start'].values} should be outlets")
+        print(
+            f"Start kind and value for following nodes: {mistakes_df[~mistakes_df['inletBoundaryMistakes']]['node_id_start'].values} should be filled")
+        print(
+            f"End kind and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
+        assert False
+    return calc_df
+
+
+def populate_wells_df(HKT, dict_list, inclination, wells_df):
+    for i, row in wells_df.iterrows():
+        dict_list = process_well_row(HKT, dict_list, inclination, row)
+    tempdf = pd.DataFrame.from_dict(dict_list)
+    return tempdf
+
+
+def process_well_row(HKT, dict_list, inclination, row):
+    try:
+        wellNum = str(int(row["wellNum"]))
+    except:
+        wellNum = row["wellNum"]
+    padNum = str(int(row["padNum"]))
+    pumpdepth = row["pumpDepth"]
+    perforation = row["perforation"]
+    tubing = inclination[inclination["wellNum"] == wellNum]
+    tubing = tubing.sort_values(by='depth')
+    tubing["Roughness"] = 3e-5
+    tubing["IntDiameter"] = 0.57
+    tubing["NKTlength"] = 10
+    local_HKT = HKT[HKT['wellNum'] == wellNum]
+    fulldepth = 0
+    stages = local_HKT['stageNum'].unique()
+    for stageNum in stages:
+        stage_HKT = local_HKT[local_HKT["stageNum"] == stageNum]
+        stage_HKT = stage_HKT[stage_HKT["_time"] == stage_HKT["_time"].max()]
+        fulldepth += stage_HKT["stageLength"].iloc[0]
+        tubing.loc[tubing["depth"] <= fulldepth, "IntDiameter"] = (stage_HKT["stageDiameter"].iloc[0] - 16) / 1000
+    pump_place = tubing[abs(tubing["depth"] - pumpdepth) == min(abs(tubing["depth"] - pumpdepth))].iloc[0]
+    perforation_place = tubing[abs(tubing["depth"] - perforation) == min(abs(tubing["depth"] - perforation))].iloc[0]
+
+    dict_list = make_well_parts_rows(dict_list, padNum, perforation_place, pump_place, row, wellNum)
+    return dict_list
+
+
+def make_well_parts_rows(dict_list, padNum, perforation_place, pump_place, row, wellNum):
+    row_d = row.to_dict()
+    # plast-zaboi
+    dct = row_d.copy()
+    dct["juncType"] = "plast"
+    dct["effectiveD"] = 1
+    dct["roughness"] = 3e-5
+    dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}"
+    dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+    dct["endIsOutlet"] = False
+    dict_list += [dct]
+    # zaboi-intake
+    dct = dct.copy()
+    dct["startIsSource"] = False
+    dct["juncType"] = "pipe"
+    dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_zaboi"
+    dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+    absdiff = perforation_place["absMark"] - pump_place["absMark"]
+    Ldiff = perforation_place["prolongation"] - pump_place["prolongation"]
+    dct["L"] = Ldiff
+    dct['uphillM'] = absdiff
+    dct["intD"] = 0.127
+    dict_list += [dct]
+    # wellpump
+    dct = dct.copy()
+    dct["juncType"] = "wellpump"
+    dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_intake"
+    dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+    dict_list += [dct]
+    # outlet-wellhead
+    dct = dct.copy()
+    dct["juncType"] = "pipe"
+    dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_pump_outlet"
+    dct["node_id_end"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+    absdiff = pump_place["absMark"]
+    Ldiff = pump_place["prolongation"]
+    dct["L"] = Ldiff
+    dct['uphillM'] = absdiff
+    dct["intD"] = pump_place["IntDiameter"]
+    dict_list += [dct]
+    # wellhead-pad
+    dct = dct.copy()
+    dct["juncType"] = "pipe"
+    dct["node_id_start"] = f"PAD_{padNum}_WELL_{wellNum}_wellhead"
+    dct["node_id_end"] = row["node_id_end"]
+    dct["endIsOutlet"] = row["endIsOutlet"]
+    dct["L"] = 50
+    dct['uphillM'] = 0
+    dct["intD"] = 0.1
+    dict_list += [dct]
+    return dict_list
 
 
 def make_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
