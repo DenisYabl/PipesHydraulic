@@ -7,6 +7,7 @@ from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset, make_calc_df
 from Tools.HE2_tools import check_solution
 import logging
+import GraphNodes.HE2_Vertices as vrtx
 
 class HE2_OilGatheringNetwork_Model():
     def __init__(self, folder):
@@ -18,7 +19,7 @@ class HE2_OilGatheringNetwork_Model():
         self.calc_dfs = dict()
         self.original_dfs = dict()
         self.graphs = dict()
-        self.N = 32
+        self.N = 5
 
     def gimme_original_df(self, i):
         if i in self.original_dfs:
@@ -67,22 +68,36 @@ class HE2_OilGatheringNetwork_Model():
         return solver
     
     def grab_results_to_one_dataframe(self):
-        dfs = []
+        p_rez = dict()
+        q_rez = dict()
         for i in range(self.N):
-            df = self.gimme_calc_df(i).copy()
-            df['N'] = i
-            df['result_Q'] = None
-
-            G = self.graphs[i]
+            G = self.gimme_graph(i)
             for n in G.nodes:
-                df.loc[df["node_id_start"] == n, "startP"] = G.nodes[n]["obj"].result["P_bar"]
-                df.loc[df["node_id_start"] == n, "startT"] = G.nodes[n]["obj"].result["T_C"]
-                df.loc[df["node_id_end"] == n, "endP"] = G.nodes[n]["obj"].result["P_bar"]
-                df.loc[df["node_id_end"] == n, "endT"] = G.nodes[n]["obj"].result["T_C"]
+                obj = G.nodes[n]['obj']
+                grab_q = isinstance(obj, vrtx.HE2_Boundary_Vertex)
+                grab_q |= isinstance(obj, vrtx.HE2_Source_Vertex)
+                have_to_grab = grab_q
+                have_to_grab |= 'pump' in n
+                have_to_grab |= 'wellhead' in n
+                if not have_to_grab:
+                    continue
+                res = obj.result
+                if grab_q:
+                    q_lst = q_rez.get(n, [])
+                    q_lst += [res['Q']]
+                    q_rez[n] = q_lst
 
-            dfs += [df]
-        res_df = pd.concat(dfs)
-        return res_df
+                p_lst = p_rez.get(n, [])
+                p_lst += [res['P_bar']]
+                p_rez[n] = p_lst
+        for n in q_rez:
+            print(n, np.round(np.array(q_rez[n]), 3))
+        print('---------------------------------------------------')
+        for n in p_rez:
+            print(n, np.round(np.array(p_rez[n]), 3))
+        pass
+
+
 
     def solve_em_all(self):
         for i in range(self.N):
@@ -383,3 +398,4 @@ class HE2_PMNetwork_Model():
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
     model.solve_em_all()
+    model.grab_results_to_one_dataframe()
