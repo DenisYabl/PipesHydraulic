@@ -32,5 +32,9 @@ def calculate_DF(dataframe):
             calc_df.loc[index, 'X_kg_sec'] = obj.result['x']
             calc_df.loc[index, 'res_watercut_percent'] = obj.result['WC']
             calc_df.loc[index, 'res_liquid_density_kg_m3'] = obj.result['liquid_density']
+            Q = obj.result['x'] / obj.result['liquid_density']
+            Area = 3.1415926 * row['intD'] ** 2 / 4
+            V = Q / Area
+            calc_df.loc[index, 'velocity_m_sec'] = V
 
     return calc_df
