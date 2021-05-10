@@ -6,8 +6,14 @@ from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_f
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 
-def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/"):
-    pump_curves = pd.read_csv(folder + "PumpChart.csv")
+pump_curves = None
+inclination = None
+HKT = None
+
+def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None):
+    global pump_curves
+    if pump_curves is None:
+        pump_curves = pd.read_csv(folder + "PumpChart.csv")
 
     dataset_cols = set(dataset.columns)
     well_cols = ['perforation', 'frequency', 'wellNum', 'padNum', 'pumpDepth', 'productivity', 'model']
@@ -15,7 +21,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/"):
         if not col in dataset_cols:
             dataset[col] = None
 
-    calc_df = make_calc_df(dataset, folder)
+    if calc_df is None:
+        calc_df = make_calc_df(dataset, folder)
 
     outlets = {}
     inlets = {}
@@ -39,7 +46,9 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/"):
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
 
+    iiii = 0
     for index, row in calc_df.iterrows():
+        iiii += 1
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
@@ -59,14 +68,18 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/"):
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            G.add_edge(start, end, obj = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater),
-                                                                                     frequency=frequency))
+            fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
+            pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
+            G.add_edge(start, end, obj=pump)
     return G, calc_df
 
 
 def make_calc_df(dataset, folder):
-    inclination = pd.read_parquet(folder + "inclination")
-    HKT = pd.read_parquet(folder + "HKT")
+    global inclination, HKT
+    if inclination is None:
+        inclination = pd.read_parquet(folder + "inclination")
+    if HKT is None:
+        HKT = pd.read_parquet(folder + "HKT")
     wells_df = dataset[dataset["juncType"] == 'oilwell']
     dataset = dataset[dataset["juncType"] != 'oilwell']
     dataset[['node_id_start', 'node_id_end']] = dataset[['node_id_start', 'node_id_end']].astype(int).astype(str)
