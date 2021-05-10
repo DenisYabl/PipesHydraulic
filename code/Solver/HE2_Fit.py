@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 from Solver.HE2_Solver import HE2_Solver
-from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
+from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset, make_calc_df
 from Tools.HE2_tools import check_solution
 import logging
 
@@ -13,21 +13,82 @@ class HE2_OilGatheringNetwork_Model():
         # tree = os.walk(folder)
         # for fld, subfolders, files in tree:
         #     print(fld, subfolders, files)
+        self.folder = folder
+        self.solvers = dict()
+        self.calc_dfs = dict()
+        self.original_dfs = dict()
+        self.graphs = dict()
+        self.N = 32
 
-        self.dfs = []
-        self.solvers = []
-        for i in range(32):
-            filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
-            try:
-                df = pd.read_csv(filename)
-            except:
-                print('Fail to open ' + filename)
-                continue
-            self.dfs += [df]
-            G, calc_df = make_oilpipe_schema_from_OT_dataset(df, folder + 'CommonData/')
-            print(i)
-            solver = HE2_Solver(G)
-            self.solvers = []
+    def gimme_original_df(self, i):
+        if i in self.original_dfs:
+            return self.original_dfs[i]
+        folder = self.folder
+        filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
+        df = pd.read_csv(filename)
+        self.original_dfs[i] = df
+        return df
+
+    def gimme_calc_df(self, i):
+        if i in self.calc_dfs:
+            return self.calc_dfs[i]
+        folder = self.folder
+        calc_df_filename = f'{folder}data/oilgathering_fit/calc_df_{i}.csv'
+        try:
+            calc_df = pd.read_csv(calc_df_filename)
+            self.calc_dfs[i] = calc_df
+            return calc_df
+        except:
+            pass
+        original_df = self.gimme_original_df(i)
+        calc_df = make_calc_df(original_df, self.folder + 'CommonData/')
+        calc_df.to_csv(calc_df_filename)
+        self.calc_dfs[i] = calc_df
+        return calc_df
+
+
+    def gimme_graph(self, i):
+        if i in self.graphs:
+            return self.graphs[i]
+        df = self.gimme_original_df(i)
+        calc_df = self.gimme_calc_df(i)
+        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df)
+        self.graphs[i] = G
+        return self.graphs[i]
+
+
+    def gimme_solver(self, i):
+        if i in self.solvers:
+            return self.solvers[i]
+
+        G = self.gimme_graph(i)
+        solver = HE2_Solver(G)
+        self.solvers[i] = solver
+        return solver
+    
+    def grab_results_to_one_dataframe(self):
+        dfs = []
+        for i in range(self.N):
+            df = self.gimme_calc_df(i).copy()
+            df['N'] = i
+            df['result_Q'] = None
+
+            G = self.graphs[i]
+            for n in G.nodes:
+                df.loc[df["node_id_start"] == n, "startP"] = G.nodes[n]["obj"].result["P_bar"]
+                df.loc[df["node_id_start"] == n, "startT"] = G.nodes[n]["obj"].result["T_C"]
+                df.loc[df["node_id_end"] == n, "endP"] = G.nodes[n]["obj"].result["P_bar"]
+                df.loc[df["node_id_end"] == n, "endT"] = G.nodes[n]["obj"].result["T_C"]
+
+            dfs += [df]
+        res_df = pd.concat(dfs)
+        return res_df
+
+    def solve_em_all(self):
+        for i in range(self.N):
+            solver = self.gimme_solver(i)
+            solver.solve(threshold=0.25)
+            print(i, solver.op_result.success, solver.op_result.fun)
 
 
 class HE2_PMNetwork_Model():
@@ -321,3 +382,4 @@ class HE2_PMNetwork_Model():
 
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
+    model.solve_em_all()
