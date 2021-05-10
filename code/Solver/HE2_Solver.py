@@ -59,6 +59,9 @@ class HE2_Solver():
         self.it_num = 0
         self.random_steps = []
         self.last_forward_call = dict()
+        self.last_cocktail = dict()
+        self.last_src = []
+        self.last_fluidA = dict()
 
     def set_known_Q(self, Q_dict):
         self.known_Q = Q_dict
@@ -163,10 +166,12 @@ class HE2_Solver():
         self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
 
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        self.last_src = srcs
         src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
         for key, cktl in cocktails.items():
-            # initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
             initial_fluid = fl.dot_product(cktl, src_fluids)
+            self.last_cocktail[key] = cktl
+            self.last_fluidA[key] = initial_fluid
             if key in edgelist:
                 u, v = key
                 obj = G[u][v]['obj']
@@ -623,7 +628,9 @@ class HE2_Solver():
         # TODO оптимизировать надо, очень часто вычисленый флюид совпадает с тем что там уже есть и ничего делать не надо
         G = self.graph
         mr = self.fluids_move_rate
+        mrates = np.array([1 - mr, mr])
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+        sources_are_the_same = (srcs == self.last_src)
         src_fluids = [self.sources_fluids[n] for n in srcs]
         for key, cktl in cocktails.items():
             if key in self.node_list:
@@ -632,13 +639,19 @@ class HE2_Solver():
             else:
                 u, v = key
                 obj = G[u][v]['obj']
-                # fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
-                fluidA = fl.dot_product(cktl, src_fluids)
+                fluidA = None
+                if sources_are_the_same and key in self.last_cocktail:
+                    cktl2 = self.last_cocktail[key]
+                    if (cktl.shape == cktl2.shape) and (np.linalg.norm(cktl - cktl2) < 1e-6):
+                        fluidA = self.last_fluidA[key]
+                if fluidA is None:
+                    fluidA = fl.dot_product(cktl, src_fluids)
+                    self.last_fluidA[key] = fluidA
                 fluidB = obj.fluid
                 if fluidA.oil_params != fluidB.oil_params:
-                    # fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
-                    fluidC = fl.dot_product([1-mr, mr], [fluidA, fluidB])
+                    fluidC = fl.dot_product(mrates, [fluidA, fluidB])
                     obj.fluid = fluidC
+        self.last_src = srcs
         pass
 
     def step_heuristic(self, y, y_prev, it_num, step):
