@@ -58,6 +58,7 @@ class HE2_Solver():
 
         self.it_num = 0
         self.random_steps = []
+        self.last_forward_call = dict()
 
     def set_known_Q(self, Q_dict):
         self.known_Q = Q_dict
@@ -164,7 +165,8 @@ class HE2_Solver():
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
         src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
         for key, cktl in cocktails.items():
-            initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            # initial_fluid = fl.dot_product(list(zip(cktl, src_fluids)))
+            initial_fluid = fl.dot_product(cktl, src_fluids)
             if key in edgelist:
                 u, v = key
                 obj = G[u][v]['obj']
@@ -232,6 +234,7 @@ class HE2_Solver():
         self.edges_x = dict(zip(self.span_tree, x_tree.flatten()))
         self.edges_x.update(dict(zip(self.chordes, x_chordes.flatten())))
 
+        self.last_forward_call = dict()
         self.pt_on_tree = self.evalute_pressures_by_tree()
         self.pt_residual_vec, self.pt_on_chords_ends = self.evalute_chordes_pressure_residual()
         check_for_nan(chordes_pt_residual_vec=self.pt_residual_vec)
@@ -283,9 +286,9 @@ class HE2_Solver():
 
                 F_ = np.diag(der_vec)
                 B_F_Bt = np.dot(np.dot(self.B, F_), self.Bt)
-                det_B_F_Bt = np.linalg.det(B_F_Bt)
+                # det_B_F_Bt = np.linalg.det(B_F_Bt)
                 p_residuals = self.pt_residual_vec[:,0]
-                logger.debug(f'det B = {det_B_F_Bt}')
+                # logger.debug(f'det B = {det_B_F_Bt}')
 
                 inv_B_F_Bt = np.linalg.inv(B_F_Bt)
                 check_for_nan(inv_B_F_Bt=inv_B_F_Bt)
@@ -314,16 +317,12 @@ class HE2_Solver():
             p, t = self.pt_on_tree[u]
             x = self.edges_x[(u, v)]
             dx = 1e-3
-            # if (u, v) in self.span_tree:
-            #     p_, t_ = self.pt_on_tree[v]
-            # elif (u, v) in self.chordes:
-            #     p_, t_ = self.pt_on_chords_ends[(u, v)]
-            # else:
-            #     logger.error('Something wrong with graph, there is an edge neither in edges nor in chordes. It should not be')
-            #     assert False
 
             edge_func = self.forward_edge_functions[(u, v)]
-            p_, t_ =  edge_func(p, t, x)
+            if (u, v) in self.last_forward_call:
+                p_, t_ = self.last_forward_call[(u, v)]
+            else:
+                p_, t_ =  edge_func(p, t, x)
             p__, t__ =  edge_func(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
             rez[(u, v)] = dpdx
@@ -332,22 +331,6 @@ class HE2_Solver():
 
     def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
         self.edge_func_last_results[(u, v)] = (x, unknown, p_kn, p_unk)
-
-    # def save_edge_func_result(self, u, v, x, unknown, p_kn, p_unk):
-    #     if self.imd_rez_df is None:
-    #         cols = ['u', 'v', 'x', 'unknown', 'p_kn', 'p_unk']
-    #         self.imd_rez_df = pd.DataFrame(columns=cols) #, dtype=['obj', 'obj', 'obj', 'obj', 'float', 'float'])
-    #     row=dict(u=u, v=v, x=x, unknown=unknown, p_kn=p_kn, p_unk=p_unk)
-    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
-
-
-    # def do_save_intermediate_results(self):
-    #     if self.imd_rez_df is None:
-    #         cols = list(self.pt_on_tree.keys())
-    #         self.imd_rez_df = pd.DataFrame(columns=cols)
-    #     row = {k:v[0] for k, v in self.pt_on_tree.items()}
-    #     self.imd_rez_df = self.imd_rez_df.append(row, ignore_index=True)
-
 
     def perform_self_test_for_1stCL(self):
         resd_1stCL = self.evaluate_1stCL_residual()
@@ -524,6 +507,8 @@ class HE2_Solver():
             else:
                 edge_func = self.backward_edge_functions[(u, v)]
             p_unk, t_unk = edge_func(p_kn, t_kn, x)
+            if u == known:
+                self.last_forward_call[(u, v)] = (p_unk, t_unk)
 
             if np.isnan(p_unk):
                 logger.warning(f'edge_func returns NaN! Edge is ({u}, {v}), known is {known}')
@@ -548,6 +533,7 @@ class HE2_Solver():
                 assert False
             p_u, t_u = self.pt_on_tree[u]
             p_v, t_v = obj.perform_calc_forward(p_u, t_u, x)
+            self.last_forward_call[(u, v)] = p_v, t_v
 
             if self.save_intermediate_results:
                 self.save_edge_func_result(u=u, v=v, x=x, unknown=v, p_kn=p_u, p_unk=p_v)
@@ -646,10 +632,13 @@ class HE2_Solver():
             else:
                 u, v = key
                 obj = G[u][v]['obj']
-                fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
+                # fluidA = fl.dot_product(list(zip(cktl, src_fluids)))
+                fluidA = fl.dot_product(cktl, src_fluids)
                 fluidB = obj.fluid
-                fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
-                obj.fluid = fluidC
+                if fluidA.oil_params != fluidB.oil_params:
+                    # fluidC = fl.dot_product([(1-mr, fluidA), (mr, fluidB)])
+                    fluidC = fl.dot_product([1-mr, mr], [fluidA, fluidB])
+                    obj.fluid = fluidC
         pass
 
     def step_heuristic(self, y, y_prev, it_num, step):
