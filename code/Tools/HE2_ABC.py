@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections import namedtuple
 
 Root = 'Root'
-SOLVER_VERSION = '0.202 1e16d0b'
+SOLVER_VERSION = '0.203 8e6a653'
 
 class HE2_ABC_Fluid(ABC):
     @abstractmethod
