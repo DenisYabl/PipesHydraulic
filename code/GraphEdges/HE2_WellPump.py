@@ -36,6 +36,8 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
     try:
         if model == 'ЭЦН5А-125-2600':
             model = 'ЭЦН5-125-2600'
+        if frequency == 0 or np.isnan(frequency):
+            frequency = 50
         curves = pumps_cache[model]
         pump = HE2_WellPump(**curves, model=model, fluid=fluid, frequency=frequency)
     except Exception as e:
