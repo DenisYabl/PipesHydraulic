@@ -90,12 +90,14 @@ class HE2_OilGatheringNetwork_Model():
                 p_lst = p_rez.get(n, [])
                 p_lst += [res['P_bar']]
                 p_rez[n] = p_lst
-        for n in q_rez:
-            print(n, np.round(np.array(q_rez[n]), 3))
-        print('---------------------------------------------------')
-        for n in p_rez:
-            print(n, np.round(np.array(p_rez[n]), 3))
-        pass
+
+        nodes = set(q_rez.keys()) | set(p_rez.keys())
+        for n in nodes:
+            print()
+            print(n)
+            if n in q_rez:
+                print(np.round(np.array(q_rez[n]), 3))
+            print(np.round(np.array(p_rez[n]), 3))
 
 
 
