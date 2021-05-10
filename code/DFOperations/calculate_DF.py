@@ -21,4 +21,16 @@ def calculate_DF(dataframe):
             calc_df.loc[calc_df["node_id_end"] == n, "endP"] = G.nodes[n]["obj"].result["P_bar"]
             calc_df.loc[calc_df["node_id_end"] == n, "endT"] = G.nodes[n]["obj"].result["T_C"]
 
+        calc_df['res_X_kg_sec'] = None
+        calc_df['res_watercut_percent'] = None
+        calc_df['res_liquid_density_kg_m3'] = None
+
+        for index, row in calc_df.iterrows():
+            u = row['node_id_start']
+            v = row['node_id_end']
+            obj = G[u][v]['obj']
+            calc_df.loc[index, 'X_kg_sec'] = obj.result['x']
+            calc_df.loc[index, 'res_watercut_percent'] = obj.result['WC']
+            calc_df.loc[index, 'res_liquid_density_kg_m3'] = obj.result['liquid_density']
+
     return calc_df
