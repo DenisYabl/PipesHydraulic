@@ -60,7 +60,11 @@ def dot_product(xs_vec, fluids) -> HE2_BlackOil:
     # xs_vec = np.array([x for x, fl in Xs_and_fluids])
     # ops = [fl.oil_params for x, fl in Xs_and_fluids]
 
+    # if sum(xs_vec != 0) == 1:
+    #     return fluids[np.argmax(xs_vec)]
+
     ops = [fl.oil_params for fl in fluids]
+
 
     # sat_P_vec = np.array([op.sat_P_bar for op in ops])
     # sat_P = check_all_are_the_same(sat_P_vec, 'dot product for fluid.saturation_pressure is not implemented')
