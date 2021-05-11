@@ -13,7 +13,7 @@ import pandas as pd
 from Fluids import HE2_MixFluids as mixer
 from Fluids.HE2_Fluid import HE2_BlackOil
 from Solver import HE2_Fit
-from Tools import HE2_Visualize as vis, HE2_tools as tools
+from Tools import HE2_tools as tools
 from Tools.cachespline import create_lazy_spline_cache_f_wrapper
 
 class TestWaterPipe(unittest.TestCase):
@@ -676,20 +676,6 @@ class TestFit(unittest.TestCase):
         rez_df = fitter.best_rez_df
         rez_df.to_csv('..\\data\\rez_df.csv')
         print(rez)
-
-
-class TestDrawing(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_35(self):
-        rez_df = pd.read_csv('..\\data\\rez_df.csv')
-        vis.draw_graph(rez_df, '..\\data\\plot.svg')
-
-
-    def test_36(self):
-        input_df = pd.read_csv('..\\data\\input_df.csv')
-        vis.draw_graph(input_df, '..\\data\\plot.svg')
 
 
 class TestOilNet(unittest.TestCase):

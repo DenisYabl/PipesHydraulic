@@ -8,7 +8,6 @@ import json
 from Tajlaki_DNS2_graph_example import build_DNS2_graph
 import networkx as nx
 import matplotlib.pyplot as plt
-from Tools.HE2_tools import draw_solution
 
 pumps_json_str = r'{"PAD_33": {"WELL_1385": ["\u042d\u0426\u041d5\u0410-320-2400", 42.1], "WELL_736": ["\u042d\u0426\u041d5\u0410-250-2600", 43.7], "WELL_739": ["\u042d\u0426\u041d5\u0410-250-2450", 41.2], "WELL_1383": ["\u042d\u0426\u041d5\u0410-250-2300", 43.0], "WELL_738": ["\u042d\u0426\u041d5\u0410-250-2350", 40.8], "WELL_725": ["\u042d\u0426\u041d5\u0410-800-2200", 42.2]}, "PAD_34": {"WELL_731": ["\u042d\u0426\u041d5-125-2750", 41.1], "WELL_196": ["\u042d\u0426\u041d5\u0410-250-2600", 40.8], "WELL_734": ["\u042d\u0426\u041d5\u0410-320-2550", 43.4], "WELL_198": ["\u042d\u0426\u041d5\u0410-800-2100", 41.0], "WELL_199": ["\u042d\u0426\u041d5-125-2550", 44.6], "WELL_197": ["\u042d\u0426\u041d5-125-2750", 43.3], "WELL_195": ["\u042d\u0426\u041d5\u0410-250-2400", 45.1], "WELL_191": ["\u042d\u0426\u041d5\u0410-800-2100", 43.2], "WELL_729": ["\u042d\u0426\u041d5-125-2550", 41.7], "WELL_730": ["\u042d\u0426\u041d5\u0410-400-2400", 46.2], "WELL_192": ["\u042d\u0426\u041d5-200-2500", 41.9], "WELL_148": ["\u042d\u0426\u041d5\u0410-800-2200", 43.6]}}'
 new_pumps = json.loads(pumps_json_str)
@@ -254,7 +253,6 @@ def test5():
     G, inlets, juncs, outlets = build_DNS2_graph(PAD_33='P=5.9', PAD_34='Q=12.7', **graph_params)
     solver = HE2_Solver(G)
     solver.solve(threshold=0.05, it_limit=100)
-    draw_solution(G, None, None, inlets, outlets, juncs)
     print_wells_pressures(G, inlets)
 
 
