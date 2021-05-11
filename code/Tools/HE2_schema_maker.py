@@ -5,6 +5,9 @@ from GraphEdges.HE2_Plast import HE2_Plast
 from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import gimme_dummy_BlackOil
+from Tools.HE2_Logger import getLogger
+
+logger = getLogger(__name__)
 
 pump_curves = None
 inclination = None
@@ -24,6 +27,8 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     if calc_df is None:
         calc_df = make_calc_df(dataset, folder)
 
+    print(len(calc_df))
+
     outlets = {}
     inlets = {}
     juncs = {}
@@ -41,14 +46,13 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
         if (id not in list(inlets.keys()) + list(outlets.keys())):
             juncs.update({id:vrtxs.HE2_ABC_GraphVertex()})
 
+    # G = nx.MultiDiGraph()  # Di = directed
     G = nx.DiGraph()  # Di = directed
 
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
 
-    iiii = 0
     for index, row in calc_df.iterrows():
-        iiii += 1
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
@@ -71,11 +75,13 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
             pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
             G.add_edge(start, end, obj=pump)
+        else:
+            logger.warning(f'unknown type of graph edge in dataset. start, end id is {start} {end}')
 
     cmpnts = nx.algorithms.components.number_weakly_connected_components(G)
     if cmpnts != 1:
-        print('Not single component graph!')
-        assert False
+        logger.error(f'Not single componented graph!')
+        raise ValueError
 
     return G, calc_df
 

@@ -275,10 +275,6 @@ class HE2_Solver():
                 logger.info(f'Y = {y}')
                 logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
 
-                if self.it_num == 3:
-                    obj = self.graph['PAD_57_WELL_3116_pump_intake']['PAD_57_WELL_3116_pump_outlet']['obj']
-                    obj.changeFrequency(0)
-
                 if y < y_best:
                     self.evaluate_and_set_new_fluids()
 
