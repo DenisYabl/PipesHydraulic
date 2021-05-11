@@ -77,8 +77,8 @@ class HE2_OilGatheringNetwork_Model():
                 grab_q = isinstance(obj, vrtx.HE2_Boundary_Vertex)
                 grab_q |= isinstance(obj, vrtx.HE2_Source_Vertex)
                 have_to_grab = grab_q
-                have_to_grab |= 'pump' in n
-                have_to_grab |= 'wellhead' in n
+                # have_to_grab |= 'pump' in n
+                # have_to_grab |= 'wellhead' in n
                 if not have_to_grab:
                     continue
                 res = obj.result
@@ -92,13 +92,16 @@ class HE2_OilGatheringNetwork_Model():
                 p_rez[n] = p_lst
 
         nodes = set(q_rez.keys()) | set(p_rez.keys())
+        n_175 = []
+
         for n in nodes:
             print()
             print(n)
             if n in q_rez:
                 print(np.round(np.array(q_rez[n]), 3))
             print(np.round(np.array(p_rez[n]), 3))
-
+            if n[:3] == '175':
+                n_175 += [n]
 
 
     def solve_em_all(self):

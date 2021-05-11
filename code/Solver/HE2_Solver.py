@@ -267,12 +267,17 @@ class HE2_Solver():
                 # plot_chord(self, 'Root', 'PAD_33')
                 # plot_resd(self, filter = 150)
                 # plot_all_wo_root(self)
+                # plot_nghbs(self, ['1750018916'], deep=5, keys_to_plot=('name', 'P', 'Q'))
 
                 x_chordes = x_chordes + step * dx
                 y, y_prev = self.target(x_chordes), y
                 logger.debug(f'X = {x_chordes.flatten()}')
                 logger.info(f'Y = {y}')
                 logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
+
+                if self.it_num == 3:
+                    obj = self.graph['PAD_57_WELL_3116_pump_intake']['PAD_57_WELL_3116_pump_outlet']['obj']
+                    obj.changeFrequency(0)
 
                 if y < y_best:
                     self.evaluate_and_set_new_fluids()

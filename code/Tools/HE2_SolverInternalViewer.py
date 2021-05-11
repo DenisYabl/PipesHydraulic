@@ -184,17 +184,29 @@ def make_chorde_cycle_graph(solver, u, v):
             G_chordes += [(_v, _u)]
     return G, G_tree, G_chordes
 
-def make_node_neighbours_graph(solver, node, deep = 1):
+def make_node_neighbours_graph(solver, nodes, deep = 1):
     solver_tree = solver.span_tree
     solver_chordes = solver.chordes
     solverG = solver.graph
     neighb_edges = []
-    for u, v in solverG.in_edges(node):
-        neighb_edges += [(u, v)]
-    for u, v in solverG.out_edges(node):
-        neighb_edges += [(u, v)]
+    neighb_nodes = set(nodes)
+    for i in range(deep):
+        new_neigbs = []
+        for u, v in solverG.edges:
+            if (u, v) in neighb_edges:
+                continue
+            if u == Root or v == Root:
+                continue
+            if u in neighb_nodes:
+                new_neigbs += [v]
+                neighb_edges += [(u, v)]
+            elif v in neighb_nodes:
+                new_neigbs += [u]
+                neighb_edges += [(u, v)]
+        neighb_nodes |= set(new_neigbs)
+        # neighb_nodes -= set([Root])
 
-    print(neighb_edges)
+    neighb_edges = list(set(neighb_edges))
     G = nx.DiGraph()
     G_tree = []
     G_chordes = []
@@ -210,8 +222,9 @@ def make_node_neighbours_graph(solver, node, deep = 1):
 def plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot):
     fig = plt.figure(constrained_layout=True, figsize=(8, 8))
     ax = fig.add_subplot(1, 1, 1)
+    pos = nx.drawing.planar_layout(G)
     # pos = nx.drawing.layout.circular_layout(G)
-    pos = make_oilupstream_graph_layout(G)
+    # pos = make_oilupstream_graph_layout(G)
     nx.draw_networkx_nodes(G, node_size=15, node_color='black', ax=ax,pos=pos, alpha=0.9)
     nx.draw_networkx_edges(G, edgelist=G_tree, pos=pos, width=1, ax=ax, edge_color='black')
     nx.draw_networkx_edges(G, edgelist=G_chordes, pos=pos, width=1, ax=ax, edge_color='black', style='dashed')
@@ -229,8 +242,8 @@ def plot_chord_cycle(solver, u, v, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx',
     G, G_tree, G_chordes = make_chorde_cycle_graph(solver, u, v)
     plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
 
-def plot_neighbours_subgraph(solver, u, deep = 1, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
-    G, G_tree, G_chordes = make_node_neighbours_graph(solver, u, deep)
+def plot_neighbours_subgraph(solver, nodes, deep = 1, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
+    G, G_tree, G_chordes = make_node_neighbours_graph(solver, nodes, deep)
     plot_some_subgraph(G, G_tree, G_chordes, solver, keys_to_plot)
 
 def plot_all(solver, keys_to_plot=('name', 'P', 'Q', 'x', 'dp/dx', 'dP', 'WC', 'GOR', 'pos')):
