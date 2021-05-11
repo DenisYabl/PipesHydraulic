@@ -71,6 +71,12 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
             pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
             G.add_edge(start, end, obj=pump)
+
+    cmpnts = nx.algorithms.components.number_weakly_connected_components(G)
+    if cmpnts != 1:
+        print('Not single component graph!')
+        assert False
+
     return G, calc_df
 
 
