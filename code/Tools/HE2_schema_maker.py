@@ -13,7 +13,7 @@ pump_curves = None
 inclination = None
 HKT = None
 
-def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None):
+def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None, ignore_Watercut=False):
     global pump_curves
     if pump_curves is None:
         pump_curves = pd.read_csv(folder + "PumpChart.csv")
@@ -35,9 +35,16 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     outletsdf = calc_df[calc_df["endIsOutlet"]]
     juncs_df = pd.concat((calc_df["node_id_start"], calc_df["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
-        volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        if ignore_Watercut:
+            volumewater = 50
+        elif pd.notna(row["VolumeWater"]):
+            volumewater = row["VolumeWater"]
+        else:
+            logger.warning(f'Watercut should be known for source nodes: {row["node_id_start"]}')
+            volumewater = 50
+
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
-                                                                    gimme_dummy_BlackOil(), row["startT"])})
+                                                                    gimme_dummy_BlackOil(VolumeWater=volumewater), row["startT"])})
     for index, row in outletsdf.iterrows():
         outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
     for id in juncs_df:
