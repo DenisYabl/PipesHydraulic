@@ -19,6 +19,8 @@ class HE2_OilGatheringNetwork_Model():
         self.calc_dfs = dict()
         self.original_dfs = dict()
         self.graphs = dict()
+        self.pad_well_list = None
+        self.pad_wells_dict = None
         self.N = 5
 
     def gimme_original_df(self, i):
@@ -97,7 +99,6 @@ class HE2_OilGatheringNetwork_Model():
             if n in q_rez:
                 df_Q_res[n] = q_rez[n]
             df_P_res[n] = p_rez[n]
-
         # print(df_P_res.head())
         # print(df_Q_res.head())
 
@@ -106,6 +107,124 @@ class HE2_OilGatheringNetwork_Model():
         # if n in q_rez:
         #     print(np.round(np.array(q_rez[n]), 3))
         # print(np.round(np.array(p_rez[n]), 3))
+
+
+    # def grab_fact_to_one_dataframe(self):
+    #     p_fact = dict()
+    #     q_fact = dict()
+    #     for i in range(self.N):
+    #         G = self.gimme_graph(i)
+    #         calc_df = self.gimme_calc_df(i)
+    #         for n in G.nodes:
+    #             obj = G.nodes[n]['obj']
+    #             grab_q = isinstance(obj, vrtx.HE2_Boundary_Vertex)
+    #             grab_q |= isinstance(obj, vrtx.HE2_Source_Vertex)
+    #             if grab_q:
+    #                 q_lst = q_fact.get(n, np.zeros(self.N))
+    #                 q_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
+    #                 q_fact[n] = q_lst
+    #             if 'pump' in n and 'intake' in n:
+    #                 p_lst = p_fact.get(n, np.zeros(self.N))
+    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
+    #                 p_fact[n] = p_lst
+    #             if 'pump' in n and 'outlet' in n:
+    #                 p_lst = p_fact.get(n, np.zeros(self.N))
+    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
+    #                 p_fact[n] = p_lst
+    #             if 'wellhead' in n:
+    #                 p_lst = p_fact.get(n, np.zeros(self.N))
+    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
+    #                 p_fact[n] = p_lst
+    #
+    #     nodes = set(q_fact.keys()) | set(p_fact.keys())
+    #
+    #     df_P_fact = pd.DataFrame()
+    #     df_Q_fact = pd.DataFrame()
+    #     for n in nodes:
+    #         if n in q_fact:
+    #             df_Q_fact[n] = q_fact[n]
+    #         df_P_fact[n] = p_fact[n]
+
+    def gimme_wells(self):
+        if self.pad_wells_dict:
+            return self.pad_wells_dict
+        dfs = []
+        for i in range(self.N):
+            df = self.gimme_original_df(i)
+            df = df[['juncType', 'padNum', 'wellNum']]
+            df = df[df.juncType == 'oilwell']
+            dfs += [df]
+        df = pd.concat(dfs).drop_duplicates()[['padNum', 'wellNum']]
+        self.pad_well_list = list(df.to_records(index=False))
+        pad_wells_dict = dict()
+        for (pad, well) in self.pad_well_list:
+            wlist = pad_wells_dict.get(pad, [])
+            wlist += [int(well)]
+            pad_wells_dict[int(pad)] = wlist
+        self.pad_wells_dict = pad_wells_dict
+        return self.pad_wells_dict
+
+    def grab_fact(self):
+        pad_wells_dict = self.gimme_wells()
+        p_zab = dict()
+        p_intake = dict()
+        p_head = dict()
+        q_well = dict()
+        freq = dict()
+        # for key in pad_well_list:
+        #     p_zab[key] = np.zeros(self.N)
+        #     p_intake[key] = np.zeros(self.N)
+        #     p_head[key] = np.zeros(self.N)
+        #     q_well[key] = np.zeros(self.N)
+
+        cols = ['juncType', 'padNum', 'wellNum', 'zaboy_pressure','input_pressure', 'buffer_pressure', 'debit', 'frequency']
+        dfs = []
+        for i in range(self.N):
+            df = self.gimme_original_df(i)
+            df = df[cols]
+            df['N'] = i
+            dfs += [df]
+        fact_df = pd.concat(dfs)
+        for pad in pad_wells_dict:
+            pad_df = fact_df[fact_df.padNum == pad]
+            wells = pad_wells_dict[pad]
+            for well in wells:
+                df = pad_df[pad_df.wellNum == well]
+                df = df.sort_values(by=['N'])
+                p_zab[(pad, well)] = df.zaboy_pressure.values
+                p_intake[(pad, well)] = df.input_pressure.values
+                p_head[(pad, well)] = df.buffer_pressure.values
+                q_well[(pad, well)] = df.debit.values
+                freq[(pad, well)] = df.frequency.values
+
+        return p_zab, p_intake, p_head, q_well, freq
+
+    def grab_results(self):
+        pad_wells_dict = self.gimme_wells()
+        p_zab = dict()
+        p_intake = dict()
+        p_head = dict()
+        q_well = dict()
+        for pad in pad_wells_dict:
+            wells = pad_wells_dict[pad]
+            for well in wells:
+                key = (pad, well)
+                zab_name = f"PAD_{pad}_WELL_{well}_zaboi"
+                pump_name = f"PAD_{pad}_WELL_{well}_pump_intake"
+                head_name = f"PAD_{pad}_WELL_{well}_wellhead"
+                p_zab[key] = np.zeros(self.N)
+                p_intake[key] = np.zeros(self.N)
+                p_head[key] = np.zeros(self.N)
+                q_well[key] = np.zeros(self.N)
+
+                for i in range(self.N):
+                    solver = self.gimme_solver(i)
+                    G = solver.graph
+                    p_zab[key][i] = G.nodes[zab_name]['obj'].result['P_bar']
+                    p_intake[key][i] = G.nodes[pump_name]['obj'].result['P_bar']
+                    p_head[key][i] = G.nodes[head_name]['obj'].result['P_bar']
+                    q_well[key][i] = G[zab_name][pump_name]['obj'].result['x']
+        return p_zab, p_intake, p_head, q_well
 
     def solve_em_all(self):
         for i in range(self.N):
@@ -401,5 +520,6 @@ class HE2_PMNetwork_Model():
 
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
+    fact = model.grab_fact()
     model.solve_em_all()
-    model.grab_results_to_one_dataframe()
+    model.grab_results()
