@@ -27,8 +27,6 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     if calc_df is None:
         calc_df = make_calc_df(dataset, folder)
 
-    print(len(calc_df))
-
     outlets = {}
     inlets = {}
     juncs = {}
@@ -46,8 +44,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
         if (id not in list(inlets.keys()) + list(outlets.keys())):
             juncs.update({id:vrtxs.HE2_ABC_GraphVertex()})
 
-    # G = nx.MultiDiGraph()  # Di = directed
-    G = nx.DiGraph()  # Di = directed
+    G = nx.MultiDiGraph()  # Di = directed
 
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
