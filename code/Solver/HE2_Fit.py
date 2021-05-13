@@ -288,19 +288,22 @@ class HE2_OilGatheringNetwork_Model():
                 print(key, np.round(self.fact['q_well'][key], 3))
                 print()
 
-    def prefit(self):
+    def prefit_all(self):
         pad_wells_dict = self.gimme_wells()
         pad_well_list = self.pad_well_list
-        for i in range(self.N):
-            G_i = self.gimme_graph(i)
-            for (pad, well) in pad_well_list:
-                nodes = [f'PAD_{pad}_WELL_{well}']
-                nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
-                nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
-                nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
-                nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
-                well_G, _ = cut_single_well_subgraph(G_i, pad, well, nodes)
-                print(len(well_G.edges))
+        for (pad, well) in pad_well_list:
+            G0 = self.gimme_graph(0)
+            nodes = [f'PAD_{pad}_WELL_{well}']
+            nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
+            nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
+            well_G, _ = cut_single_well_subgraph(G0, pad, well, nodes)
+            Phs = self.fact['p_head'][(pad, well)]
+            # well_G.nodes[f'PAD_{pad}_WELL_{well}_wellhead']['obj'].value = Ph
+
+    def prefit_well(self, well_G, pad, well, nodes):
+        pass
 
 
 
@@ -592,7 +595,7 @@ class HE2_PMNetwork_Model():
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
     model.fact = model.grab_fact()
-    model.prefit()
+    model.prefit_all()
     # model.find_outliers()
     # model.solve_em_all()
     # model.result = model.grab_results()
