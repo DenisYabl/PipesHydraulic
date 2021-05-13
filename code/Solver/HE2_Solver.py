@@ -574,13 +574,13 @@ class HE2_Solver():
             for u, v in self.schema.edges:
                 obj = self.schema[u][v]['obj']
                 x = self.edges_x[(u, v)]
-                obj.result = dict(x=x)
+                obj.result = dict(x=x, WC=obj.fluid.oil_params.volumewater_percent, liquid_density=obj.fluid.CurrentLiquidDensity_kg_m3)
         elif isinstance(self.schema, nx.MultiDiGraph):
             for u, v, k in self.schema.edges:
                 obj = self.schema[u][v][k]['obj']
                 _u, _v = self.result_edges_mapping[(u, v, k)]
                 x = self.edges_x[(_u, _v)]
-                obj.result = dict(x=x)
+                obj.result = dict(x=x, WC=obj.fluid.oil_params.volumewater_percent, liquid_density=obj.fluid.CurrentLiquidDensity_kg_m3)
         logger.debug('is finished')
 
 
