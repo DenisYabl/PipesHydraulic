@@ -1039,28 +1039,38 @@ def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pump
     solver.solve(threshold=0.25)
     return G, inlets, juncs, outlets
 
-def cut_single_well_subgraph(G, pad_name, well):
+def cut_single_well_subgraph(G, pad_name, well, nodes = None):
     rez = nx.DiGraph()  # Di = directed
-    plast = f'PAD_{pad_name}_well_{well}'
-    zaboi = f'Zaboi_{well}'
-    intake = f'Pump_intake_{well}'
-    outlet = f'Pump_outlet_{well}'
-    wellhead = f'Wellhead_{well}'
-    pad = f'PAD_{pad_name}'
-    # rez.add_nodes_from([G[plast], G[zaboi], G[intake], G[outlet], G[wellhead]])
-    nodelist = [plast, zaboi, intake, outlet, wellhead, pad]
-    edgelist = [(plast, zaboi), (zaboi, intake), (intake, outlet), (outlet, wellhead), (wellhead, pad)]
-    rez.add_nodes_from(nodelist)
+    if nodes == None:
+        nms = dict()
+        nms.update(plast = f'PAD_{pad_name}_well_{well}')
+        nms.update(zaboi = f'Zaboi_{well}')
+        nms.update(intake = f'Pump_intake_{well}')
+        nms.update(outlet = f'Pump_outlet_{well}')
+        nms.update(wellhead = f'Wellhead_{well}')
+        nms.update(pad = f'PAD_{pad_name}')
+        nodes = [nms['plast'], nms['zaboi'], nms['intake'], nms['outlet'], nms['wellhead'], nms['pad']]
+
+    edgelist = []
+    for i in range(len(nodes)-1):
+        edgelist += [(nodes[i], nodes[i+1])]
+    rez.add_nodes_from(nodes)
     rez.add_edges_from(edgelist)
-    node_objs = {n:G.nodes[n]['obj'] for n in nodelist[:-1]}
-    node_objs[pad] = vrtxs.HE2_Boundary_Vertex('P', 5)
+    node_objs = {n:G.nodes[n]['obj'] for n in nodes[:-1]}
+    node_objs[nodes[-1]] = vrtxs.HE2_Boundary_Vertex('P', 5)
     edge_objs = {}
-    for u, v in edgelist:
-        obj = G[u][v]['obj']
-        edge_objs[(u, v)] = obj
+    if isinstance(G, nx.MultiDiGraph):
+        for u, v in edgelist:
+            obj = G[u][v][0]['obj']
+            edge_objs[(u, v)] = obj
+    elif isinstance(G, nx.DiGraph):
+        for u, v in edgelist:
+            obj = G[u][v]['obj']
+            edge_objs[(u, v)] = obj
+
     nx.set_node_attributes(rez, name='obj', values=node_objs)
     nx.set_edge_attributes(rez, name='obj', values=edge_objs)
-    return rez, nodelist
+    return rez, nodes
 
 
 # Review:

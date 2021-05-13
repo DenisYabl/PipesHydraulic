@@ -8,6 +8,9 @@ from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset, make_cal
 from Tools.HE2_tools import check_solution
 import logging
 import GraphNodes.HE2_Vertices as vrtx
+import matplotlib.pyplot as plt
+import random
+from Tests.Optimization_test import cut_single_well_subgraph
 
 class HE2_OilGatheringNetwork_Model():
     def __init__(self, folder):
@@ -21,7 +24,9 @@ class HE2_OilGatheringNetwork_Model():
         self.graphs = dict()
         self.pad_well_list = None
         self.pad_wells_dict = None
-        self.N = 5
+        self.fact = dict()
+        self.result = dict()
+        self.N = 32
 
     def gimme_original_df(self, i):
         if i in self.original_dfs:
@@ -155,7 +160,10 @@ class HE2_OilGatheringNetwork_Model():
             df = df[df.juncType == 'oilwell']
             dfs += [df]
         df = pd.concat(dfs).drop_duplicates()[['padNum', 'wellNum']]
-        self.pad_well_list = list(df.to_records(index=False))
+        raw_pw_list = list(df.to_records(index=False))
+        self.pad_well_list = []
+        for pad, well in raw_pw_list:
+            self.pad_well_list += [(int(pad), int(well))]
         pad_wells_dict = dict()
         for (pad, well) in self.pad_well_list:
             wlist = pad_wells_dict.get(pad, [])
@@ -197,7 +205,7 @@ class HE2_OilGatheringNetwork_Model():
                 q_well[(pad, well)] = df.debit.values
                 freq[(pad, well)] = df.frequency.values
 
-        return p_zab, p_intake, p_head, q_well, freq
+        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well, freq=freq)
 
     def grab_results(self):
         pad_wells_dict = self.gimme_wells()
@@ -223,14 +231,77 @@ class HE2_OilGatheringNetwork_Model():
                     p_zab[key][i] = G.nodes[zab_name]['obj'].result['P_bar']
                     p_intake[key][i] = G.nodes[pump_name]['obj'].result['P_bar']
                     p_head[key][i] = G.nodes[head_name]['obj'].result['P_bar']
-                    q_well[key][i] = G[zab_name][pump_name]['obj'].result['x']
-        return p_zab, p_intake, p_head, q_well
+                    obj = G[zab_name][pump_name]['obj']
+                    q_well[key][i] = 86400 * obj.result['x'] / obj.result['liquid_density']
+        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well)
 
     def solve_em_all(self):
         for i in range(self.N):
             solver = self.gimme_solver(i)
             solver.solve(threshold=0.25)
             print(i, solver.op_result.success, solver.op_result.fun)
+
+    def plot_fact_and_results(self, keys_to_plot=('head', 'intake', 'bottom', 'debit'), wells=(), pads=()):
+        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(keys_to_plot)
+        ax.set_xlabel('fact')
+        ax.set_ylabel('result')
+        colors = plt.get_cmap('tab20c').colors
+        colors = list(colors) * 3
+        random.shuffle(colors)
+        for i, (pad, well) in enumerate(self.pad_well_list):
+            alpha = 0.2
+            if well in wells or pad in pads:
+                alpha = 0.8
+            if 'head' in keys_to_plot:
+                ax.plot(self.fact['p_head'][(pad, well)], self.result['p_head'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'intake' in keys_to_plot:
+                ax.plot(self.fact['p_intake'][(pad, well)], self.result['p_intake'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'bottom' in keys_to_plot:
+                ax.plot(self.fact['p_zab'][(pad, well)], self.result['p_zab'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'debit' in keys_to_plot:
+                ax.plot(self.fact['q_well'][(pad, well)], self.result['q_well'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+
+        plt.show()
+
+    def calc_well_score(self, pad, well):
+        debit_scale = 150
+        head_scale = 20
+        intake_scale = 50
+        bottom_scale = 80
+
+        score = 0
+        score += abs(self.fact['p_head'][(pad, well)] - self.result['p_head'][(pad, well)]) / head_scale
+        score += abs(self.fact['p_intake'][(pad, well)] - self.result['p_intake'][(pad, well)]) / intake_scale
+        score += abs(self.fact['p_zab'][(pad, well)] - self.result['p_zab'][(pad, well)]) / bottom_scale
+        score += abs(self.fact['q_well'][(pad, well)] - self.result['q_well'][(pad, well)])  / debit_scale
+        return score
+
+    def find_outliers(self):
+        intake = self.fact['p_intake']
+        for key in intake:
+            if max(intake[key]) > 100:
+                print(key, np.round(self.fact['p_zab'][key], 3))
+                print(key, np.round(self.fact['p_intake'][key], 3))
+                print(key, np.round(self.fact['p_head'][key], 3))
+                print(key, np.round(self.fact['q_well'][key], 3))
+                print()
+
+    def prefit(self):
+        pad_wells_dict = self.gimme_wells()
+        pad_well_list = self.pad_well_list
+        for i in range(self.N):
+            G_i = self.gimme_graph(i)
+            for (pad, well) in pad_well_list:
+                nodes = [f'PAD_{pad}_WELL_{well}']
+                nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
+                nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
+                nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
+                nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
+                well_G, _ = cut_single_well_subgraph(G_i, pad, well, nodes)
+                print(len(well_G.edges))
+
 
 
 class HE2_PMNetwork_Model():
@@ -520,6 +591,13 @@ class HE2_PMNetwork_Model():
 
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
-    fact = model.grab_fact()
-    model.solve_em_all()
-    model.grab_results()
+    model.fact = model.grab_fact()
+    model.prefit()
+    # model.find_outliers()
+    # model.solve_em_all()
+    # model.result = model.grab_results()
+    # model.plot_fact_and_results(keys_to_plot=('head'))
+    # model.plot_fact_and_results(keys_to_plot=('intake'))
+    # model.plot_fact_and_results(keys_to_plot=('bottom'))
+    # model.plot_fact_and_results(keys_to_plot=('debit'))
+    # model.calc_well_score(5, 1523)
