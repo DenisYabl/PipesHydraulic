@@ -11,6 +11,66 @@ import GraphNodes.HE2_Vertices as vrtx
 import matplotlib.pyplot as plt
 import random
 from Tests.Optimization_test import cut_single_well_subgraph
+import itertools
+
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (N, M).
+    row_labels
+        A list or array of length N with the labels for the rows.
+    col_labels
+        A list or array of length M with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_yticks(np.arange(data.shape[0]))
+    # ... and label them with the respective list entries.
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False,
+                   labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+             rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    # ax.spines[:].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
 
 class HE2_OilGatheringNetwork_Model():
     def __init__(self, folder):
@@ -25,7 +85,14 @@ class HE2_OilGatheringNetwork_Model():
         self.pad_well_list = None
         self.pad_wells_dict = None
         self.fact = dict()
+        self.outlayers = dict()
         self.result = dict()
+        self.last_well_result = dict()
+        self.well_result_before = dict()
+        self.well_result_after = dict()
+        self.initial_x = dict()
+        self.total_target_cnt, self.not_solved = 0, 0
+        self.bad_wells = []
         self.N = 32
 
     def gimme_original_df(self, i):
@@ -59,7 +126,8 @@ class HE2_OilGatheringNetwork_Model():
             return self.graphs[i]
         df = self.gimme_original_df(i)
         calc_df = self.gimme_calc_df(i)
-        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=True)
+        # G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=True)
+        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=False)
         self.graphs[i] = G
         return self.graphs[i]
 
@@ -278,20 +346,16 @@ class HE2_OilGatheringNetwork_Model():
         score += abs(self.fact['q_well'][(pad, well)] - self.result['q_well'][(pad, well)])  / debit_scale
         return score
 
-    def find_outliers(self):
-        intake = self.fact['p_intake']
-        for key in intake:
-            if max(intake[key]) > 100:
-                print(key, np.round(self.fact['p_zab'][key], 3))
-                print(key, np.round(self.fact['p_intake'][key], 3))
-                print(key, np.round(self.fact['p_head'][key], 3))
-                print(key, np.round(self.fact['q_well'][key], 3))
-                print()
 
     def prefit_all(self):
-        pad_wells_dict = self.gimme_wells()
+        rez = []
+        self.gimme_wells()
         pad_well_list = self.pad_well_list
-        for (pad, well) in pad_well_list:
+        for it, (pad, well) in enumerate(pad_well_list):
+            if not (well, pad) in self.bad_wells:
+                continue
+            # if not (well, pad) == (567, 39):
+            #     continue
             G0 = self.gimme_graph(0)
             nodes = [f'PAD_{pad}_WELL_{well}']
             nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
@@ -299,11 +363,206 @@ class HE2_OilGatheringNetwork_Model():
             nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
             nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
             well_G, _ = cut_single_well_subgraph(G0, pad, well, nodes)
-            Phs = self.fact['p_head'][(pad, well)]
-            # well_G.nodes[f'PAD_{pad}_WELL_{well}_wellhead']['obj'].value = Ph
+            solver = HE2_Solver(well_G)
+            pump_obj = well_G[nodes[2]][nodes[3]]['obj']
+            plast_obj = well_G[nodes[0]][nodes[1]]['obj']
+            bounds = ((0.1, 3 * plast_obj.Productivity), (0, 1.2))
+            path = []
+            def target_fit(x):
+                nonlocal pump_obj, plast_obj, solver, well_G, pad, well, nodes, bounds, path
+                path += [x]
+                productivity = x[0]
+                plast_obj.Productivity = productivity
+                pump_keff = x[1]
+                pump_obj.change_stages_ratio(pump_keff)
+                score = self.score_well(solver, well_G, pad, well, nodes)
+                return score
 
-    def prefit_well(self, well_G, pad, well, nodes):
-        pass
+            x0 = np.array([plast_obj.Productivity, 1])
+            target_fit(x0)
+            well_res_before = self.last_well_result.copy()
+
+            xs = np.linspace(start=bounds[0][0], stop=bounds[0][1], num=15)
+            ys = np.linspace(start=bounds[1][0], stop=bounds[1][1], num=15)
+            zs = np.zeros((len(xs), len(ys)))
+
+            for i, x in enumerate(xs):
+                for j, y in enumerate(ys):
+                    zs[i, j] = target_fit(np.array([x, y]))
+
+            i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
+            x0 = np.array([xs[i], ys[j]])
+            op_result = scop.minimize(target_fit, x0)
+            best_x = op_result.x
+            target_fit(best_x)
+            well_res_after = self.last_well_result.copy()
+
+            zs[zs==100500] = -1
+            self.plot_single_well_chart(pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path)
+            rez += [(well, pad, best_x, op_result.fun)]
+            break
+        return rez
+
+
+
+    def score_well(self, solver, well_G, pad, well, nodes):
+        # debit_scale, head_scale, intake_scale, bottom_scale = 150, 20, 50, 80
+        debit_scale, head_scale, intake_scale, bottom_scale = 5, 20, 30, 100
+
+        rez_p_i = np.ones(self.N) * 100500
+        rez_p_b = np.ones(self.N) * 100500
+        rez_q = np.ones(self.N) * 100500
+
+        q0 = self.fact['q_well'][(pad, well)][0]
+        known_Q = {nodes[0]: 900 * q0 / 86400}
+        solver.set_known_Q(known_Q)
+        fact_phs = self.fact['p_head'][(pad, well)]
+        pump_obj = well_G[nodes[2]][nodes[3]]['obj']
+        freqs = self.fact['freq'][(pad, well)]
+        ol_freqs = self.outlayers['freq'][(pad, well)]
+        freq = 50
+        for i in range(self.N):
+            if not ol_freqs[i]:
+                freq = freqs[i]
+            pump_obj.changeFrequency(freq) # Set last non-outlayer frequency
+
+            well_G.nodes[nodes[-1]]['obj'].value = fact_phs[i]
+            if (pad, well, i) in self.initial_x:
+                solver.initial_edges_x = self.initial_x[(pad, well, i)]
+
+            solver.solve(mix_fluids=False, threshold=0.2, it_limit=30)
+            self.total_target_cnt += solver.op_result.nfev
+            if not solver.op_result.success:
+                self.not_solved += 1
+                return 100500
+                # continue
+            self.initial_x[(pad, well, i)] = solver.edges_x.copy()
+
+            rez_p_i[i] = well_G.nodes[nodes[2]]['obj'].result['P_bar']
+            rez_p_b[i] = well_G.nodes[nodes[1]]['obj'].result['P_bar']
+            rez = well_G[nodes[1]][nodes[2]]['obj'].result
+            rez_q[i] = 86400 * rez['x'] / rez['liquid_density']
+
+        self.last_well_result['p_zab'] = rez_p_b
+        self.last_well_result['p_intake'] = rez_p_i
+        self.last_well_result['q_well'] = rez_q
+
+        ol_intake = self.outlayers['p_intake'][(pad, well)]
+        ip_error = self.fact['p_intake'][(pad, well)] - rez_p_i
+        ip_error = np.linalg.norm(ip_error[~ol_intake])
+        score = ip_error / intake_scale
+
+        ol_debit = self.outlayers['q_well'][(pad, well)]
+        q_error = self.fact['q_well'][(pad, well)] - rez_q
+        q_error = np.linalg.norm(q_error[~ol_debit])
+        score += q_error / debit_scale
+
+        score += np.linalg.norm(self.fact['p_zab'][(pad, well)] - rez_p_b) / bottom_scale
+        return score
+
+
+    def plot_single_well_chart(self, pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path):
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(f'Pad {pad} well {well} y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
+        # Xs, Ys = np.meshgrid(xs, ys)
+        # Zs = zs.reshape(len(ys), len(xs))
+        # im = plt.pcolormesh(Xs, Ys, Zs, cmap='plasma')
+        # fig.colorbar(im, ax=ax, fraction=0.05, shrink=0.5)
+
+        xs = np.round(xs, 3)
+        ys = np.round(ys, 3)
+        im, cbar = heatmap(zs, ys, xs, ax=ax, cmap="plasma")
+
+        # i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
+        # ax.plot(xs[i], ys[j], color='w', marker='X', markersize=15)
+
+        ax.set_xlabel('prod')
+        ax.set_ylabel('pump keff')
+        plt.show()
+
+        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        WC = well_G.nodes[nodes[0]]['obj'].fluid.oil_params.volumewater_percent
+        ax.set_title(f'Pad {pad} well {well} WC {WC}% y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
+        # ax.set_xlabel('time')
+        ax.set_ylabel('P, Q')
+        colors = plt.get_cmap('Set2').colors
+
+        xs = np.array(range(self.N))
+        kwargs = dict(linewidth=1, alpha=0.9)
+        mask = ~self.outlayers['p_intake'][(pad, well)]
+        hndl1 = ax.plot(xs[mask], self.fact['p_intake'][(pad, well)][mask], color=colors[0], label='Fact: intake', **kwargs)
+        hndl2 = ax.plot(xs, self.fact['p_zab'][(pad, well)], color=colors[1], label='Fact: zaboi', **kwargs)
+
+        mask = ~self.outlayers['q_well'][(pad, well)]
+        hndl3 = ax.plot(xs[mask], self.fact['q_well'][(pad, well)][mask], color=colors[2], label='Fact: debit', **kwargs)
+
+        kwargs = dict(linewidth=1, alpha=0.6)
+        mask = ~self.outlayers['freq'][(pad, well)]
+        hndl6 = ax.plot(xs[mask], self.fact['freq'][(pad, well)][mask], color=colors[4], label='Fact: freq', **kwargs)
+
+        # kwargs = dict(linewidth=1, alpha=0.9, linestyle=':')
+        # hndl4 = ax.plot(xs, well_res_before['p_intake'], color=colors[0], label='Before: intake', **kwargs)
+        # ax.plot(xs, well_res_before['p_zab'], color=colors[1], **kwargs)
+        # ax.plot(xs, well_res_before['q_well'], color=colors[2], **kwargs)
+
+        kwargs = dict(linewidth=1, alpha=0.9, linestyle='--')
+        hndl5 = ax.plot(xs, well_res_after['p_intake'], color=colors[0], label='Predict: intake', **kwargs)
+        ax.plot(xs, well_res_after['p_zab'], color=colors[1], **kwargs)
+        ax.plot(xs, well_res_after['q_well'], color=colors[2], **kwargs)
+
+        # handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl4 + hndl5
+        handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl5
+        ax.legend(handles=handles, loc='lower right')
+        plt.show()
+
+
+    def fill_outlayers(self):
+        ol_freq = dict()
+        ol_intake = dict()
+        ol_debit = dict()
+        for pad, well in self.pad_well_list:
+            freq = self.fact['freq'][(pad, well)]
+            mask1 = freq > 60
+            mask2 = freq < 40
+            mask3 = np.isnan(freq)
+            mask = mask1 | mask2 | mask3
+            ol_freq[(pad, well)] = mask
+
+            intake = self.fact['p_intake'][(pad, well)]
+            mask1 = intake > 70
+            mask2 = intake < 20
+            mask3 = np.isnan(intake)
+            mask = mask1 | mask2 | mask3
+            ol_intake[(pad, well)] = mask
+
+            debit = self.fact['q_well'][(pad, well)]
+            mask1 = debit > 1000
+            mask2 = debit < 0.5
+            mask3 = np.isnan(debit)
+            mask = mask1 | mask2 | mask3
+            ol_debit[(pad, well)] = mask
+
+        self.outlayers['freq'] = ol_freq
+        self.outlayers['p_intake'] = ol_intake
+        self.outlayers['q_well'] = ol_debit
+
+
+    def greed_optimization(self):
+        random.seed = 42
+        self.gimme_wells()
+        order = []
+        for pad, well in self.pad_well_list:
+            order += [(pad, well, 'K_prod'), (pad, well, 'K_pump')]
+        random.shuffle(order)
+        order = order * 10
+        score = 100500100500
+        for pad, well, param in order:
+            pass
+
+
+
 
 
 
@@ -592,11 +851,18 @@ class HE2_PMNetwork_Model():
         return meth()
 
 
+bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57)]
+
+
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
     model.fact = model.grab_fact()
-    model.prefit_all()
-    # model.find_outliers()
+    model.fill_outlayers()
+    model.bad_wells = bad_wells
+    rez = model.prefit_all()
+    # f = open('rez.csv', 'w')
+    # for item in rez:
+    #     print(item, file=f)
     # model.solve_em_all()
     # model.result = model.grab_results()
     # model.plot_fact_and_results(keys_to_plot=('head'))
