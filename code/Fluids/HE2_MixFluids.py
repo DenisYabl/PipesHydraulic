@@ -2,6 +2,8 @@ import networkx as nx
 import numpy as np
 from Tools.HE2_ABC import Root
 from Tools.HE2_Logger import getLogger
+from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs
+
 logger = getLogger(__name__)
 
 
@@ -81,6 +83,13 @@ def evalute_network_fluids_wo_root(_G, x_dict):
 
 
 def evalute_network_fluids_with_root(G, x_dict):
+    # This is like a nested doll
+    # Outer layer - solver call with solver graph and xs (flows)
+    # Second layer - we remove root node and zero flows, also reverse negative flows
+    # Third layer - we reduce graph removing 2-degree nodes and parallel edges, cause it does not affect to solultion
+    # Internal layer - on reduced graph we build mass conservation equation matrix and solve it
+    # Than, from deep to surface, we rebuild solution on each layer
+
     edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
     edges2 = []
     x_dict2 = {}
@@ -92,14 +101,111 @@ def evalute_network_fluids_with_root(G, x_dict):
         edges2 += [e]
 
     G2 = nx.DiGraph(edges2)
-    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict2)
-    cocktails2 = {}
-    for key, cktl in cocktails.items():
+    G3, x_dict3, edges_mapping, nodes_mapping = reduce_graph(G2, x_dict2)
+
+    cocktails3, srcs = evalute_network_fluids_wo_root(G3, x_dict3)
+    cocktails2, srcs = restore_cocktail_from_reduced_graph(cocktails3, srcs, edges_mapping, nodes_mapping, G2)
+
+    cocktails = {}
+    for key, cktl in cocktails2.items():
         cktl2 = np.around(cktl, 6)
 
         if (key in edges2) and not (key in edges1):
             u, v = key
-            cocktails2[(v, u)] = cktl2
+            cocktails[(v, u)] = cktl2
         else:
-            cocktails2[key] = cktl2
-    return cocktails2, srcs
+            cocktails[key] = cktl2
+    return cocktails, srcs
+
+def reduce_graph2(G, x_dict):
+    e_out = dict()
+    e_in = dict()
+    for u, v in G.edges():
+        e_out[u] = [v]
+        e_in[v] = [u]
+
+    nodes = list(set(e_out.keys) | set(e_in.keys))
+    while True:
+        for n in nodes:
+            if len(e_out[n]) == len(e_in[n]) == 1:
+                found = True
+                u = e_out[n][0]
+                v = e_in[n]
+                e_out.pop(n)
+                e_in.pop(n)
+                e_out[u] += [v]
+                e_in[v] += [u]
+    pass
+
+
+def reduce_graph(G, x_dict):
+    new_G = nx.MultiDiGraph()
+    edges = list(G.edges)
+    new_G.add_edges_from(edges)
+    new_x_dict = x_dict.copy()
+    edges_mapping = {(u, v):(u, v, 0) for (u, v) in G.edges}
+    nodes_mapping = {n:n for n in G.nodes}
+    while True:
+        found = False
+        for n, d in new_G.degree():
+            if d!=2:
+                continue
+            if not (len(new_G.in_edges(n))==1 and len(new_G.out_edges(n))==1):
+                continue
+            e1 = list(new_G.in_edges(n))[0]
+            e2 = list(new_G.out_edges(n))[0]
+            found = True
+            u1, v1 = e1
+            u2, v2 = e2
+            assert u2 == n and v1 == n
+            u, v = u1, v2
+
+            new_G.remove_edge(*e1)
+            new_G.remove_edge(*e2)
+            k = G.add_edge(u, v)
+            for _k, _v in edges_mapping.items():
+                if _v == e1 or _v == e2:
+                    edges_mapping[_k] = u, v, 0
+            for _k, _v in nodes_mapping.items():
+                if _v == n:
+                    nodes_mapping[_k] = u
+            new_x_dict[(u, v, k)] = x_dict[e1]
+            new_x_dict.pop(e1)
+            new_x_dict.pop(e2)
+            break
+
+        if found:
+            continue
+
+        for u, v, k in new_G.edges:
+            if k == 0:
+                continue
+            found = True
+            new_G.remove_edge(u, v, k)
+            for _k, _v in edges_mapping.items():
+                if _v == (u, v, k) or _v == (u, v, k):
+                    edges_mapping[_k] = u, v, 0
+            new_x_dict[(u, v, 0)] += new_x_dict[(u, v, k)]
+
+        if not found:
+            break
+
+    rez_G = nx.DiGraph(new_G)
+    rez_x_dict = {(u, v):new_x_dict[(u, v, k)] for u, v, k in new_x_dict}
+    return rez_G, rez_x_dict, edges_mapping, nodes_mapping
+
+def restore_cocktail_from_reduced_graph(cocktails_reduced, srcs, edges_mapping, nodes_mapping, original_G):
+    cocktails = {}
+    for u, v in original_G.edges:
+        u, v, k = edges_mapping[(u, v)]
+        if not (u, v, k) in cocktails_reduced:
+            continue
+        cocktails[(u, v)] = cocktails_reduced[(u, v, k)]
+
+    for n in original_G.nodes:
+        n2 = nodes_mapping[n]
+        if not n in cocktails_reduced:
+            continue
+        cocktails[n] = cocktails_reduced[n2]
+
+    return cocktails, srcs
