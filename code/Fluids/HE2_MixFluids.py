@@ -83,6 +83,30 @@ def evalute_network_fluids_wo_root(_G, x_dict):
 
 
 def evalute_network_fluids_with_root(G, x_dict):
+    edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
+    edges2 = []
+    x_dict2 = {}
+    for (u, v) in edges1:
+        e = (u, v)
+        if x_dict[(u, v)] < 0:
+            e = (v, u)
+        x_dict2[e] = abs(x_dict[(u, v)])
+        edges2 += [e]
+
+    G2 = nx.DiGraph(edges2)
+    cocktails, srcs = evalute_network_fluids_wo_root(G2, x_dict2)
+    cocktails2 = {}
+    for key, cktl in cocktails.items():
+        cktl2 = np.around(cktl, 6)
+
+        if (key in edges2) and not (key in edges1):
+            u, v = key
+            cocktails2[(v, u)] = cktl2
+        else:
+            cocktails2[key] = cktl2
+    return cocktails2, srcs
+
+def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
     # This is like a nested doll
     # Outer layer - solver call with solver graph and xs (flows)
     # Second layer - we remove root node and zero flows, also reverse negative flows
