@@ -50,7 +50,7 @@ class HE2_Solver():
         self.forward_edge_functions = dict()
         self.backward_edge_functions = dict()
 
-        self.fluids_move_rate = 0.5
+        self.fluids_move_rate = 0.1
         self.sources_fluids = None
         self.known_Q = dict()
         self.actual_x = None
