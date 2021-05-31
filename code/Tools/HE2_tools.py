@@ -265,7 +265,8 @@ def evaluate_2ndCL_residual(graph):
         p_v = v_obj.result['P_bar']
         t_v = v_obj.result['T_C']
         p, t = edge_obj.perform_calc_forward(p_u, t_u, x)
-        residual += abs(p - p_v)
+        edge_residul = abs(p - p_v)
+        residual += edge_residul
     return residual
 
 def evalute_pressures_below_zero(graph, P_threshold_bar = 0):
