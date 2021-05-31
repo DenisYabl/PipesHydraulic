@@ -65,6 +65,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             L = row["L"]
             uphill = row["uphillM"]
             diam_coef = row["effectiveD"]
+            diam_coef = 1
             D = row["intD"]
             roughness = row["roughness" ]
             G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness],

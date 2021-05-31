@@ -12,559 +12,10 @@ import matplotlib.pyplot as plt
 import random
 from Tests.Optimization_test import cut_single_well_subgraph
 import itertools
-
-def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
-    """
-    Create a heatmap from a numpy array and two lists of labels.
-
-    Parameters
-    ----------
-    data
-        A 2D numpy array of shape (N, M).
-    row_labels
-        A list or array of length N with the labels for the rows.
-    col_labels
-        A list or array of length M with the labels for the columns.
-    ax
-        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
-        not provided, use current axes or create a new one.  Optional.
-    cbar_kw
-        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
-    cbarlabel
-        The label for the colorbar.  Optional.
-    **kwargs
-        All other arguments are forwarded to `imshow`.
-    """
-
-    if not ax:
-        ax = plt.gca()
-
-    # Plot the heatmap
-    im = ax.imshow(data, **kwargs)
-
-    # Create colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
-
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(data.shape[1]))
-    ax.set_yticks(np.arange(data.shape[0]))
-    # ... and label them with the respective list entries.
-    ax.set_xticklabels(col_labels)
-    ax.set_yticklabels(row_labels)
-
-    # Let the horizontal axes labeling appear on top.
-    ax.tick_params(top=True, bottom=False,
-                   labeltop=True, labelbottom=False)
-
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
-             rotation_mode="anchor")
-
-    # Turn spines off and create white grid.
-    # ax.spines[:].set_visible(False)
-
-    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-    ax.tick_params(which="minor", bottom=False, left=False)
-
-    return im, cbar
-
-
-class HE2_OilGatheringNetwork_Model():
-    def __init__(self, folder):
-        # tree = os.walk(folder)
-        # for fld, subfolders, files in tree:
-        #     print(fld, subfolders, files)
-        self.folder = folder
-        self.solvers = dict()
-        self.calc_dfs = dict()
-        self.original_dfs = dict()
-        self.graphs = dict()
-        self.pad_well_list = None
-        self.pad_wells_dict = None
-        self.fact = dict()
-        self.outlayers = dict()
-        self.result = dict()
-        self.last_well_result = dict()
-        self.well_result_before = dict()
-        self.well_result_after = dict()
-        self.initial_x = dict()
-        self.total_target_cnt, self.not_solved = 0, 0
-        self.bad_wells = []
-        self.N = 32
-
-    def gimme_original_df(self, i):
-        if i in self.original_dfs:
-            return self.original_dfs[i]
-        folder = self.folder
-        filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
-        df = pd.read_csv(filename)
-        self.original_dfs[i] = df
-        return df
-
-    def gimme_calc_df(self, i):
-        if i in self.calc_dfs:
-            return self.calc_dfs[i]
-        folder = self.folder
-        calc_df_filename = f'{folder}data/oilgathering_fit/calc_df_{i}.csv'
-        try:
-            calc_df = pd.read_csv(calc_df_filename)
-            self.calc_dfs[i] = calc_df
-            return calc_df
-        except:
-            pass
-        original_df = self.gimme_original_df(i)
-        calc_df = make_calc_df(original_df, self.folder + 'CommonData/')
-        calc_df.to_csv(calc_df_filename)
-        self.calc_dfs[i] = calc_df
-        return calc_df
-
-    def gimme_graph(self, i):
-        if i in self.graphs:
-            return self.graphs[i]
-        df = self.gimme_original_df(i)
-        calc_df = self.gimme_calc_df(i)
-        # G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=True)
-        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=False)
-        self.graphs[i] = G
-        return self.graphs[i]
-
-    def gimme_solver(self, i):
-        if i in self.solvers:
-            return self.solvers[i]
-
-        G = self.gimme_graph(i)
-        solver = HE2_Solver(G)
-        self.solvers[i] = solver
-        return solver
-
-    def grab_results_to_one_dataframe(self):
-        p_rez = dict()
-        q_rez = dict()
-        for i in range(self.N):
-            G = self.gimme_graph(i)
-            for n in G.nodes:
-                obj = G.nodes[n]['obj']
-                grab_q = isinstance(obj, vrtx.HE2_Boundary_Vertex)
-                grab_q |= isinstance(obj, vrtx.HE2_Source_Vertex)
-                have_to_grab = grab_q
-                have_to_grab |= 'pump' in n
-                have_to_grab |= 'wellhead' in n
-                if not have_to_grab:
-                    continue
-                res = obj.result
-                if grab_q:
-                    q_lst = q_rez.get(n, np.zeros(self.N))
-                    q_lst[i] = res['Q']
-                    q_rez[n] = q_lst
-
-                p_lst = p_rez.get(n, np.zeros(self.N))
-                p_lst[i] = res['P_bar']
-                p_rez[n] = p_lst
-
-        nodes = set(q_rez.keys()) | set(p_rez.keys())
-
-        df_P_res = pd.DataFrame()
-        df_Q_res = pd.DataFrame()
-        for n in nodes:
-            if n in q_rez:
-                df_Q_res[n] = q_rez[n]
-            df_P_res[n] = p_rez[n]
-        # print(df_P_res.head())
-        # print(df_Q_res.head())
-
-        # print()
-        # print(n)
-        # if n in q_rez:
-        #     print(np.round(np.array(q_rez[n]), 3))
-        # print(np.round(np.array(p_rez[n]), 3))
-
-
-    # def grab_fact_to_one_dataframe(self):
-    #     p_fact = dict()
-    #     q_fact = dict()
-    #     for i in range(self.N):
-    #         G = self.gimme_graph(i)
-    #         calc_df = self.gimme_calc_df(i)
-    #         for n in G.nodes:
-    #             obj = G.nodes[n]['obj']
-    #             grab_q = isinstance(obj, vrtx.HE2_Boundary_Vertex)
-    #             grab_q |= isinstance(obj, vrtx.HE2_Source_Vertex)
-    #             if grab_q:
-    #                 q_lst = q_fact.get(n, np.zeros(self.N))
-    #                 q_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
-    #                 q_fact[n] = q_lst
-    #             if 'pump' in n and 'intake' in n:
-    #                 p_lst = p_fact.get(n, np.zeros(self.N))
-    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
-    #                 p_fact[n] = p_lst
-    #             if 'pump' in n and 'outlet' in n:
-    #                 p_lst = p_fact.get(n, np.zeros(self.N))
-    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
-    #                 p_fact[n] = p_lst
-    #             if 'wellhead' in n:
-    #                 p_lst = p_fact.get(n, np.zeros(self.N))
-    #                 p_lst[i] = calc_df.loc[calc_df.node_id_start==n,  'debit']
-    #                 p_fact[n] = p_lst
-    #
-    #     nodes = set(q_fact.keys()) | set(p_fact.keys())
-    #
-    #     df_P_fact = pd.DataFrame()
-    #     df_Q_fact = pd.DataFrame()
-    #     for n in nodes:
-    #         if n in q_fact:
-    #             df_Q_fact[n] = q_fact[n]
-    #         df_P_fact[n] = p_fact[n]
-
-    def gimme_wells(self):
-        if self.pad_wells_dict:
-            return self.pad_wells_dict
-        dfs = []
-        for i in range(self.N):
-            df = self.gimme_original_df(i)
-            df = df[['juncType', 'padNum', 'wellNum']]
-            df = df[df.juncType == 'oilwell']
-            dfs += [df]
-        df = pd.concat(dfs).drop_duplicates()[['padNum', 'wellNum']]
-        raw_pw_list = list(df.to_records(index=False))
-        self.pad_well_list = []
-        for pad, well in raw_pw_list:
-            self.pad_well_list += [(int(pad), int(well))]
-        pad_wells_dict = dict()
-        for (pad, well) in self.pad_well_list:
-            wlist = pad_wells_dict.get(pad, [])
-            wlist += [int(well)]
-            pad_wells_dict[int(pad)] = wlist
-        self.pad_wells_dict = pad_wells_dict
-        return self.pad_wells_dict
-
-    def grab_fact(self):
-        pad_wells_dict = self.gimme_wells()
-        p_zab = dict()
-        p_intake = dict()
-        p_head = dict()
-        q_well = dict()
-        freq = dict()
-        # for key in pad_well_list:
-        #     p_zab[key] = np.zeros(self.N)
-        #     p_intake[key] = np.zeros(self.N)
-        #     p_head[key] = np.zeros(self.N)
-        #     q_well[key] = np.zeros(self.N)
-
-        cols = ['juncType', 'padNum', 'wellNum', 'zaboy_pressure','input_pressure', 'buffer_pressure', 'debit', 'frequency']
-        dfs = []
-        for i in range(self.N):
-            df = self.gimme_original_df(i)
-            df = df[cols]
-            df['N'] = i
-            dfs += [df]
-        fact_df = pd.concat(dfs)
-        for pad in pad_wells_dict:
-            pad_df = fact_df[fact_df.padNum == pad]
-            wells = pad_wells_dict[pad]
-            for well in wells:
-                df = pad_df[pad_df.wellNum == well]
-                df = df.sort_values(by=['N'])
-                p_zab[(pad, well)] = df.zaboy_pressure.values
-                p_intake[(pad, well)] = df.input_pressure.values
-                p_head[(pad, well)] = df.buffer_pressure.values
-                q_well[(pad, well)] = df.debit.values
-                freq[(pad, well)] = df.frequency.values
-
-        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well, freq=freq)
-
-    def grab_results(self):
-        pad_wells_dict = self.gimme_wells()
-        p_zab = dict()
-        p_intake = dict()
-        p_head = dict()
-        q_well = dict()
-        for pad in pad_wells_dict:
-            wells = pad_wells_dict[pad]
-            for well in wells:
-                key = (pad, well)
-                zab_name = f"PAD_{pad}_WELL_{well}_zaboi"
-                pump_name = f"PAD_{pad}_WELL_{well}_pump_intake"
-                head_name = f"PAD_{pad}_WELL_{well}_wellhead"
-                p_zab[key] = np.zeros(self.N)
-                p_intake[key] = np.zeros(self.N)
-                p_head[key] = np.zeros(self.N)
-                q_well[key] = np.zeros(self.N)
-
-                for i in range(self.N):
-                    solver = self.gimme_solver(i)
-                    G = solver.graph
-                    p_zab[key][i] = G.nodes[zab_name]['obj'].result['P_bar']
-                    p_intake[key][i] = G.nodes[pump_name]['obj'].result['P_bar']
-                    p_head[key][i] = G.nodes[head_name]['obj'].result['P_bar']
-                    obj = G[zab_name][pump_name]['obj']
-                    q_well[key][i] = 86400 * obj.result['x'] / obj.result['liquid_density']
-        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well)
-
-    def solve_em_all(self):
-        for i in range(self.N):
-            solver = self.gimme_solver(i)
-            solver.solve(threshold=0.25)
-            print(i, solver.op_result.success, solver.op_result.fun)
-
-    def plot_fact_and_results(self, keys_to_plot=('head', 'intake', 'bottom', 'debit'), wells=(), pads=()):
-        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_title(keys_to_plot)
-        ax.set_xlabel('fact')
-        ax.set_ylabel('result')
-        colors = plt.get_cmap('tab20c').colors
-        colors = list(colors) * 3
-        random.shuffle(colors)
-        for i, (pad, well) in enumerate(self.pad_well_list):
-            alpha = 0.2
-            if well in wells or pad in pads:
-                alpha = 0.8
-            if 'head' in keys_to_plot:
-                ax.plot(self.fact['p_head'][(pad, well)], self.result['p_head'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
-            if 'intake' in keys_to_plot:
-                ax.plot(self.fact['p_intake'][(pad, well)], self.result['p_intake'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
-            if 'bottom' in keys_to_plot:
-                ax.plot(self.fact['p_zab'][(pad, well)], self.result['p_zab'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
-            if 'debit' in keys_to_plot:
-                ax.plot(self.fact['q_well'][(pad, well)], self.result['q_well'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
-
-        plt.show()
-
-    def calc_well_score(self, pad, well):
-        debit_scale = 150
-        head_scale = 20
-        intake_scale = 50
-        bottom_scale = 80
-
-        score = 0
-        score += abs(self.fact['p_head'][(pad, well)] - self.result['p_head'][(pad, well)]) / head_scale
-        score += abs(self.fact['p_intake'][(pad, well)] - self.result['p_intake'][(pad, well)]) / intake_scale
-        score += abs(self.fact['p_zab'][(pad, well)] - self.result['p_zab'][(pad, well)]) / bottom_scale
-        score += abs(self.fact['q_well'][(pad, well)] - self.result['q_well'][(pad, well)])  / debit_scale
-        return score
-
-
-    def prefit_all(self):
-        rez = []
-        self.gimme_wells()
-        pad_well_list = self.pad_well_list
-        for it, (pad, well) in enumerate(pad_well_list):
-            if not (well, pad) in self.bad_wells:
-                continue
-            # if not (well, pad) == (567, 39):
-            #     continue
-            G0 = self.gimme_graph(0)
-            nodes = [f'PAD_{pad}_WELL_{well}']
-            nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
-            nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
-            nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
-            nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
-            well_G, _ = cut_single_well_subgraph(G0, pad, well, nodes)
-            solver = HE2_Solver(well_G)
-            pump_obj = well_G[nodes[2]][nodes[3]]['obj']
-            plast_obj = well_G[nodes[0]][nodes[1]]['obj']
-            bounds = ((0.1, 3 * plast_obj.Productivity), (0, 1.2))
-            path = []
-            def target_fit(x):
-                nonlocal pump_obj, plast_obj, solver, well_G, pad, well, nodes, bounds, path
-                path += [x]
-                productivity = x[0]
-                plast_obj.Productivity = productivity
-                pump_keff = x[1]
-                pump_obj.change_stages_ratio(pump_keff)
-                score = self.score_well(solver, well_G, pad, well, nodes)
-                return score
-
-            x0 = np.array([plast_obj.Productivity, 1])
-            target_fit(x0)
-            well_res_before = self.last_well_result.copy()
-
-            xs = np.linspace(start=bounds[0][0], stop=bounds[0][1], num=15)
-            ys = np.linspace(start=bounds[1][0], stop=bounds[1][1], num=15)
-            zs = np.zeros((len(xs), len(ys)))
-
-            for i, x in enumerate(xs):
-                for j, y in enumerate(ys):
-                    zs[i, j] = target_fit(np.array([x, y]))
-
-            i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
-            x0 = np.array([xs[i], ys[j]])
-            op_result = scop.minimize(target_fit, x0)
-            best_x = op_result.x
-            target_fit(best_x)
-            well_res_after = self.last_well_result.copy()
-
-            zs[zs==100500] = -1
-            self.plot_single_well_chart(pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path)
-            rez += [(well, pad, best_x, op_result.fun)]
-            break
-        return rez
-
-
-
-    def score_well(self, solver, well_G, pad, well, nodes):
-        # debit_scale, head_scale, intake_scale, bottom_scale = 150, 20, 50, 80
-        debit_scale, head_scale, intake_scale, bottom_scale = 5, 20, 30, 100
-
-        rez_p_i = np.ones(self.N) * 100500
-        rez_p_b = np.ones(self.N) * 100500
-        rez_q = np.ones(self.N) * 100500
-
-        q0 = self.fact['q_well'][(pad, well)][0]
-        known_Q = {nodes[0]: 900 * q0 / 86400}
-        solver.set_known_Q(known_Q)
-        fact_phs = self.fact['p_head'][(pad, well)]
-        pump_obj = well_G[nodes[2]][nodes[3]]['obj']
-        freqs = self.fact['freq'][(pad, well)]
-        ol_freqs = self.outlayers['freq'][(pad, well)]
-        freq = 50
-        for i in range(self.N):
-            if not ol_freqs[i]:
-                freq = freqs[i]
-            pump_obj.changeFrequency(freq) # Set last non-outlayer frequency
-
-            well_G.nodes[nodes[-1]]['obj'].value = fact_phs[i]
-            if (pad, well, i) in self.initial_x:
-                solver.initial_edges_x = self.initial_x[(pad, well, i)]
-
-            solver.solve(mix_fluids=False, threshold=0.2, it_limit=30)
-            self.total_target_cnt += solver.op_result.nfev
-            if not solver.op_result.success:
-                self.not_solved += 1
-                return 100500
-                # continue
-            self.initial_x[(pad, well, i)] = solver.edges_x.copy()
-
-            rez_p_i[i] = well_G.nodes[nodes[2]]['obj'].result['P_bar']
-            rez_p_b[i] = well_G.nodes[nodes[1]]['obj'].result['P_bar']
-            rez = well_G[nodes[1]][nodes[2]]['obj'].result
-            rez_q[i] = 86400 * rez['x'] / rez['liquid_density']
-
-        self.last_well_result['p_zab'] = rez_p_b
-        self.last_well_result['p_intake'] = rez_p_i
-        self.last_well_result['q_well'] = rez_q
-
-        ol_intake = self.outlayers['p_intake'][(pad, well)]
-        ip_error = self.fact['p_intake'][(pad, well)] - rez_p_i
-        ip_error = np.linalg.norm(ip_error[~ol_intake])
-        score = ip_error / intake_scale
-
-        ol_debit = self.outlayers['q_well'][(pad, well)]
-        q_error = self.fact['q_well'][(pad, well)] - rez_q
-        q_error = np.linalg.norm(q_error[~ol_debit])
-        score += q_error / debit_scale
-
-        score += np.linalg.norm(self.fact['p_zab'][(pad, well)] - rez_p_b) / bottom_scale
-        return score
-
-
-    def plot_single_well_chart(self, pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path):
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_title(f'Pad {pad} well {well} y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
-        # Xs, Ys = np.meshgrid(xs, ys)
-        # Zs = zs.reshape(len(ys), len(xs))
-        # im = plt.pcolormesh(Xs, Ys, Zs, cmap='plasma')
-        # fig.colorbar(im, ax=ax, fraction=0.05, shrink=0.5)
-
-        xs = np.round(xs, 3)
-        ys = np.round(ys, 3)
-        im, cbar = heatmap(zs, ys, xs, ax=ax, cmap="plasma")
-
-        # i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
-        # ax.plot(xs[i], ys[j], color='w', marker='X', markersize=15)
-
-        ax.set_xlabel('prod')
-        ax.set_ylabel('pump keff')
-        plt.show()
-
-        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
-        ax = fig.add_subplot(1, 1, 1)
-        WC = well_G.nodes[nodes[0]]['obj'].fluid.oil_params.volumewater_percent
-        ax.set_title(f'Pad {pad} well {well} WC {WC}% y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
-        # ax.set_xlabel('time')
-        ax.set_ylabel('P, Q')
-        colors = plt.get_cmap('Set2').colors
-
-        xs = np.array(range(self.N))
-        kwargs = dict(linewidth=1, alpha=0.9)
-        mask = ~self.outlayers['p_intake'][(pad, well)]
-        hndl1 = ax.plot(xs[mask], self.fact['p_intake'][(pad, well)][mask], color=colors[0], label='Fact: intake', **kwargs)
-        hndl2 = ax.plot(xs, self.fact['p_zab'][(pad, well)], color=colors[1], label='Fact: zaboi', **kwargs)
-
-        mask = ~self.outlayers['q_well'][(pad, well)]
-        hndl3 = ax.plot(xs[mask], self.fact['q_well'][(pad, well)][mask], color=colors[2], label='Fact: debit', **kwargs)
-
-        kwargs = dict(linewidth=1, alpha=0.6)
-        mask = ~self.outlayers['freq'][(pad, well)]
-        hndl6 = ax.plot(xs[mask], self.fact['freq'][(pad, well)][mask], color=colors[4], label='Fact: freq', **kwargs)
-
-        # kwargs = dict(linewidth=1, alpha=0.9, linestyle=':')
-        # hndl4 = ax.plot(xs, well_res_before['p_intake'], color=colors[0], label='Before: intake', **kwargs)
-        # ax.plot(xs, well_res_before['p_zab'], color=colors[1], **kwargs)
-        # ax.plot(xs, well_res_before['q_well'], color=colors[2], **kwargs)
-
-        kwargs = dict(linewidth=1, alpha=0.9, linestyle='--')
-        hndl5 = ax.plot(xs, well_res_after['p_intake'], color=colors[0], label='Predict: intake', **kwargs)
-        ax.plot(xs, well_res_after['p_zab'], color=colors[1], **kwargs)
-        ax.plot(xs, well_res_after['q_well'], color=colors[2], **kwargs)
-
-        # handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl4 + hndl5
-        handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl5
-        ax.legend(handles=handles, loc='lower right')
-        plt.show()
-
-
-    def fill_outlayers(self):
-        ol_freq = dict()
-        ol_intake = dict()
-        ol_debit = dict()
-        for pad, well in self.pad_well_list:
-            freq = self.fact['freq'][(pad, well)]
-            mask1 = freq > 60
-            mask2 = freq < 40
-            mask3 = np.isnan(freq)
-            mask = mask1 | mask2 | mask3
-            ol_freq[(pad, well)] = mask
-
-            intake = self.fact['p_intake'][(pad, well)]
-            mask1 = intake > 70
-            mask2 = intake < 20
-            mask3 = np.isnan(intake)
-            mask = mask1 | mask2 | mask3
-            ol_intake[(pad, well)] = mask
-
-            debit = self.fact['q_well'][(pad, well)]
-            mask1 = debit > 1000
-            mask2 = debit < 0.5
-            mask3 = np.isnan(debit)
-            mask = mask1 | mask2 | mask3
-            ol_debit[(pad, well)] = mask
-
-        self.outlayers['freq'] = ol_freq
-        self.outlayers['p_intake'] = ol_intake
-        self.outlayers['q_well'] = ol_debit
-
-
-    def greed_optimization(self):
-        random.seed = 42
-        self.gimme_wells()
-        order = []
-        for pad, well in self.pad_well_list:
-            order += [(pad, well, 'K_prod'), (pad, well, 'K_pump')]
-        random.shuffle(order)
-        order = order * 10
-        score = 100500100500
-        for pad, well, param in order:
-            pass
-
-
-
-
-
+from GraphEdges.HE2_Pipe import HE2_OilPipe
+import networkx as nx
+from datetime import datetime
+from Tools.HE2_tools import check_solution
 
 class HE2_PMNetwork_Model():
     def __init__(self, input_df, method=None, use_bounds=False, fit_version=None):
@@ -850,6 +301,729 @@ class HE2_PMNetwork_Model():
         meth = fits.get(self.fit_version, self.fit_v0)
         return meth()
 
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (N, M).
+    row_labels
+        A list or array of length N with the labels for the rows.
+    col_labels
+        A list or array of length M with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_yticks(np.arange(data.shape[0]))
+    # ... and label them with the respective list entries.
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False,
+                   labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+             rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    # ax.spines[:].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+class HE2_OilGatheringNetwork_Model():
+    def __init__(self, folder):
+        # tree = os.walk(folder)
+        # for fld, subfolders, files in tree:
+        #     print(fld, subfolders, files)
+        self.folder = folder
+        self.solvers = dict()
+        self.calc_dfs = dict()
+        self.original_dfs = dict()
+        self.graphs = dict()
+        self.pad_well_list = None
+        self.pad_wells_dict = None
+        self.fact = dict()
+        self.outlayers = dict()
+        self.result = dict()
+        self.last_well_result = dict()
+        self.well_result_before = dict()
+        self.well_result_after = dict()
+        self.initial_x = dict()
+        self.total_target_cnt, self.not_solved = 0, 0
+        self.bad_wells = []
+        self.prefit_params = dict()
+        self.N = 5
+        self.original_diams = dict()
+        self.last_it_count = 0
+        self.ignore_watercut = False
+
+
+    def gimme_original_df(self, i):
+        if i in self.original_dfs:
+            return self.original_dfs[i]
+        folder = self.folder
+        filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
+        df = pd.read_csv(filename)
+        self.original_dfs[i] = df
+        return df
+
+    def gimme_calc_df(self, i):
+        if i in self.calc_dfs:
+            return self.calc_dfs[i]
+        folder = self.folder
+        calc_df_filename = f'{folder}data/oilgathering_fit/calc_df_{i}.csv'
+        try:
+            calc_df = pd.read_csv(calc_df_filename)
+            self.calc_dfs[i] = calc_df
+            return calc_df
+        except:
+            pass
+        original_df = self.gimme_original_df(i)
+        calc_df = make_calc_df(original_df, self.folder + 'CommonData/')
+        calc_df.to_csv(calc_df_filename)
+        self.calc_dfs[i] = calc_df
+        return calc_df
+
+    def gimme_graph(self, i):
+        if i in self.graphs:
+            return self.graphs[i]
+        df = self.gimme_original_df(i)
+        calc_df = self.gimme_calc_df(i)
+        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=self.ignore_watercut)
+        self.graphs[i] = G
+        return self.graphs[i]
+
+    def gimme_solver(self, i):
+        if i in self.solvers:
+            return self.solvers[i]
+
+        G = self.gimme_graph(i)
+        solver = HE2_Solver(G)
+        self.solvers[i] = solver
+        return solver
+
+    def gimme_wells(self):
+        if self.pad_wells_dict:
+            return self.pad_wells_dict
+        dfs = []
+        for i in range(self.N):
+            df = self.gimme_original_df(i)
+            df = df[['juncType', 'padNum', 'wellNum']]
+            df = df[df.juncType == 'oilwell']
+            dfs += [df]
+        df = pd.concat(dfs).drop_duplicates()[['padNum', 'wellNum']]
+        raw_pw_list = list(df.to_records(index=False))
+        self.pad_well_list = []
+        for pad, well in raw_pw_list:
+            self.pad_well_list += [(int(pad), int(well))]
+        pad_wells_dict = dict()
+        for (pad, well) in self.pad_well_list:
+            wlist = pad_wells_dict.get(pad, [])
+            wlist += [int(well)]
+            pad_wells_dict[int(pad)] = wlist
+        self.pad_wells_dict = pad_wells_dict
+        return self.pad_wells_dict
+
+    def grab_fact(self):
+        pad_wells_dict = self.gimme_wells()
+        p_zab = dict()
+        p_intake = dict()
+        p_head = dict()
+        q_well = dict()
+        freq = dict()
+
+        cols = ['juncType', 'padNum', 'wellNum', 'zaboy_pressure','input_pressure', 'buffer_pressure', 'debit', 'frequency']
+        dfs = []
+        for i in range(self.N):
+            df = self.gimme_original_df(i)
+            df = df[cols]
+            df['N'] = i
+            dfs += [df]
+        fact_df = pd.concat(dfs)
+        for pad in pad_wells_dict:
+            pad_df = fact_df[fact_df.padNum == pad]
+            wells = pad_wells_dict[pad]
+            for well in wells:
+                df = pad_df[pad_df.wellNum == well]
+                df = df.sort_values(by=['N'])
+                p_zab[(pad, well)] = df.zaboy_pressure.values
+                p_intake[(pad, well)] = df.input_pressure.values
+                p_head[(pad, well)] = df.buffer_pressure.values
+                q_well[(pad, well)] = df.debit.values
+                freq[(pad, well)] = df.frequency.values
+
+        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well, freq=freq)
+
+    def grab_results(self):
+        pad_wells_dict = self.gimme_wells()
+        p_zab = dict()
+        p_intake = dict()
+        p_head = dict()
+        q_well = dict()
+        for pad in pad_wells_dict:
+            wells = pad_wells_dict[pad]
+            for well in wells:
+                key = (pad, well)
+                zab_name = f"PAD_{pad}_WELL_{well}_zaboi"
+                pump_name = f"PAD_{pad}_WELL_{well}_pump_intake"
+                head_name = f"PAD_{pad}_WELL_{well}_wellhead"
+                p_zab[key] = np.zeros(self.N)
+                p_intake[key] = np.zeros(self.N)
+                p_head[key] = np.zeros(self.N)
+                q_well[key] = np.zeros(self.N)
+
+                for i in range(self.N):
+                    solver = self.gimme_solver(i)
+                    G = solver.graph
+                    p_zab[key][i] = G.nodes[zab_name]['obj'].result['P_bar']
+                    p_intake[key][i] = G.nodes[pump_name]['obj'].result['P_bar']
+                    p_head[key][i] = G.nodes[head_name]['obj'].result['P_bar']
+                    obj = G[zab_name][pump_name]['obj']
+                    q_well[key][i] = 86400 * obj.result['x'] / obj.result['liquid_density']
+        return dict(p_zab=p_zab, p_intake=p_intake, p_head=p_head, q_well=q_well)
+
+    def solve_em_all(self):
+        self.last_it_count = 0
+        success = np.zeros(self.N)
+        for i in range(self.N):
+            solver = self.gimme_solver(i)
+            if (0, 0, i) in self.initial_x:
+                solver.initial_edges_x = self.initial_x[(0, 0, i)]
+            solver.solve(threshold=0.25, mix_fluids=False)
+            validity = check_solution(solver.schema)
+            print(validity)
+            success[i] = solver.op_result.success
+            self.last_it_count += solver.op_result.nfev
+            self.initial_x[(0, 0, i)] = solver.edges_x.copy()
+        return success
+
+    def plot_fact_and_results(self, keys_to_plot=('head', 'intake', 'bottom', 'debit'), wells=(), pads=()):
+        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(keys_to_plot)
+        ax.set_xlabel('fact')
+        ax.set_ylabel('result')
+        colors = plt.get_cmap('tab20c').colors
+        colors = list(colors) * 3
+        random.shuffle(colors)
+        for i, (pad, well) in enumerate(self.pad_well_list):
+            alpha = 0.2
+            if well in wells or pad in pads:
+                alpha = 0.8
+            if 'head' in keys_to_plot:
+                ax.plot(self.fact['p_head'][(pad, well)], self.result['p_head'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'intake' in keys_to_plot:
+                ax.plot(self.fact['p_intake'][(pad, well)], self.result['p_intake'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'bottom' in keys_to_plot:
+                ax.plot(self.fact['p_zab'][(pad, well)], self.result['p_zab'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+            if 'debit' in keys_to_plot:
+                ax.plot(self.fact['q_well'][(pad, well)], self.result['q_well'][(pad, well)], color=colors[i], linewidth=1, alpha=alpha)
+
+        plt.show()
+
+    def calc_well_score(self, pad, well):
+        debit_scale = 150
+        head_scale = 20
+        intake_scale = 50
+        bottom_scale = 80
+
+        score = 0
+        score += abs(self.fact['p_head'][(pad, well)] - self.result['p_head'][(pad, well)]) / head_scale
+        score += abs(self.fact['p_intake'][(pad, well)] - self.result['p_intake'][(pad, well)]) / intake_scale
+        score += abs(self.fact['p_zab'][(pad, well)] - self.result['p_zab'][(pad, well)]) / bottom_scale
+        score += abs(self.fact['q_well'][(pad, well)] - self.result['q_well'][(pad, well)])  / debit_scale
+        return score
+
+    def calc_well_score2(self, pad, well, result):
+        weights = dict(p_head=1, p_intake=1, p_zab=1, q_well=1)
+
+        ol_intake = self.outlayers['p_intake'][(pad, well)]
+        # ol_bottom = self.outlayers['p_zab'][(pad, well)]
+        ol_debit = self.outlayers['q_well'][(pad, well)]
+        ol_head = self.outlayers['p_head'][(pad, well)]
+
+        ip_error = self.fact['p_intake'][(pad, well)] - result['p_intake'][(pad, well)]
+        ip_error = np.linalg.norm(ip_error[~ol_intake])
+        score = ip_error * weights['p_intake']
+
+        # bp_error = self.fact['p_zab'][(pad, well)] - result['p_zab'][(pad, well)]
+        # bp_error = np.linalg.norm(bp_error[~ol_bottom])
+        # score += bp_error * weights['p_zab']
+
+        hp_error = self.fact['p_head'][(pad, well)] - result['p_head'][(pad, well)]
+        hp_error = np.linalg.norm(hp_error[~ol_head])
+        score += hp_error * weights['p_head']
+
+        q_error = self.fact['q_well'][(pad, well)] - result['q_well'][(pad, well)]
+        q_error = np.linalg.norm(q_error[~ol_debit])
+        score += q_error * weights['q_well']
+
+        return score
+
+    def prefit_all(self):
+        rez = []
+        self.gimme_wells()
+        pad_well_list = self.pad_well_list
+        for it, (pad, well) in enumerate(pad_well_list):
+            if (well, pad) in self.bad_wells:
+                continue
+            # if not (well, pad) == (567, 39):
+            #     continue
+            G0 = self.gimme_graph(0)
+            nodes = [f'PAD_{pad}_WELL_{well}']
+            nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
+            nodes += [f'PAD_{pad}_WELL_{well}_wellhead']
+            well_G, _ = cut_single_well_subgraph(G0, pad, well, nodes)
+            solver = HE2_Solver(well_G)
+            pump_obj = well_G[nodes[2]][nodes[3]]['obj']
+            plast_obj = well_G[nodes[0]][nodes[1]]['obj']
+            bounds = ((0.1, 3 * plast_obj.Productivity), (0, 1.2))
+            path = []
+            def target_fit(x):
+                nonlocal pump_obj, plast_obj, solver, well_G, pad, well, nodes, bounds, path
+                path += [x]
+                productivity = x[0]
+                plast_obj.Productivity = productivity
+                pump_keff = x[1]
+                pump_obj.change_stages_ratio(pump_keff)
+                score = self.score_well(solver, well_G, pad, well, nodes)
+                # print(x, score)
+                return score
+
+            x0 = np.array([plast_obj.Productivity, 1])
+            target_fit(x0)
+            well_res_before = self.last_well_result.copy()
+
+            xs = np.linspace(start=bounds[0][0], stop=bounds[0][1], num=15)
+            ys = np.linspace(start=bounds[1][0], stop=bounds[1][1], num=15)
+            zs = np.zeros((len(xs), len(ys)))
+
+            for i, x in enumerate(xs):
+                for j, y in enumerate(ys):
+                    zs[i, j] = target_fit(np.array([x, y]))
+
+            i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
+            x0 = np.array([xs[i], ys[j]])
+            op_result = scop.minimize(target_fit, x0)
+            best_x = op_result.x
+            target_fit(best_x)
+            well_res_after = self.last_well_result.copy()
+
+            zs[zs==100500] = -1
+            self.plot_single_well_chart(pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path)
+            rez += [(well, pad, best_x, op_result.fun)]
+            print(well, pad, best_x, op_result.fun)
+            pass
+
+        return rez
+
+
+
+    def score_well(self, solver, well_G, pad, well, nodes):
+        weights = dict(p_head=1, p_intake=1, p_zab=1, q_well=1)
+
+        rez_p_i = np.ones(self.N) * 100500
+        rez_p_b = np.ones(self.N) * 100500
+        rez_q = np.ones(self.N) * 100500
+
+        q0 = self.fact['q_well'][(pad, well)][0]
+        known_Q = {nodes[0]: 900 * q0 / 86400}
+        solver.set_known_Q(known_Q)
+        fact_phs = self.fact['p_head'][(pad, well)]
+        pump_obj = well_G[nodes[2]][nodes[3]]['obj']
+        freqs = self.fact['freq'][(pad, well)]
+        ol_freqs = self.outlayers['freq'][(pad, well)]
+        freq = 50
+        for i in range(self.N):
+            if not ol_freqs[i]:
+                freq = freqs[i]
+            pump_obj.changeFrequency(freq) # Set last non-outlayer frequency
+
+            well_G.nodes[nodes[-1]]['obj'].value = fact_phs[i]
+            if (pad, well, i) in self.initial_x:
+                solver.initial_edges_x = self.initial_x[(pad, well, i)]
+
+            solver.solve(mix_fluids=False, threshold=0.2, it_limit=30)
+            self.total_target_cnt += solver.op_result.nfev
+            if not solver.op_result.success:
+                self.not_solved += 1
+                return 100500
+                # continue
+            self.initial_x[(pad, well, i)] = solver.edges_x.copy()
+
+            rez_p_i[i] = well_G.nodes[nodes[2]]['obj'].result['P_bar']
+            rez_p_b[i] = well_G.nodes[nodes[1]]['obj'].result['P_bar']
+            rez = well_G[nodes[1]][nodes[2]]['obj'].result
+            rez_q[i] = 86400 * rez['x'] / rez['liquid_density']
+
+        self.last_well_result['p_zab'] = rez_p_b
+        self.last_well_result['p_intake'] = rez_p_i
+        self.last_well_result['q_well'] = rez_q
+
+        ol_intake = self.outlayers['p_intake'][(pad, well)]
+        ip_error = self.fact['p_intake'][(pad, well)] - rez_p_i
+        ip_error = np.linalg.norm(ip_error[~ol_intake])
+        score = ip_error * weights['p_intake']
+
+        ol_debit = self.outlayers['q_well'][(pad, well)]
+        q_error = self.fact['q_well'][(pad, well)] - rez_q
+        q_error = np.linalg.norm(q_error[~ol_debit])
+        score += q_error * weights['q_well']
+
+        score += np.linalg.norm(self.fact['p_zab'][(pad, well)] - rez_p_b) * weights['p_zab']
+        return score
+
+
+    def plot_single_well_chart(self, pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path):
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_title(f'Pad {pad} well {well} y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
+        # Xs, Ys = np.meshgrid(xs, ys)
+        # Zs = zs.reshape(len(ys), len(xs))
+        # im = plt.pcolormesh(Xs, Ys, Zs, cmap='plasma')
+        # fig.colorbar(im, ax=ax, fraction=0.05, shrink=0.5)
+
+        xs = np.round(xs, 3)
+        ys = np.round(ys, 3)
+        im, cbar = heatmap(zs, ys, xs, ax=ax, cmap="plasma")
+
+        # i, j = np.unravel_index(np.argmin(zs, axis=None), zs.shape)
+        # ax.plot(xs[i], ys[j], color='w', marker='X', markersize=15)
+
+        ax.set_xlabel('prod')
+        ax.set_ylabel('pump keff')
+        plt.show()
+
+        fig = plt.figure(constrained_layout=True, figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+        WC = well_G.nodes[nodes[0]]['obj'].fluid.oil_params.volumewater_percent
+        ax.set_title(f'Pad {pad} well {well} WC {WC}% y {op_result.fun:.3f}, prod {op_result.x[0]:.3f}  pump_keff {op_result.x[1]:.3f}')
+        # ax.set_xlabel('time')
+        ax.set_ylabel('P, Q')
+        colors = plt.get_cmap('Set2').colors
+
+        xs = np.array(range(self.N))
+        kwargs = dict(linewidth=1, alpha=0.9)
+        mask = ~self.outlayers['p_intake'][(pad, well)]
+        hndl1 = ax.plot(xs[mask], self.fact['p_intake'][(pad, well)][mask], color=colors[0], label='Fact: intake', **kwargs)
+        hndl2 = ax.plot(xs, self.fact['p_zab'][(pad, well)], color=colors[1], label='Fact: zaboi', **kwargs)
+
+        mask = ~self.outlayers['q_well'][(pad, well)]
+        hndl3 = ax.plot(xs[mask], self.fact['q_well'][(pad, well)][mask], color=colors[2], label='Fact: debit', **kwargs)
+
+        kwargs = dict(linewidth=1, alpha=0.6)
+        mask = ~self.outlayers['freq'][(pad, well)]
+        hndl6 = ax.plot(xs[mask], self.fact['freq'][(pad, well)][mask], color=colors[4], label='Fact: freq', **kwargs)
+
+        # kwargs = dict(linewidth=1, alpha=0.9, linestyle=':')
+        # hndl4 = ax.plot(xs, well_res_before['p_intake'], color=colors[0], label='Before: intake', **kwargs)
+        # ax.plot(xs, well_res_before['p_zab'], color=colors[1], **kwargs)
+        # ax.plot(xs, well_res_before['q_well'], color=colors[2], **kwargs)
+
+        kwargs = dict(linewidth=1, alpha=0.9, linestyle='--')
+        hndl5 = ax.plot(xs, well_res_after['p_intake'], color=colors[0], label='Predict: intake', **kwargs)
+        ax.plot(xs, well_res_after['p_zab'], color=colors[1], **kwargs)
+        ax.plot(xs, well_res_after['q_well'], color=colors[2], **kwargs)
+
+        # handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl4 + hndl5
+        handles = hndl1 + hndl2 + hndl3 + hndl6 + hndl5
+        ax.legend(handles=handles, loc='upper center')
+        plt.show()
+
+    def plot_fit_log(self, fit_log=None, filename=''):
+        if not fit_log:
+            if not filename:
+                return
+            f = open(filename)
+            fit_log = []
+            for s in f:
+                sss = s.split(' ')
+                record = tuple(map(float, sss))
+                fit_log += [record]
+
+
+        N = len(fit_log)
+        x, y1, y2, y3 = np.zeros(N), np.zeros(N), np.zeros(N), np.zeros(N)
+        prev, it_num = 0, 0
+        for i, record in enumerate(fit_log):
+            it_num, seconds, it_count, best_y = record
+            x[i] = seconds
+            y1[i] = seconds - prev
+            prev = seconds
+            y2[i] = it_count / self.N
+            y3[i] = best_y
+
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(1, 1, 1)
+
+        kwargs = dict(linewidth=0.1, alpha=0.99)
+        hndl1 = ax.plot(x, y1, label='time, sec', **kwargs)
+        hndl2 = ax.plot(x, y2, label='solver avg iterations', **kwargs)
+        hndl3 = ax.plot(x, y3, label='Y, parrots')
+        handles = hndl1 + hndl2 + hndl3
+        ax.legend(handles=handles, loc='center left')
+        ax.set_ylim(0, 45)
+        ax.set_title(f'After {int(it_num)} iterations')
+        plt.show()
+
+
+    def fill_outlayers(self):
+        ol_freq = dict()
+        ol_intake = dict()
+        ol_debit = dict()
+        ol_head = dict()
+        false_mask = np.zeros(self.N) == np.ones(self.N)
+        for pad, well in self.pad_well_list:
+            if well in self.bad_wells:
+                ol_freq[(pad, well)] = false_mask
+                ol_intake[(pad, well)] = false_mask
+                ol_debit[(pad, well)] = false_mask
+                ol_head[(pad, well)] = false_mask
+                continue
+
+            freq = self.fact['freq'][(pad, well)]
+            mask1 = freq > 60
+            mask2 = freq < 40
+            mask3 = np.isnan(freq)
+            mask = mask1 | mask2 | mask3
+            ol_freq[(pad, well)] = mask
+
+            intake = self.fact['p_intake'][(pad, well)]
+            mask1 = intake > 70
+            mask2 = intake < 20
+            mask3 = np.isnan(intake)
+            mask = mask1 | mask2 | mask3
+            ol_intake[(pad, well)] = mask
+
+            debit = self.fact['q_well'][(pad, well)]
+            mask1 = debit > 1000
+            mask2 = debit < 0.5
+            mask3 = np.isnan(debit)
+            mask = mask1 | mask2 | mask3
+            ol_debit[(pad, well)] = mask
+
+            if pad == 39:
+                ol_head[(pad, well)] = false_mask
+            else:
+                ol_head[(pad, well)] = ~false_mask
+
+        self.outlayers['freq'] = ol_freq
+        self.outlayers['p_intake'] = ol_intake
+        self.outlayers['q_well'] = ol_debit
+        self.outlayers['p_head'] = ol_head
+
+
+    def gimme_prefit_params(self):
+        if self.prefit_params:
+           return self.prefit_params
+
+        prefit = dict()
+        folder = self.folder
+        filename = f'{folder}data/oilgathering_fit/prefit.csv'
+        df = pd.read_csv(filename)
+        lst = list(df.to_records(index=False))
+        for well, pad, prod, stages in lst:
+            prefit[(pad, well)] = dict(K_prod=prod, K_pump=stages)
+        self.prefit_params = prefit
+
+        return self.prefit_params
+
+    def save_original_diams(self):
+        solver = self.gimme_solver(0)
+        G = solver.graph
+        for edge in G.edges:
+            u, v = edge
+            if 'PAD' in u or 'PAD' in v:
+                continue
+            obj = G[u][v]['obj']
+            if not isinstance(obj, HE2_OilPipe):
+                continue
+            ds = []
+            for seg in obj.segments:
+                ds += [seg.inner_diam_m]
+                self.original_diams[edge] = ds
+        pass
+
+
+    def apply_params(self, params):
+        self.gimme_wells()
+
+        if (0, 0) in params:
+            network_params = params[(0, 0)]
+            diam_keff = network_params['diam_keff']
+            for (u, v) in self.original_diams:
+                for i in range(self.N):
+                    solver = self.gimme_solver(i)
+                    G = solver.graph
+                    obj = G[u][v]['obj']
+                    ds = self.original_diams[(u, v)]
+                    for seg, d in zip(obj.segments, ds):
+                        seg.inner_diam_m = d * diam_keff
+
+        pad_well_list = self.pad_well_list
+        for (pad, well) in pad_well_list:
+            if not (pad, well) in params:
+                continue
+
+            prms = params[(pad, well)]
+            nodes = [f'PAD_{pad}_WELL_{well}']
+            nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_intake']
+            nodes += [f'PAD_{pad}_WELL_{well}_pump_outlet']
+
+            ol_freq = self.outlayers['freq'][(pad, well)]
+
+            for i in range(self.N):
+                solver = self.gimme_solver(i)
+                G = solver.graph
+                pump_obj = G[nodes[2]][nodes[3]]['obj']
+                plast_obj = G[nodes[0]][nodes[1]]['obj']
+                pump_obj.change_stages_ratio(prms['K_pump'])
+                plast_obj.Productivity = prms['K_prod']
+                if ol_freq[i]:
+                    pump_obj.changeFrequency(prms['Freq_0'])
+
+    def dump_x(self, x, fitlog):
+        f = open('x.txt', 'w')
+        for key in x:
+            print(*key, x[key], file=f)
+        f.close()
+        f = open('fitlog.txt', 'w')
+        for record in fitlog:
+            print(*record, file=f)
+        f.close()
+        self.plot_fit_log(fitlog)
+
+
+
+    def greed_optimization(self):
+        self.ignore_watercut = False
+        self.N = 5
+        self.gimme_wells()
+        M = len(self.pad_well_list)
+
+        def target(x):
+            if x is not None:
+                self.apply_params(x)
+            success = self.solve_em_all()
+            if not success.all():
+                return 100500
+            results = self.grab_results()
+            score = np.zeros((M, self.N))
+            for i, (pad, well) in enumerate(self.pad_well_list):
+                well_score = self.calc_well_score2(pad, well, results)
+                score[i] = well_score
+            result = np.average(score)
+            return result
+        x = None
+        naive_score = target(x)
+        self.save_original_diams() # Not earlier, just here. Cause solver.graph is None before first solve(). And we prefer solver.graph cause it is DiGraph, not MultiDiGraph
+
+        prefit_params = self.gimme_prefit_params()
+        for key in prefit_params:
+            ol_freq = self.outlayers['freq'][key]
+            if ol_freq.any():
+                prefit_params[key]['Freq_0'] = 50
+        prefit_params[(0, 0)] = dict(diam_keff=0.85)
+
+        x = prefit_params
+        prefit_score = target(x)
+
+        print(naive_score, prefit_score)
+        return
+
+        random.seed = 42
+        order = [(0, 0, 'diam_keff')] * 2
+        for pad, well in self.pad_well_list:
+            order += [(pad, well, 'K_prod'), (pad, well, 'K_pump')]
+            if 'Freq_0' in prefit_params[(pad, well)]:
+                order += [(pad, well, 'Freq_0')]
+
+        orders = []
+        for i in range(10):
+            random.shuffle(order)
+            orders += order * 10
+        order = orders
+
+        need_dump = False
+        step = 0.01
+        x = prefit_params.copy()
+        best_y = prefit_score
+        fitlog = []
+
+        start_time = datetime.now()
+        for i, (pad, well, param) in enumerate(order):
+            if i == 15:
+                break
+            if i%50 == 2:
+                need_dump = True
+            fitlog += [(i, (datetime.now()-start_time).seconds, self.last_it_count, best_y)]
+
+
+            print(f'{i:#4}/{len(order)}  {pad:#2}  {well:#4}   {param:>8}', end=' ')
+            x1 = x.copy()
+            x1[(pad, well)][param] = x1[(pad, well)][param] * (1 + step)
+            y = target(x1)
+            if y >= 100500:
+                print(y)
+
+            if y < best_y:
+                best_y = y
+                x = x1
+                print(f'{best_y:3.7}')
+                if need_dump:
+                    self.dump_x(x, fitlog)
+                    need_dump = False
+                continue
+
+            x2 = x.copy()
+            x2[(pad, well)][param] = x2[(pad, well)][param] * (1 - step)
+            y = target(x2)
+            if y >= 100500:
+                print(y)
+
+            if y < best_y:
+                best_y = y
+                x = x2
+                print(f'{best_y:3.7}')
+                if need_dump:
+                    self.dump_x(x, fitlog)
+                    need_dump = False
+                continue
+            print()
+
 
 bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57)]
 
@@ -857,16 +1031,13 @@ bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
     model.fact = model.grab_fact()
-    model.fill_outlayers()
     model.bad_wells = bad_wells
-    rez = model.prefit_all()
+    model.fill_outlayers()
+    # model.plot_fit_log(filename='fitlog_N5_WC_3700.txt')
+    model.greed_optimization()
+
+    # rez = model.prefit_all()
     # f = open('rez.csv', 'w')
     # for item in rez:
     #     print(item, file=f)
-    # model.solve_em_all()
-    # model.result = model.grab_results()
-    # model.plot_fact_and_results(keys_to_plot=('head'))
-    # model.plot_fact_and_results(keys_to_plot=('intake'))
-    # model.plot_fact_and_results(keys_to_plot=('bottom'))
-    # model.plot_fact_and_results(keys_to_plot=('debit'))
-    # model.calc_well_score(5, 1523)
+
