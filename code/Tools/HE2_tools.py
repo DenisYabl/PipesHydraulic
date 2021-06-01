@@ -1,3 +1,6 @@
+import colorama
+from colorama import Back, Style
+
 from GraphEdges.HE2_Pipe import HE2_WaterPipe
 from GraphEdges.HE2_WellPump import HE2_WellPump
 from GraphEdges.HE2_Plast import HE2_Plast
@@ -8,6 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections import namedtuple
 from Fluids.HE2_Fluid import HE2_BlackOil
+from Tests.Optimization_test import cut_single_well_subgraph
 from Tools.HE2_Logger import check_for_nan, getLogger
 
 logger = getLogger(__name__)
@@ -277,6 +281,7 @@ def evalute_pressures_below_zero(graph, P_threshold_bar = 0):
         P = obj.result['P_bar']
         if P < P_threshold_bar:
             rez += P_threshold_bar - P
+            logger.info(f'node {n}, P={P}')
     return rez
 
 def check_directions(graph):
@@ -288,6 +293,7 @@ def check_directions(graph):
         if isinstance(obj, vrtxs.HE2_Boundary_Vertex) and obj.is_source:
             Q = obj.result['Q']
             if Q < 0:
+                logger.info(f'source node {n}, Q={Q}')
                 violations_flow_sum += abs(Q)
                 violations_count += 1
 
@@ -296,6 +302,7 @@ def check_directions(graph):
         if isinstance(edge_obj, HE2_Plast) or isinstance(edge_obj, HE2_WellPump):
             x = edge_obj.result['x']
             if x < 0:
+                logger.info(f'well edge {u} - {v}, x={x}')
                 violations_flow_sum += abs(x)
                 violations_count += 1
 
@@ -696,3 +703,56 @@ def make_oilupstream_graph_layout(G):
         pos[n] = other_pos[n] * r
 
     return pos
+
+
+def print_wells_pressures(G, wells):
+    colorama.init()
+    table_header = '                                            bottom   intake   outlet  wellhead'
+    print(table_header)
+    for pad_well in wells:
+        l = pad_well.split('_')
+        if len(l) < 4:
+            continue
+        pad, well = l[1], l[3]
+        well_subgraph, well_nodes = cut_single_well_subgraph(G, pad, well)
+        row_header = 'pad ' + f' {pad}'[-2:] + ' well ' + f'  {well}'[-4:] + ', from plast:   '
+        print(row_header, end=' ')
+        for n in well_nodes:
+            P = G.nodes[n]['obj'].result['P_bar']
+            prefix = Back.RED if P <= 1 else Style.RESET_ALL
+            print(prefix + f'{P:8.3f}', end= ' ')
+        print(Style.RESET_ALL + '   up to pad collector')
+
+
+def print_solution(G):
+    colorama.init()
+    table_header = f' {"start":>20} {"P_bar":>7} {"Q kg/s":>8}   {"end":>20} {"P_bar":>7} {"Q kg/s":>8}    {"X kg/s":>7}'
+    print(table_header)
+    for e in G.edges:
+        u, v = e
+        obj = G[u][v]['obj']
+        u_obj = G.nodes[u]['obj']
+        v_obj = G.nodes[v]['obj']
+        x = obj.result['x']
+        p_u = u_obj.result['P_bar']
+        pu_str = f'{p_u:8.3f}'
+        if p_u <= 1:
+            pu_str = Back.RED + pu_str + Style.RESET_ALL
+
+        p_v = v_obj.result['P_bar']
+        pv_str = f'{p_v:8.3f}'
+        if p_v <= 1:
+            pv_str = Back.RED + pv_str + Style.RESET_ALL
+
+        q_u = u_obj.result['Q']
+        q_u_str = ''
+        if abs(q_u) > 1e-5:
+            q_u_str = f"{q_u:8.3f}"
+
+        q_v = v_obj.result['Q']
+        q_v_str = ''
+        if abs(q_v) > 1e-5:
+            q_v_str = f"{q_v:8.3f}"
+
+        row = f' {u:>20} {pu_str:>8} {q_u_str:>8}   {v:>20} {pv_str:>8} {q_v_str:>8}    {x:7.3f}{Style.RESET_ALL}'
+        print(row)
