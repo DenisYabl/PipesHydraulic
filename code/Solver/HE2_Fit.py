@@ -5,12 +5,11 @@ import pandas as pd
 import os
 from Solver.HE2_Solver import HE2_Solver
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset, make_calc_df
-from Tools.HE2_tools import check_solution
+from Tools.HE2_tools import check_solution, print_solution, print_wells_pressures, cut_single_well_subgraph
 import logging
 import GraphNodes.HE2_Vertices as vrtx
 import matplotlib.pyplot as plt
 import random
-from Tests.Optimization_test import cut_single_well_subgraph
 import itertools
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 import networkx as nx
@@ -930,7 +929,7 @@ class HE2_OilGatheringNetwork_Model():
 
     def greed_optimization(self):
         self.ignore_watercut = False
-        self.N = 5
+        self.N = 1
         self.gimme_wells()
         M = len(self.pad_well_list)
 
@@ -962,6 +961,9 @@ class HE2_OilGatheringNetwork_Model():
         prefit_score = target(x)
 
         print(naive_score, prefit_score)
+
+        print_solution(self.gimme_graph(0))
+
         return
 
         random.seed = 42

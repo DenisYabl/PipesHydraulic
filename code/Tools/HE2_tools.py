@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections import namedtuple
 from Fluids.HE2_Fluid import HE2_BlackOil
-from Tests.Optimization_test import cut_single_well_subgraph
 from Tools.HE2_Logger import check_for_nan, getLogger
 
 logger = getLogger(__name__)
@@ -726,11 +725,18 @@ def print_wells_pressures(G, wells):
 
 def print_solution(G):
     colorama.init()
-    table_header = f' {"start":>20} {"P_bar":>7} {"Q kg/s":>8}   {"end":>20} {"P_bar":>7} {"Q kg/s":>8}    {"X kg/s":>7}'
+    table_header = f' {"start":>30} {"P_bar":>7} {"Q kg/s":>8}   {"end":>30} {"P_bar":>7} {"Q kg/s":>8}    {"X kg/s":>7}'
     print(table_header)
     for e in G.edges:
-        u, v = e
-        obj = G[u][v]['obj']
+        if len(e) == 2:
+            u, v = e
+            obj = G[u][v]['obj']
+        elif len(e) == 3:
+            u, v, k = e
+            obj = G[u][v][k]['obj']
+        else:
+            return
+
         u_obj = G.nodes[u]['obj']
         v_obj = G.nodes[v]['obj']
         x = obj.result['x']
@@ -754,5 +760,39 @@ def print_solution(G):
         if abs(q_v) > 1e-5:
             q_v_str = f"{q_v:8.3f}"
 
-        row = f' {u:>20} {pu_str:>8} {q_u_str:>8}   {v:>20} {pv_str:>8} {q_v_str:>8}    {x:7.3f}{Style.RESET_ALL}'
+        row = f' {u:>30} {pu_str:>8} {q_u_str:>8}   {v:>30} {pv_str:>8} {q_v_str:>8}    {x:7.3f}{Style.RESET_ALL}'
         print(row)
+
+
+def cut_single_well_subgraph(G, pad_name, well, nodes = None):
+    rez = nx.DiGraph()  # Di = directed
+    if nodes == None:
+        nms = dict()
+        nms.update(plast = f'PAD_{pad_name}_well_{well}')
+        nms.update(zaboi = f'Zaboi_{well}')
+        nms.update(intake = f'Pump_intake_{well}')
+        nms.update(outlet = f'Pump_outlet_{well}')
+        nms.update(wellhead = f'Wellhead_{well}')
+        nms.update(pad = f'PAD_{pad_name}')
+        nodes = [nms['plast'], nms['zaboi'], nms['intake'], nms['outlet'], nms['wellhead'], nms['pad']]
+
+    edgelist = []
+    for i in range(len(nodes)-1):
+        edgelist += [(nodes[i], nodes[i+1])]
+    rez.add_nodes_from(nodes)
+    rez.add_edges_from(edgelist)
+    node_objs = {n:G.nodes[n]['obj'] for n in nodes[:-1]}
+    node_objs[nodes[-1]] = vrtxs.HE2_Boundary_Vertex('P', 5)
+    edge_objs = {}
+    if isinstance(G, nx.MultiDiGraph):
+        for u, v in edgelist:
+            obj = G[u][v][0]['obj']
+            edge_objs[(u, v)] = obj
+    elif isinstance(G, nx.DiGraph):
+        for u, v in edgelist:
+            obj = G[u][v]['obj']
+            edge_objs[(u, v)] = obj
+
+    nx.set_node_attributes(rez, name='obj', values=node_objs)
+    nx.set_edge_attributes(rez, name='obj', values=edge_objs)
+    return rez, nodes
