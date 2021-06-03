@@ -79,6 +79,10 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             frequency = row["frequency"]
             fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
             pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
+            if 'K_pump' in calc_df.columns:
+                K_pump = row['K_pump']
+                if K_pump > 0 and K_pump < 100500:
+                    pump.change_stages_ratio(K_pump)
             G.add_edge(start, end, obj=pump)
         else:
             logger.warning(f'unknown type of graph edge in dataset. start, end id is {start} {end}')
