@@ -59,6 +59,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.base_n = n_vec
         self.base_eff = eff_vec
         self.stages_ratio = 1
+        self.state = 'on'
 
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
         # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)
@@ -111,6 +112,12 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
 
     def calculate_pressure_differrence(self, P_bar, T_C, X_kgsec, calc_direction, mishenko, unifloc_direction=-1):
         check_for_nan(P_bar=P_bar, T_C=T_C, X_kgsec=X_kgsec)
+        if self.state.upper() == 'OFF':
+            T_rez_C = T_C
+            P_rez_bar = P_bar - X_kgsec * 100500
+
+            return P_rez_bar, T_rez_C
+
         #Определяем направления расчета
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
