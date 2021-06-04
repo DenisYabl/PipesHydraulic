@@ -1,10 +1,10 @@
 from Fluids.HE2_Fluid import HE2_BlackOil
 from Tests.Optimization_test import model_DNS_2, build_DNS2_graph, gimme_DNS2_inlets_outlets_Q
-from Tests.Optimization_test import model_DNS_2_by_parts, print_wells_pressures
+from Tests.Optimization_test import model_DNS_2_by_parts
 import pandas as pd
 from Tools.HE2_ABC import oil_params
 from Solver.HE2_Solver import HE2_Solver
-from Tools.HE2_tools import check_solution
+from Tools.HE2_tools import check_solution, print_wells_pressures
 from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 import numpy as np

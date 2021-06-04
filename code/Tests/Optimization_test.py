@@ -5,13 +5,14 @@ from GraphNodes import HE2_Vertices as vrtxs
 from GraphEdges.HE2_Pipe import HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from Solver.HE2_Solver import HE2_Solver
-from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
+from GraphEdges.HE2_WellPump import create_HE2_WellPump_instance_from_dataframe
 from Tools.HE2_ABC import oil_params
 import json
-import colorama
-from colorama import Fore, Back, Style
-from Tools.HE2_Logger import check_for_nan, getLogger
+from Tools.HE2_Logger import getLogger
 import numpy as np
+
+from Tools.HE2_tools import cut_single_well_subgraph
+
 logger = getLogger(__name__)
 
 class NpEncoder(json.JSONEncoder):
@@ -1039,29 +1040,6 @@ def model_DNS_2(pressures:dict = {}, plasts:dict = {}, DNS_daily_debit = 0, pump
     solver.solve(threshold=0.25)
     return G, inlets, juncs, outlets
 
-def cut_single_well_subgraph(G, pad_name, well):
-    rez = nx.DiGraph()  # Di = directed
-    plast = f'PAD_{pad_name}_well_{well}'
-    zaboi = f'Zaboi_{well}'
-    intake = f'Pump_intake_{well}'
-    outlet = f'Pump_outlet_{well}'
-    wellhead = f'Wellhead_{well}'
-    pad = f'PAD_{pad_name}'
-    # rez.add_nodes_from([G[plast], G[zaboi], G[intake], G[outlet], G[wellhead]])
-    nodelist = [plast, zaboi, intake, outlet, wellhead, pad]
-    edgelist = [(plast, zaboi), (zaboi, intake), (intake, outlet), (outlet, wellhead), (wellhead, pad)]
-    rez.add_nodes_from(nodelist)
-    rez.add_edges_from(edgelist)
-    node_objs = {n:G.nodes[n]['obj'] for n in nodelist[:-1]}
-    node_objs[pad] = vrtxs.HE2_Boundary_Vertex('P', 5)
-    edge_objs = {}
-    for u, v in edgelist:
-        obj = G[u][v]['obj']
-        edge_objs[(u, v)] = obj
-    nx.set_node_attributes(rez, name='obj', values=node_objs)
-    nx.set_edge_attributes(rez, name='obj', values=edge_objs)
-    return rez, nodelist
-
 
 # Review:
 # def foo(bar = {}):
@@ -1129,57 +1107,6 @@ def model_DNS_3(daily_debit_55=0, pressure_88=0, fluid=fluid, roughness=3.5, rea
     solver = HE2_Solver(G)
     solver.solve()
     return G
-
-def print_wells_pressures(G, wells):
-    colorama.init()
-    table_header = '                                            bottom   intake   outlet  wellhead'
-    print(table_header)
-    for pad_well in wells:
-        l = pad_well.split('_')
-        if len(l) < 4:
-            continue
-        pad, well = l[1], l[3]
-        well_subgraph, well_nodes = cut_single_well_subgraph(G, pad, well)
-        row_header = 'pad ' + f' {pad}'[-2:] + ' well ' + f'  {well}'[-4:] + ', from plast:   '
-        print(row_header, end=' ')
-        for n in well_nodes:
-            P = G.nodes[n]['obj'].result['P_bar']
-            prefix = Back.RED if P <= 1 else Style.RESET_ALL
-            print(prefix + f'{P:8.3f}', end= ' ')
-        print(Style.RESET_ALL + '   up to pad collector')
-
-def print_solution(G):
-    colorama.init()
-    table_header = f' {"start":>20} {"P_bar":>7} {"Q kg/s":>8}   {"end":>20} {"P_bar":>7} {"Q kg/s":>8}    {"X kg/s":>7}'
-    print(table_header)
-    for e in G.edges:
-        u, v = e
-        obj = G[u][v]['obj']
-        u_obj = G.nodes[u]['obj']
-        v_obj = G.nodes[v]['obj']
-        x = obj.result['x']
-        p_u = u_obj.result['P_bar']
-        pu_str = f'{p_u:8.3f}'
-        if p_u <= 1:
-            pu_str = Back.RED + pu_str + Style.RESET_ALL
-
-        p_v = v_obj.result['P_bar']
-        pv_str = f'{p_v:8.3f}'
-        if p_v <= 1:
-            pv_str = Back.RED + pv_str + Style.RESET_ALL
-
-        q_u = u_obj.result['Q']
-        q_u_str = ''
-        if abs(q_u) > 1e-5:
-            q_u_str = f"{q_u:8.3f}"
-
-        q_v = v_obj.result['Q']
-        q_v_str = ''
-        if abs(q_v) > 1e-5:
-            q_v_str = f"{q_v:8.3f}"
-
-        row = f' {u:>20} {pu_str:>8} {q_u_str:>8}   {v:>20} {pv_str:>8} {q_v_str:>8}    {x:7.3f}{Style.RESET_ALL}'
-        print(row)
 
 
 

@@ -3,7 +3,6 @@ from DFOperations.calculate_DF import calculate_DF
 import pandas as pd
 import logging
 import sys
-
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
 
 """
@@ -40,7 +39,7 @@ startP, startT, endP, endT - расчетные поля, заполняемые
 Функция дополнительно отфильтровывает дуги, не связанные с основным графом (дуги с уникальным началом и концом, не соединенные с другими узлами)
 """
 
-dataset = pd.read_csv("../CommonData/DNS2_with_wells.csv")
+dataset = pd.read_csv("../CommonData/DNS2_no_wells.csv")
 start_time = time.time()
 mdf = calculate_DF(dataset)
 mdf = mdf[['juncType', 'pipeline_purpose_id', 'simple_part_id', 'part_id', 'rs_schema_id', 'schema_id',

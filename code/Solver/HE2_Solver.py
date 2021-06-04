@@ -50,7 +50,7 @@ class HE2_Solver():
         self.forward_edge_functions = dict()
         self.backward_edge_functions = dict()
 
-        self.fluids_move_rate = 0.5
+        self.fluids_move_rate = 0.1
         self.sources_fluids = None
         self.known_Q = dict()
         self.actual_x = None
@@ -248,7 +248,7 @@ class HE2_Solver():
 
         return rez
 
-    def solve(self, threshold=0.05, it_limit=100, step=1):
+    def solve(self, threshold=0.05, it_limit=100, step=1, mix_fluids=True):
         logger.info('is started')
         y, y_best, x_best, self.it_num = 100500100500, 100500100500, None, 0
         try:
@@ -274,7 +274,7 @@ class HE2_Solver():
                 logger.info(f'Y = {y}')
                 logger.info(f'it_num = {self.it_num}, y = {y}, step = {step}')
 
-                if y < y_best:
+                if mix_fluids and y < y_best:
                     self.evaluate_and_set_new_fluids()
 
                 if y < y_best:
@@ -310,6 +310,7 @@ class HE2_Solver():
             logger.info(f'Solution is found, cause threshold {threshold} is touched')
         if self.it_num > it_limit:
             logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
+        self.initial_edges_x = self.edges_x.copy()
 
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=self.it_num)
         logger.info(f'Gradient descent result is {self.op_result}')
@@ -625,11 +626,16 @@ class HE2_Solver():
         return residual
 
     def evaluate_and_set_new_fluids(self):
-        # TODO оптимизировать надо, очень часто вычисленый флюид совпадает с тем что там уже есть и ничего делать не надо
         G = self.graph
         mr = self.fluids_move_rate
         mrates = np.array([1 - mr, mr])
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+
+        incorrect_sources = set(srcs) - set(self.sources_fluids.keys())
+        if len(incorrect_sources) > 0:
+            logger.info('Cannot evaluate fluids on this iteration, cause some sink nodes reverts')
+            return
+
         sources_are_the_same = (srcs == self.last_src)
         src_fluids = [self.sources_fluids[n] for n in srcs]
         for key, cktl in cocktails.items():
