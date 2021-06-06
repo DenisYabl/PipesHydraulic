@@ -1033,12 +1033,12 @@ bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57
 if __name__ == '__main__':
     model = HE2_OilGatheringNetwork_Model("../../")
     model.fact = model.grab_fact()
-    model.bad_wells = bad_wells
+    # model.bad_wells = bad_wells
     model.fill_outlayers()
     # model.plot_fit_log(filename='fitlog_N5_WC_3700.txt')
-    model.greed_optimization()
+    # model.greed_optimization()
 
-    # rez = model.prefit_all()
+    rez = model.prefit_all()
     # f = open('rez.csv', 'w')
     # for item in rez:
     #     print(item, file=f)
