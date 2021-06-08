@@ -61,5 +61,5 @@ mdf.to_csv("../CommonData/mdf.csv")
 Требования к датафрейму такие же, как для calculate_DF
 """
 
-# G, df = make_oilpipe_schema_from_OT_dataset(dataset)
+# G, df, df_to_graph_edges_mapping = make_oilpipe_schema_from_OT_dataset(dataset)
 pass
