@@ -52,6 +52,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             juncs.update({id:vrtxs.HE2_ABC_GraphVertex()})
 
     G = nx.MultiDiGraph()  # Di = directed
+    df_to_graph_edges_mapping = dict()
 
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
@@ -61,37 +62,39 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
         end = row["node_id_end"]
         junctype = row["juncType"]
         VolumeWater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        fluid = gimme_dummy_BlackOil(VolumeWater=VolumeWater)
         if junctype == "pipe":
             L = row["L"]
             uphill = row["uphillM"]
             diam_coef = row["effectiveD"]
             D = row["intD"]
             roughness = row["roughness"]
-            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness],
-                gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
-            pass
+            obj = HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], fluid)
         elif junctype == "plast":
             productivity = row["productivity" ]
-            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
+            obj = HE2_Plast(productivity=productivity, fluid=fluid)
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
             pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
             if 'K_pump' in calc_df.columns:
                 K_pump = row['K_pump']
                 if K_pump > 0 and K_pump < 100500:
                     pump.change_stages_ratio(K_pump)
-            G.add_edge(start, end, obj=pump)
+            obj = pump
         else:
-            logger.warning(f'unknown type of graph edge in dataset. start, end id is {start} {end}')
+            logger.warning(f'unknown type of graph edge in dataset. start, end id is {start} {end}. Cannot add this edge to graph, skip')
+            continue
+
+        k = G.add_edge(start, end, obj=obj) # edge index in MultiDiGraph. k in G[u][v][k] index
+        df_to_graph_edges_mapping[index] = (start, end, k)
 
     cmpnts = nx.algorithms.components.number_weakly_connected_components(G)
     if cmpnts != 1:
         logger.error(f'Not single componented graph!')
         raise ValueError
 
-    return G, calc_df
+    return G, calc_df, df_to_graph_edges_mapping
 
 
 def make_calc_df(dataset, folder):
@@ -152,6 +155,8 @@ def make_calc_df(dataset, folder):
         print(
             f"End kind and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
         assert False
+
+    calc_df = calc_df.reset_index() # Damn you, pandas black emperor!
     return calc_df
 
 
