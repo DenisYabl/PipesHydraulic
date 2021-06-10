@@ -5,12 +5,15 @@ from GraphEdges.HE2_Plast import HE2_Plast
 from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from GraphNodes import HE2_Vertices as vrtxs
 from Fluids.HE2_Fluid import gimme_dummy_BlackOil
+from Tools.HE2_Logger import getLogger
+
+logger = getLogger(__name__)
 
 pump_curves = None
 inclination = None
 HKT = None
 
-def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None):
+def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_df = None, ignore_Watercut=False):
     global pump_curves
     if pump_curves is None:
         pump_curves = pd.read_csv(folder + "PumpChart.csv")
@@ -32,7 +35,14 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     outletsdf = calc_df[calc_df["endIsOutlet"]]
     juncs_df = pd.concat((calc_df["node_id_start"], calc_df["node_id_end"])).unique()
     for index, row in inlets_df.iterrows():
-        volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        if ignore_Watercut:
+            volumewater = 50
+        elif pd.notna(row["VolumeWater"]):
+            volumewater = row["VolumeWater"]
+        else:
+            logger.warning(f'Watercut should be known for source nodes: {row["node_id_start"]}')
+            volumewater = 50
+
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
                                                                     gimme_dummy_BlackOil(VolumeWater=volumewater), row["startT"])})
     for index, row in outletsdf.iterrows():
@@ -41,37 +51,50 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
         if (id not in list(inlets.keys()) + list(outlets.keys())):
             juncs.update({id:vrtxs.HE2_ABC_GraphVertex()})
 
-    G = nx.DiGraph()  # Di = directed
+    G = nx.MultiDiGraph()  # Di = directed
+    df_to_graph_edges_mapping = dict()
 
     for k, v in {**inlets, **outlets, **juncs}.items():
         G.add_node(k, obj=v)
 
-    iiii = 0
     for index, row in calc_df.iterrows():
-        iiii += 1
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
         VolumeWater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+        fluid = gimme_dummy_BlackOil(VolumeWater=VolumeWater)
         if junctype == "pipe":
             L = row["L"]
             uphill = row["uphillM"]
             diam_coef = row["effectiveD"]
             D = row["intD"]
             roughness = row["roughness"]
-            G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness],
-                gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
-            pass
+            obj = HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness], fluid)
         elif junctype == "plast":
-            productivity = row["productivity"]
-            G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
+            productivity = row["productivity" ]
+            obj = HE2_Plast(productivity=productivity, fluid=fluid)
         elif junctype == "wellpump":
             model = row["model"]
             frequency = row["frequency"]
-            fluid = gimme_dummy_BlackOil(VolumeWater = VolumeWater)
             pump = create_HE2_WellPump_instance_from_dataframe(full_HPX=pump_curves, model=model, fluid=fluid, frequency=frequency)
-            G.add_edge(start, end, obj=pump)
-    return G, calc_df
+            if 'K_pump' in calc_df.columns:
+                K_pump = row['K_pump']
+                if K_pump > 0 and K_pump < 100500:
+                    pump.change_stages_ratio(K_pump)
+            obj = pump
+        else:
+            logger.warning(f'unknown type of graph edge in dataset. start, end id is {start} {end}. Cannot add this edge to graph, skip')
+            continue
+
+        k = G.add_edge(start, end, obj=obj) # edge index in MultiDiGraph. k in G[u][v][k] index
+        df_to_graph_edges_mapping[index] = (start, end, k)
+
+    cmpnts = nx.algorithms.components.number_weakly_connected_components(G)
+    if cmpnts != 1:
+        logger.error(f'Not single componented graph!')
+        raise ValueError
+
+    return G, calc_df, df_to_graph_edges_mapping
 
 
 def make_calc_df(dataset, folder):
@@ -132,6 +155,8 @@ def make_calc_df(dataset, folder):
         print(
             f"End kind and value for following nodes: {mistakes_df[~mistakes_df['outletBoundaryMistakes']]['node_id_end'].values} should be filled")
         assert False
+
+    calc_df = calc_df.reset_index() # Damn you, pandas black emperor!
     return calc_df
 
 

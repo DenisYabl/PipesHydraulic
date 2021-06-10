@@ -12,9 +12,11 @@ import pandas as pd
 from Fluids import HE2_MixFluids as mixer
 from Fluids.HE2_Fluid import HE2_BlackOil, HE2_DummyWater
 from Solver import HE2_Fit
+from Tools import HE2_Visualize as vis, HE2_tools as tools
 from Tools.cachespline import create_lazy_spline_cache_f_wrapper
+from Tools.HE2_tools import draw_solution, print_solution
 import random
-from Tests.Optimization_test import print_solution
+
 
 class TestWaterNet(unittest.TestCase):
     def setUp(self):
