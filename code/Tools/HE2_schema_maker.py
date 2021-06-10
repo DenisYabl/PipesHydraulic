@@ -34,7 +34,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     for index, row in inlets_df.iterrows():
         volumewater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
-                                                                    gimme_dummy_BlackOil(), row["startT"])})
+                                                                    gimme_dummy_BlackOil(VolumeWater=volumewater), row["startT"])})
     for index, row in outletsdf.iterrows():
         outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
     for id in juncs_df:
@@ -58,12 +58,12 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             uphill = row["uphillM"]
             diam_coef = row["effectiveD"]
             D = row["intD"]
-            roughness = row["roughness" ]
+            roughness = row["roughness"]
             G.add_edge(start, end, obj=HE2_OilPipe([L], [uphill], [D * diam_coef], [roughness],
                 gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
             pass
         elif junctype == "plast":
-            productivity = row["productivity" ]
+            productivity = row["productivity"]
             G.add_edge(start, end, obj=HE2_Plast(productivity=productivity, fluid=gimme_dummy_BlackOil(VolumeWater = VolumeWater)))
         elif junctype == "wellpump":
             model = row["model"]

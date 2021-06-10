@@ -18,8 +18,8 @@ class HE2_BlackOil(HE2_ABC_Fluid):
     def __init__(self, oil_params: oil_params):
         # check_for_nan(**oil_params)
         self.oil_params = oil_params
- #       self.CurrentLiquidDensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
-  #                                                    self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
+        self.CurrentLiquidDensity_kg_m3 = (self.oil_params.oildensity_kg_m3 * (1 - self.oil_params.volumewater_percent / 100) +
+                                                      self.oil_params.waterdensity_kg_m3 * self.oil_params.volumewater_percent / 100)
 
 
     def calc(self, P_bar, T_C, X_kgsec, IntDiameter=None):
@@ -31,6 +31,7 @@ class HE2_BlackOil(HE2_ABC_Fluid):
         #Side effects
         self.CurrentLiquidDensity_kg_m3 = temp_mishenko.CurrentLiquidDensity_kg_m3
         self.CurrentOilViscosity_Pa_s = temp_mishenko.CurrentOilViscosity_Pa_s
+        temp = temp_mishenko.CurrentLiquidDensity_kg_m3
         #Return for pressure gradient calculation
         return temp_mishenko
 

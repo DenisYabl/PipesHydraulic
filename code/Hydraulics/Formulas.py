@@ -124,8 +124,7 @@ def count_dP_MB(mishenko, tubing, form, lambda0, dens_true, Ek, phi1, phi2, Lw, 
         except:
             Ht = 0.5
         delta = 2 * math.cos(1 - 2 * Ht / tubing["IntDiameter"]) ** -1
-        Dhg = tubing["IntDiameter"] * (2 * math.pi - (delta - math.sin(delta))) / (
-                    2 * math.pi - delta + 2 * math.sin(delta / 2))
+        Dhg = tubing["IntDiameter"] * (2 * math.pi - (delta - math.sin(delta))) / (2 * math.pi - delta + 2 * math.sin(delta / 2))
         Dhl = tubing["IntDiameter"] * (delta - math.sin(delta)) / (delta + 2 * math.sin(delta / 2))
         Perim = math.pi * tubing["IntDiameter"]
         Perimg = (1 - 0.5 * delta / math.pi) * Perim
