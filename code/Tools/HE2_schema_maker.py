@@ -172,7 +172,8 @@ def process_well_row(HKT, dict_list, inclination, row):
         wellNum = str(int(row["wellNum"]))
     except:
         wellNum = row["wellNum"]
-    padNum = str(int(row["padNum"]))
+    # padNum = str(int(row["padNum"]))
+    padNum = row["padNum"]
     pumpdepth = row["pumpDepth"]
     perforation = row["perforation"]
     tubing = inclination[inclination["wellNum"] == wellNum]
