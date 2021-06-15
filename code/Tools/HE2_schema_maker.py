@@ -4,7 +4,8 @@ from GraphEdges.HE2_Pipe import HE2_WaterPipe, HE2_OilPipe
 from GraphEdges.HE2_Plast import HE2_Plast
 from GraphEdges.HE2_WellPump import HE2_WellPump, create_HE2_WellPump_instance_from_dataframe
 from GraphNodes import HE2_Vertices as vrtxs
-from Fluids.HE2_Fluid import gimme_dummy_BlackOil
+from Fluids.HE2_Fluid import gimme_dummy_BlackOil, HE2_BlackOil
+from Tools.HE2_ABC import oil_params
 from Tools.HE2_Logger import getLogger
 
 logger = getLogger(__name__)
@@ -34,7 +35,9 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
     inlets_df = calc_df[calc_df["startIsSource"]]
     outletsdf = calc_df[calc_df["endIsOutlet"]]
     juncs_df = pd.concat((calc_df["node_id_start"], calc_df["node_id_end"])).unique()
+
     for index, row in inlets_df.iterrows():
+        fluid = get_fluid_from_dataset_row(row)
         if ignore_Watercut:
             volumewater = 50
         elif pd.notna(row["VolumeWater"]):
@@ -44,7 +47,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
             volumewater = 50
 
         inlets.update({row["node_id_start"]:vrtxs.HE2_Source_Vertex(row["startKind"], row["startValue"],
-                                                                    gimme_dummy_BlackOil(VolumeWater=volumewater), row["startT"])})
+                                                                    fluid, row["startT"])})
     for index, row in outletsdf.iterrows():
         outlets.update({row["node_id_end"]: vrtxs.HE2_Boundary_Vertex(row["endKind"], row["endValue"])})
     for id in juncs_df:
@@ -61,8 +64,7 @@ def make_oilpipe_schema_from_OT_dataset(dataset, folder="../CommonData/", calc_d
         start = row["node_id_start"]
         end = row["node_id_end"]
         junctype = row["juncType"]
-        VolumeWater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
-        fluid = gimme_dummy_BlackOil(VolumeWater=VolumeWater)
+        fluid = get_fluid_from_dataset_row(row)
         if junctype == "pipe":
             L = row["L"]
             uphill = row["uphillM"]
@@ -110,6 +112,8 @@ def make_calc_df(dataset, folder):
     tempdf = populate_wells_df(HKT, dict_list, inclination, wells_df)
     dataset = dataset.append(tempdf)
     calc_df = dataset
+    calc_df = fill_default_liquid_properties(calc_df)
+
     calc_df["startIsSource"] = calc_df["startIsSource"].fillna(False)
     calc_df["endIsOutlet"] = calc_df["endIsOutlet"].fillna(False)
     calc_df[['node_id_start', 'node_id_end']] = calc_df[['node_id_start', 'node_id_end']].astype(str)
@@ -383,3 +387,28 @@ def make_multigraph_schema_from_OISPipe_dataframes(df_pipes, df_boundaries):
         assert o is not None
 
     return G
+def fill_default_liquid_properties(dataset):
+    for property in [('sat_P_bar', 66.7), ('plastT_C', 84), ('gasFactor', 39), ('oildensity_kg_m3', 826), ('waterdensity_kg_m3', 1015),
+                     ('gasdensity_kg_m3', 1), ('oilviscosity_Pa_s', 35e-3),('volumeoilcoeff', 1.015)]:
+        if property[0] not in dataset.columns:
+            dataset[property[0]] = property[1]
+    return dataset
+
+def get_fluid_from_dataset_row(row):
+    SatP = row["sat_P_bar"] if pd.notna(row["sat_P_bar"]) else 66.7
+    PlastT = row["plastT_C"] if pd.notna(row["plastT_C"]) else 84
+    GasFactor = row["gasFactor"] if pd.notna(row["gasFactor"]) else 39
+    OilDensity = row["oildensity_kg_m3"] if pd.notna(row["oildensity_kg_m3"]) else 826
+    WaterDensity = row["waterdensity_kg_m3"] if pd.notna(row["waterdensity_kg_m3"]) else 1015
+    GasDensity = row["gasdensity_kg_m3"] if pd.notna(row["gasdensity_kg_m3"]) else 1
+    OilViscosity = row["oilviscosity_Pa_s"] if pd.notna(row["oilviscosity_Pa_s"]) else 35e-3
+    VolumeOil = row["volumeoilcoeff"] if pd.notna(row["volumeoilcoeff"]) else 1.015
+    VolumeWater = row["VolumeWater"] if pd.notna(row["VolumeWater"]) else 50
+    # fluid = gimme_dummy_BlackOil(VolumeWater=VolumeWater)
+
+    params = oil_params(sat_P_bar=SatP, plastT_C=PlastT, gasFactor=GasFactor, oildensity_kg_m3=OilDensity,
+                        waterdensity_kg_m3=WaterDensity, gasdensity_kg_m3=GasDensity, oilviscosity_Pa_s=OilViscosity,
+                        volumewater_percent=VolumeWater, volumeoilcoeff=VolumeOil)
+
+    fluid = HE2_BlackOil(oil_params=params)
+    return fluid
