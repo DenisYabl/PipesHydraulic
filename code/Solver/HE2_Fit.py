@@ -597,8 +597,6 @@ class HE2_OilGatheringNetwork_Model():
         for it, (pad, well) in enumerate(pad_well_list):
             if (well, pad) in self.bad_wells:
                 continue
-            # if not (well, pad) == (567, 39):
-            #     continue
             G0 = self.gimme_graph(0)
             nodes = [f'PAD_{pad}_WELL_{well}']
             nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
@@ -645,7 +643,6 @@ class HE2_OilGatheringNetwork_Model():
             self.plot_single_well_chart(pad, well, well_res_before, well_res_after, well_G, nodes, op_result, xs, ys, zs, path)
             rez += [(well, pad, best_x, op_result.fun)]
             print(well, pad, best_x, op_result.fun)
-            pass
 
         return rez
 
@@ -1035,11 +1032,12 @@ class HE2_OilGatheringNetwork_Model():
             df = df.append(row, ignore_index=True)
         df.to_csv(filename, index=False)
 
-bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57)]
+
+# bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57)]
 
 
 if __name__ == '__main__':
-    model = HE2_OilGatheringNetwork_Model(commondata_folder="../../CommonData/", wells_folder='../../data/fit 10-06-2021/')
+    model = HE2_OilGatheringNetwork_Model(commondata_folder="../../CommonData/", wells_folder='../../data/fit 15-06-2021/')
     model.fact = model.grab_fact()
     # model.bad_wells = bad_wells
     model.fill_outlayers()
