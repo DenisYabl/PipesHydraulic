@@ -382,7 +382,8 @@ class HE2_OilGatheringNetwork_Model():
         self.total_target_cnt, self.not_solved = 0, 0
         self.bad_wells = []
         self.prefit_params = dict()
-        self.N = 30
+        self.df_file_suffixes = list(map(str, range(1, 31)))
+        self.N = len(self.df_file_suffixes)
         self.original_diams = dict()
         self.last_it_count = 0
         self.ignore_watercut = False
@@ -392,7 +393,8 @@ class HE2_OilGatheringNetwork_Model():
         if i in self.original_dfs:
             return self.original_dfs[i]
         folder = self.wells_folder
-        filename = f'{folder}/DNS2_with_wells_{i}.csv'
+        suffix = self.df_file_suffixes[i]
+        filename = f'{folder}/DNS2_with_wells_{suffix}.csv'
         df = pd.read_csv(filename)
         self.original_dfs[i] = df
         return df
@@ -401,7 +403,8 @@ class HE2_OilGatheringNetwork_Model():
         if i in self.calc_dfs:
             return self.calc_dfs[i]
         folder = self.wells_folder
-        calc_df_filename = f'{folder}/calc_df_{i}.csv'
+        suffix = self.df_file_suffixes[i]
+        calc_df_filename = f'{folder}/calc_df_{suffix}.csv'
         try:
             calc_df = pd.read_csv(calc_df_filename)
             self.calc_dfs[i] = calc_df
@@ -597,6 +600,8 @@ class HE2_OilGatheringNetwork_Model():
         for it, (pad, well) in enumerate(pad_well_list):
             if (well, pad) in self.bad_wells:
                 continue
+            # if not (pad, well) == ('39', 619):
+            #     continue
             G0 = self.gimme_graph(0)
             nodes = [f'PAD_{pad}_WELL_{well}']
             nodes += [f'PAD_{pad}_WELL_{well}_zaboi']
