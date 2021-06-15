@@ -3,6 +3,7 @@ import numpy as np
 from Tools.HE2_ABC import Root
 from Tools.HE2_Logger import getLogger
 from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs
+from GraphNodes.HE2_Vertices import is_junction
 
 logger = getLogger(__name__)
 
@@ -75,14 +76,15 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     cocktails = {}
     for k, i in var_idx.items():
         cocktails[k] = rez_mx[i, :S]
-        sck = sum(cocktails[k])
+        sck = np.sum(cocktails[k])
         if abs(sck - 1) > 1e-7:
             logger.error('Cocktail matrix is invalid')
             raise ValueError
     return cocktails, srcs
 
 
-def evalute_network_fluids_with_root(G, x_dict):
+# def evalute_network_fluids_with_root(G, x_dict):
+def evalute_network_fluids_with_root_old(G, x_dict):
     edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
     edges2 = []
     x_dict2 = {}
@@ -106,7 +108,8 @@ def evalute_network_fluids_with_root(G, x_dict):
             cocktails2[key] = cktl2
     return cocktails2, srcs
 
-def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
+# def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
+def evalute_network_fluids_with_root(G, x_dict):
     # This is like a nested doll
     # Outer layer - solver call with solver graph and xs (flows)
     # Second layer - we remove root node and zero flows, also reverse negative flows
@@ -125,10 +128,10 @@ def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
         edges2 += [e]
 
     G2 = nx.DiGraph(edges2)
-    G3, x_dict3, edges_mapping, nodes_mapping = reduce_graph(G2, x_dict2)
+    G3, x_dict3, reducing_stack = reduce_graph2(G2, x_dict2)
 
     cocktails3, srcs = evalute_network_fluids_wo_root(G3, x_dict3)
-    cocktails2, srcs = restore_cocktail_from_reduced_graph(cocktails3, srcs, edges_mapping, nodes_mapping, G2)
+    cocktails2, srcs = restore_cocktail_from_reduced_graph(cocktails3, srcs, reducing_stack)
 
     cocktails = {}
     for key, cktl in cocktails2.items():
@@ -141,25 +144,95 @@ def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
             cocktails[key] = cktl2
     return cocktails, srcs
 
-def reduce_graph2(G, x_dict):
-    e_out = dict()
-    e_in = dict()
-    for u, v in G.edges():
-        e_out[u] = [v]
-        e_in[v] = [u]
+def gimme_any_multiple_edges_bunch(G: nx.MultiDiGraph):
+    for u in G:
+        for v in G[u]:
+            if len(G[u][v]) > 1:
+                return u, v
+    return None
 
-    nodes = list(set(e_out.keys) | set(e_in.keys))
+def reduce_graph2(src_G, x_dict):
+    new_G = nx.MultiDiGraph(src_G)
+    new_x_dict = {(u, v, 0): x_dict[(u, v)] for (u, v) in x_dict}
+    reducing_stack = []
+
+    nodes_2deg = gimme_nodes_2deg(src_G)
+
+    i, j = 0, 0
     while True:
-        for n in nodes:
-            if len(e_out[n]) == len(e_in[n]) == 1:
-                found = True
-                u = e_out[n][0]
-                v = e_in[n]
-                e_out.pop(n)
-                e_in.pop(n)
-                e_out[u] += [v]
-                e_in[v] += [u]
-    pass
+        if len(nodes_2deg) > 0:
+            i += 1
+            n = nodes_2deg.pop(0)
+            e1 = list(new_G.in_edges(n))[0]
+            e2 = list(new_G.out_edges(n))[0]
+            u1, v1 = e1
+            u2, v2 = e2
+
+            x1 = new_x_dict.pop((u1, v1, 0))
+            x2 = new_x_dict.pop((u2, v2, 0))
+            if abs(x1-x2) > 1e-6:
+                continue
+
+            assert u2 == n and v1 == n
+            u, v = u1, v2
+            new_G.remove_edge(*e1)
+            new_G.remove_edge(*e2)
+            new_G.remove_node(n)
+            k = new_G.add_edge(u, v)
+            new_x_dict[(u, v, k)] = x1
+            reducing_stack += [dict(op='2node', rem_node=n, rem_e1=(u1, v1, 0), rem_e2=(u2, v2, 0), add_e=(u,v,k))]
+            continue
+
+        e = gimme_any_multiple_edges_bunch(new_G)
+        if e is None:
+            break
+
+        j += 1
+        u, v = e
+        k1 = len(new_G[u][v])
+        k2 = 0
+        if v in new_G[v]:
+            k2 = len(new_G[v][u])
+        bunch_uv = [(u, v, _k) for _k in range(k1)]
+        bunch_vu = [(v, u, _k) for _k in range(k2)]
+        new_G.remove_edges_from(bunch_uv + bunch_vu)
+
+        x = 0
+        for e in bunch_uv:
+            x += new_x_dict.pop(e)
+        for e in bunch_vu:
+            x -= new_x_dict.pop(e)
+
+        edge_to_add = None
+        if x > 1e-6:
+            new_G.add_edge(u, v)
+            edge_to_add = u, v, 0
+            new_x_dict[edge_to_add] = x
+        elif x < -1e-6:
+            new_G.add_edge(v, u)
+            edge_to_add = v, u, 0
+            new_x_dict[edge_to_add] = x
+
+        reducing_stack += [dict(op='edges', u=u, v=v, uv_k=k1, vu_k=k2, add_e=edge_to_add)]
+
+    rez_G = nx.DiGraph()
+    rez_x_dict = dict()
+    for u, v, k in new_G.edges:
+        assert k == 0
+        rez_G.add_edge(u, v)
+        rez_x_dict[(u, v)] = new_x_dict[(u, v, 0)]
+
+    return rez_G, rez_x_dict, reducing_stack
+
+
+def gimme_nodes_2deg(src_G):
+    nodes_2deg = []
+    for n in src_G.nodes:
+        l1 = list(src_G.in_edges(n))
+        l2 = list(src_G.out_edges(n))
+        if len(l1) == 1 and len(l2) == 1:
+            nodes_2deg += [n]
+    return nodes_2deg
 
 
 def reduce_graph(G, x_dict):
@@ -218,18 +291,46 @@ def reduce_graph(G, x_dict):
     rez_x_dict = {(u, v):new_x_dict[(u, v, k)] for u, v, k in new_x_dict}
     return rez_G, rez_x_dict, edges_mapping, nodes_mapping
 
-def restore_cocktail_from_reduced_graph(cocktails_reduced, srcs, edges_mapping, nodes_mapping, original_G):
-    cocktails = {}
-    for u, v in original_G.edges:
-        u, v, k = edges_mapping[(u, v)]
-        if not (u, v, k) in cocktails_reduced:
-            continue
-        cocktails[(u, v)] = cocktails_reduced[(u, v, k)]
+def restore_cocktail_from_reduced_graph(cocktails_reduced, srcs, reducing_stack):
+    cocktails = {} # cocktails_reduced.copy()
+    for key in cocktails_reduced:
+        if len(key) == 2:
+            u, v = key
+            cocktails[u, v, 0] = cocktails_reduced[key]
+    while reducing_stack:
+        item = reducing_stack.pop(-1)
 
-    for n in original_G.nodes:
-        n2 = nodes_mapping[n]
-        if not n in cocktails_reduced:
+        # reducing_stack += [dict(op='2node', rem_node=n, rem_e1=e1, rem_e2=e2, add_e=(u,v,k))]
+        if item['op'] == '2node':
+            try:
+                cktl = cocktails.pop(item['add_e'])
+            except:
+                pass
+            cocktails[item['rem_node']] = cktl
+            cocktails[item['rem_e1']] = cktl
+            cocktails[item['rem_e2']] = cktl
             continue
-        cocktails[n] = cocktails_reduced[n2]
 
-    return cocktails, srcs
+        assert item['op'] == 'edges'
+        # reducing_stack += [dict(op='edges', u=u, v=v, uv_k=k1, vu_k=k2, added_edge=edge_to_add)]
+        add_e = item['add_e']
+        cktl = cocktails.pop(add_e)
+        u = item['u']
+        v = item['v']
+        k1 = item['uv_k']
+        k2 = item['vu_k']
+        for k in range(k1):
+            cocktails[(u, v, k)] = cktl
+        for k in range(k2):
+            cocktails[(v, u, k)] = cktl
+
+    rez_cocktails = {}
+    for key in cocktails:
+        if len(key) <= 2:
+            rez_cocktails[key] = cocktails[key]
+        if len(key) == 3:
+            u, v, k = key
+            assert k == 0
+            rez_cocktails[(u, v)] = cocktails[key]
+
+    return rez_cocktails, srcs
