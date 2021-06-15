@@ -1,4 +1,17 @@
 from Tools.HE2_ABC import HE2_ABC_GraphVertex
+from Tools.HE2_Logger import getLogger
+logger = getLogger(__name__)
+
+def is_junction(G, n):
+    try:
+        obj = G[n]['obj']
+    except Exception as e:
+        logger.error(f'Invalid node {n}')
+        raise e
+
+    if type(obj) == HE2_ABC_GraphVertex:
+        return True
+    return False
 
 
 class HE2_Boundary_Vertex(HE2_ABC_GraphVertex):
