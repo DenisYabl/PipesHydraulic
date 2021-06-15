@@ -168,8 +168,9 @@ class HE2_Solver():
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
         self.last_src = srcs
         src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        fl_vec = fl.make_fluid_vectors(src_fluids)
         for key, cktl in cocktails.items():
-            initial_fluid = fl.dot_product(cktl, src_fluids)
+            initial_fluid = fl.dot_product(cktl, src_fluids, fl_vec)
             self.last_cocktail[key] = cktl
             self.last_fluidA[key] = initial_fluid
             if key in edgelist:
@@ -204,7 +205,7 @@ class HE2_Solver():
         self.edge_list = self.span_tree + self.chordes
         self.node_list = list(self.graph.nodes())
         if self.node_list[-1] != Root:
-            logger.error(f'Something wrong with graph restructure, Root shoold be last node in node_list')
+            logger.error(f'Something wrong with graph restructure, Root should be last node in node_list')
             assert False
         self.tree_travers = self.build_tree_travers(self.span_tree, Root)
         self.A_tree, self.A_chordes = self.build_incidence_matrices()
@@ -332,6 +333,9 @@ class HE2_Solver():
                 p_, t_ =  edge_func(p, t, x)
             p__, t__ =  edge_func(p, t, x + dx)
             dpdx =  (p__ - p_) / dx
+            # if abs(dpdx) > 1000 and str(type(edge_func.__self__)) == "<class 'GraphEdges.HE2_Pipe.HE2_OilPipe'>":
+            #     logger.warning(f'edge func derivative is too high! {u}, {v}, {dpdx:.4f}')
+            #     dpdx = 1000 * dpdx/abs(dpdx)
             rez[(u, v)] = dpdx
             rez_vec[i] = dpdx
         return rez, rez_vec
@@ -639,6 +643,7 @@ class HE2_Solver():
 
         sources_are_the_same = (srcs == self.last_src)
         src_fluids = [self.sources_fluids[n] for n in srcs]
+        fl_vec = fl.make_fluid_vectors(src_fluids)
         for key, cktl in cocktails.items():
             if key in self.node_list:
                 pass
@@ -652,7 +657,7 @@ class HE2_Solver():
                     if (cktl.shape == cktl2.shape) and (np.linalg.norm(cktl - cktl2) < 1e-6):
                         fluidA = self.last_fluidA[key]
                 if fluidA is None:
-                    fluidA = fl.dot_product(cktl, src_fluids)
+                    fluidA = fl.dot_product(cktl, src_fluids, fl_vec)
                     self.last_fluidA[key] = fluidA
                 fluidB = obj.fluid
                 if fluidA.oil_params != fluidB.oil_params:
