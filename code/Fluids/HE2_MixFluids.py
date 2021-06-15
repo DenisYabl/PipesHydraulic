@@ -4,6 +4,7 @@ from Tools.HE2_ABC import Root
 from Tools.HE2_Logger import getLogger
 from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs
 from GraphNodes.HE2_Vertices import is_junction
+from typing import Tuple, Dict
 
 logger = getLogger(__name__)
 
@@ -144,6 +145,57 @@ def evalute_network_fluids_with_root(G, x_dict):
             cocktails[key] = cktl2
     return cocktails, srcs
 
+NodeMapping = Dict[str, str]
+EdgeMapping = Dict[Tuple[str, str], Tuple[str, str]]
+
+def make_small_graph_for_mixer(src_G: nx.DiGraph) -> Tuple[nx.DiGraph, NodeMapping, EdgeMapping]:
+    new_G = nx.MultiDiGraph(src_G)
+    nodes_2deg = gimme_junc_nodes_2deg(src_G)
+
+    i, j = 0, 0
+    while True:
+        if len(nodes_2deg) > 0:
+            i += 1
+            n = nodes_2deg.pop(0)
+            e1 = list(new_G.in_edges(n))[0]
+            e2 = list(new_G.out_edges(n))[0]
+            u1, v1 = e1
+            u2, v2 = e2
+
+            assert u2 == n and v1 == n
+            u, v = u1, v2
+            new_G.remove_edge(*e1)
+            new_G.remove_edge(*e2)
+            new_G.remove_node(n)
+            k = new_G.add_edge(u, v)
+            continue
+
+        e = gimme_any_multiple_edges_bunch(new_G)
+        if e is None:
+            break
+
+        j += 1
+        u, v = e
+        k1 = len(new_G[u][v])
+        k2 = 0
+        if v in new_G[v]:
+            k2 = len(new_G[v][u])
+        bunch_uv = [(u, v, _k) for _k in range(k1)]
+        bunch_vu = [(v, u, _k) for _k in range(k2)]
+        new_G.remove_edges_from(bunch_uv + bunch_vu)
+
+        new_G.add_edge(u, v)
+        edge_to_add = u, v, 0
+
+    rez_G = nx.DiGraph()
+    for u, v, k in new_G.edges:
+        assert k == 0
+        rez_G.add_edge(u, v)
+
+    return rez_G
+
+
+
 def gimme_any_multiple_edges_bunch(G: nx.MultiDiGraph):
     for u in G:
         for v in G[u]:
@@ -156,7 +208,7 @@ def reduce_graph2(src_G, x_dict):
     new_x_dict = {(u, v, 0): x_dict[(u, v)] for (u, v) in x_dict}
     reducing_stack = []
 
-    nodes_2deg = gimme_nodes_2deg(src_G)
+    nodes_2deg = gimme_junc_nodes_2deg(src_G)
 
     i, j = 0, 0
     while True:
@@ -225,13 +277,16 @@ def reduce_graph2(src_G, x_dict):
     return rez_G, rez_x_dict, reducing_stack
 
 
-def gimme_nodes_2deg(src_G):
+def gimme_junc_nodes_2deg(src_G):
     nodes_2deg = []
     for n in src_G.nodes:
         l1 = list(src_G.in_edges(n))
         l2 = list(src_G.out_edges(n))
-        if len(l1) == 1 and len(l2) == 1:
-            nodes_2deg += [n]
+        if len(l1) != 1 or len(l2) != 1:
+            continue
+        # if not is_junction(src_G, n):
+        #     continue
+        nodes_2deg += [n]
     return nodes_2deg
 
 
