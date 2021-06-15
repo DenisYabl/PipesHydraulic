@@ -360,11 +360,12 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **k
 
 
 class HE2_OilGatheringNetwork_Model():
-    def __init__(self, folder):
+    def __init__(self, commondata_folder='', wells_folder = ''):
         # tree = os.walk(folder)
         # for fld, subfolders, files in tree:
         #     print(fld, subfolders, files)
-        self.folder = folder
+        self.commondata_folder = commondata_folder
+        self.wells_folder = wells_folder
         self.solvers = dict()
         self.calc_dfs = dict()
         self.original_dfs = dict()
@@ -381,7 +382,7 @@ class HE2_OilGatheringNetwork_Model():
         self.total_target_cnt, self.not_solved = 0, 0
         self.bad_wells = []
         self.prefit_params = dict()
-        self.N = 5
+        self.N = 30
         self.original_diams = dict()
         self.last_it_count = 0
         self.ignore_watercut = False
@@ -390,8 +391,8 @@ class HE2_OilGatheringNetwork_Model():
     def gimme_original_df(self, i):
         if i in self.original_dfs:
             return self.original_dfs[i]
-        folder = self.folder
-        filename = f'{folder}data/oilgathering_fit/DNS2_with_wells_{i}.csv'
+        folder = self.wells_folder
+        filename = f'{folder}/DNS2_with_wells_{i}.csv'
         df = pd.read_csv(filename)
         self.original_dfs[i] = df
         return df
@@ -399,8 +400,8 @@ class HE2_OilGatheringNetwork_Model():
     def gimme_calc_df(self, i):
         if i in self.calc_dfs:
             return self.calc_dfs[i]
-        folder = self.folder
-        calc_df_filename = f'{folder}data/oilgathering_fit/calc_df_{i}.csv'
+        folder = self.wells_folder
+        calc_df_filename = f'{folder}/calc_df_{i}.csv'
         try:
             calc_df = pd.read_csv(calc_df_filename)
             self.calc_dfs[i] = calc_df
@@ -408,7 +409,7 @@ class HE2_OilGatheringNetwork_Model():
         except:
             pass
         original_df = self.gimme_original_df(i)
-        calc_df = make_calc_df(original_df, self.folder + 'CommonData/')
+        calc_df = make_calc_df(original_df, self.commondata_folder)
         calc_df.to_csv(calc_df_filename)
         self.calc_dfs[i] = calc_df
         return calc_df
@@ -418,7 +419,7 @@ class HE2_OilGatheringNetwork_Model():
             return self.graphs[i]
         df = self.gimme_original_df(i)
         calc_df = self.gimme_calc_df(i)
-        G, _ = make_oilpipe_schema_from_OT_dataset(df, self.folder + 'CommonData/', calc_df, ignore_Watercut=self.ignore_watercut)
+        G, _, __ = make_oilpipe_schema_from_OT_dataset(df, self.commondata_folder, calc_df, ignore_Watercut=self.ignore_watercut)
         self.graphs[i] = G
         return self.graphs[i]
 
@@ -444,12 +445,12 @@ class HE2_OilGatheringNetwork_Model():
         raw_pw_list = list(df.to_records(index=False))
         self.pad_well_list = []
         for pad, well in raw_pw_list:
-            self.pad_well_list += [(int(pad), int(well))]
+            self.pad_well_list += [(pad, int(well))]
         pad_wells_dict = dict()
         for (pad, well) in self.pad_well_list:
             wlist = pad_wells_dict.get(pad, [])
-            wlist += [int(well)]
-            pad_wells_dict[int(pad)] = wlist
+            wlist += [well]
+            pad_wells_dict[pad] = wlist
         self.pad_wells_dict = pad_wells_dict
         return self.pad_wells_dict
 
@@ -1026,12 +1027,19 @@ class HE2_OilGatheringNetwork_Model():
                 continue
             print()
 
+    def save_prefit_results_to_csv(self, rez, filename):
+        df = pd.DataFrame(columns=['wellNum','padNum','K_prod','K_pump'])
+        for item in rez:
+            x = item[2]
+            row = dict(wellNum=item[0],padNum=item[1],K_prod=x[0],K_pump=x[1])
+            df = df.append(row, ignore_index=True)
+        df.to_csv(filename, index=False)
 
 bad_wells = [(738, 33), (567, 39), (4532, 49), (2630, 49), (1579, 57), (3118, 57)]
 
 
 if __name__ == '__main__':
-    model = HE2_OilGatheringNetwork_Model("../../")
+    model = HE2_OilGatheringNetwork_Model(commondata_folder="../../CommonData/", wells_folder='../../data/fit 10-06-2021/')
     model.fact = model.grab_fact()
     # model.bad_wells = bad_wells
     model.fill_outlayers()
@@ -1039,7 +1047,4 @@ if __name__ == '__main__':
     # model.greed_optimization()
 
     rez = model.prefit_all()
-    # f = open('rez.csv', 'w')
-    # for item in rez:
-    #     print(item, file=f)
-
+    model.save_prefit_results_to_csv(rez, 'model weights.csv')
