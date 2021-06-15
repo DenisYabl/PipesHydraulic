@@ -9,7 +9,7 @@ def calculate_DF(dataframe):
 
     G, calc_df, df_to_graph_edges_mapping = make_oilpipe_schema_from_OT_dataset(dataframe)
     solver = HE2_Solver(G)
-    solver.solve(threshold = 1.2)
+    solver.solve(threshold = 0.5)
     modified_dataframe = dataframe.copy()
     if solver.op_result.success == True:
         validity = check_solution(G)
