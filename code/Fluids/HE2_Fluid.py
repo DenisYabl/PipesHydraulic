@@ -46,9 +46,17 @@ def check_all_are_the_same(arr, msg):
         raise NotImplementedError
     return max_arr
 
-# def dot_product(Xs_and_fluids : List[Tuple[float, HE2_BlackOil]]) -> HE2_BlackOil:
+def make_fluid_vectors(fluids):
+    ops = [fl.oil_params for fl in fluids]
+    oil_ro_vec = np.array([op.oildensity_kg_m3 for op in ops])
+    wat_ro_vec = np.array([op.waterdensity_kg_m3 for op in ops])
+    gas_ro_vec = np.array([op.gasdensity_kg_m3 for op in ops])
+    gf_vec = np.array([op.gasFactor for op in ops])
+    wc_vec = np.array([op.volumewater_percent for op in ops])*0.01
+    return oil_ro_vec, wat_ro_vec, gas_ro_vec, gf_vec, wc_vec
 
-def dot_product(xs_vec, fluids) -> HE2_BlackOil:
+
+def dot_product(xs_vec, fluids, fluid_vectors=None) -> HE2_BlackOil:
 
     '''
     :return: new fluid instance, dot product Xs and fluids
@@ -60,10 +68,13 @@ def dot_product(xs_vec, fluids) -> HE2_BlackOil:
     # xs_vec = np.array([x for x, fl in Xs_and_fluids])
     # ops = [fl.oil_params for x, fl in Xs_and_fluids]
 
-    # if sum(xs_vec != 0) == 1:
-    #     return fluids[np.argmax(xs_vec)]
+    if np.sum(xs_vec != 0) == 1:
+        op = fluids[np.argmax(xs_vec)].oil_params
+        return HE2_BlackOil(op)
 
-    ops = [fl.oil_params for fl in fluids]
+    if fluid_vectors is None:
+        fluid_vectors = make_fluid_vectors(fluids)
+    oil_ro_vec, wat_ro_vec, gas_ro_vec, gf_vec, wc_vec = fluid_vectors
 
 
     # sat_P_vec = np.array([op.sat_P_bar for op in ops])
@@ -78,11 +89,6 @@ def dot_product(xs_vec, fluids) -> HE2_BlackOil:
     # Volume_keff_vec = np.array([op.volumeoilcoeff for op in ops])
     # Volume_keff = check_all_are_the_same(Volume_keff_vec, 'dot product for fluid.volumeoilcoeff is not implemented')
 
-    oil_ro_vec = np.array([op.oildensity_kg_m3 for op in ops])
-    wat_ro_vec = np.array([op.waterdensity_kg_m3 for op in ops])
-    gas_ro_vec = np.array([op.gasdensity_kg_m3 for op in ops])
-    gf_vec = np.array([op.gasFactor for op in ops])
-    wc_vec = np.array([op.volumewater_percent/100 for op in ops])
 
     owg_mix_pseudo_density_vec = oil_ro_vec * (1 - wc_vec) + wat_ro_vec * wc_vec + gas_ro_vec * (1 - wc_vec) * gf_vec
     Q_owg_vec = xs_vec / owg_mix_pseudo_density_vec
@@ -94,12 +100,12 @@ def dot_product(xs_vec, fluids) -> HE2_BlackOil:
     Xg_vec = Qg_vec * gas_ro_vec
     # np.testing.assert_almost_equal(Xo_vec + Xw_vec + Xg_vec, xs_vec)
 
-    Xo = sum(Xo_vec)
-    Xw = sum(Xw_vec)
-    Xg = sum(Xg_vec)
-    Qo = sum(Qo_vec)
-    Qw = sum(Qw_vec)
-    Qg = sum(Qg_vec)
+    Xo = np.sum(Xo_vec)
+    Xw = np.sum(Xw_vec)
+    Xg = np.sum(Xg_vec)
+    Qo = np.sum(Qo_vec)
+    Qw = np.sum(Qw_vec)
+    Qg = np.sum(Qg_vec)
     # oil_ro = np.round(Xo / Qo, 5)
     # wat_ro = np.round(Xw / Qw, 5)
     # gas_ro = np.round(Xg / Qg, 5)
@@ -119,13 +125,21 @@ def dot_product(xs_vec, fluids) -> HE2_BlackOil:
     # np.testing.assert_almost_equal(wat_ro, wat_ro2)
     # np.testing.assert_almost_equal(gas_ro, gas_ro2)
 
-    op0 = ops[0]
+    op0 = fluids[0].oil_params
     sat_P = op0.sat_P_bar
     plast_T = op0.plastT_C
     oil_Visc = op0.oilviscosity_Pa_s
     Volume_keff = op0.volumeoilcoeff
     rez_oil_params = oil_params(sat_P, plast_T, gf, oil_ro, wat_ro, gas_ro, oil_Visc, wc*100, Volume_keff)
     rez = HE2_BlackOil(rez_oil_params)
+
+    # if np.sum(xs_vec != 0) == 1:
+    #     op1 = fluids[np.argmax(xs_vec)].oil_params
+    #     op2 = rez_oil_params
+    #     diff = np.array(op1) - np.array(op2)
+    #     if np.linalg.norm(diff) > 1e-8:
+    #         logger.warning('Something wrong with fluids')
+
     return rez
 
 
