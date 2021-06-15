@@ -36,6 +36,8 @@ def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "
     try:
         if model == 'ЭЦН5А-125-2600':
             model = 'ЭЦН5-125-2600'
+        if model == 'ЭЦН5-80-2950':
+            model = 'ЭЦН5-80-2850'
         if frequency == 0 or np.isnan(frequency):
             frequency = 50
         curves = pumps_cache[model]
