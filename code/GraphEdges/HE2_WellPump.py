@@ -125,22 +125,20 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         self.power = 0
+        self.eff = 5
         if liquid_debit <= self.min_Q:
             get_pressure_raise = self.get_pressure_raise_1
-            get_eff = self.get_eff_1
         elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
             get_pressure_raise = self.get_pressure_raise_2
-            get_eff = self.get_eff_2
-            self.power = self.n_interpolator(liquid_debit)
+            self.power = self.n_interpolator(liquid_debit)*1.0
+            self.efficiency = self.get_eff_2(liquid_debit)*1.0
         else:
             get_pressure_raise = self.get_pressure_raise_3
-            get_eff = self.get_eff_3
 
         pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
 
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
 
-        self.efficiency = get_eff(liquid_debit)
         #T_rez_C = T_C + calc_direction * self.calculate_temperature_raise(pressure_raise, eff, mishenko)
         T_rez_C = T_C
         check_for_nan(P_rez_bar=P_rez_bar, T_rez_C=T_rez_C)
