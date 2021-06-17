@@ -70,15 +70,17 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         Cp_vec = np.polyval([1.0045, -0.002664, -0.00068292, 0.000049706, -0.0000016522, 0.000000019172][::-1], pseudo_vec)
         Ceff_vec = np.polyval([1.0522, -0.03512, -0.00090394, 0.00022218, -0.00001198, 0.00000019895][::-1], pseudo_vec)
 
-        self.q_vec = self.base_q * Cq_vec
+        self.q_vec_50hz = self.base_q * Cq_vec
         self.p_vec_50hz = self.base_p * Cp_vec
-        self.eff_vec = eff_vec * Ceff_vec
-        self.n_vec_50hz = (self.q_vec * 9.81 * 1000 / 86400) * self.p_vec_50hz / (self.eff_vec/100)
+        self.eff_vec_50hz = eff_vec * Ceff_vec
+        self.n_vec_50hz = (self.q_vec_50hz * 9.81 * 1000 / 86400) * self.p_vec_50hz / (self.eff_vec_50hz/100)
         self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
 
-        self.min_Q = self.q_vec.min()
-        self.max_Q = self.q_vec.max()
+        self.min_Q_50hz = self.eff_vec_50hz.min()
+        self.max_Q_50hz = self.eff_vec_50hz.max()
+        self.min_q = self.min_Q_50hz
+        self.max_q = self.max_Q_50hz
         self.power = 0
         self.efficiency = 0
 
@@ -126,16 +128,16 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         self.power = 0
         self.eff = 5
-        if liquid_debit <= self.min_Q:
+        if liquid_debit <= self.min_q:
             get_pressure_raise = self.get_pressure_raise_1
-        elif (self.min_Q < liquid_debit) and (abs(X_kgsec) * 86400 / mishenko.CurrentLiquidDensity_kg_m3 < self.max_Q) :
+        elif (self.min_q < liquid_debit) and (liquid_debit < self.max_q):
             get_pressure_raise = self.get_pressure_raise_2
             self.power = self.n_interpolator(liquid_debit)*1.0
             self.efficiency = self.get_eff_2(liquid_debit)*1.0
         else:
             get_pressure_raise = self.get_pressure_raise_3
 
-        pressure_raise = get_pressure_raise(liquid_debit) * 9.81 *  mishenko.CurrentLiquidDensity_kg_m3
+        pressure_raise = get_pressure_raise(liquid_debit) * 9.81 * mishenko.CurrentLiquidDensity_kg_m3
 
         P_rez_bar = P_bar + calc_direction * uc.Pa2bar(pressure_raise)
 
@@ -166,27 +168,32 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         return grav_sign, fric_sign, t_sign
 
     def make_extrapolators(self):
-        zero_head = self.p_vec[0]
-        last_head = self.p_vec[-1]
-        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(x) ** B_keff
-        self.get_pressure_raise_2 = interp1d(self.q_vec, self.p_vec, kind="quadratic")
-        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - self.max_Q) ** B_keff
+        freq_k = self.frequency / 50
+        q_vec = self.q_vec_50hz * freq_k
+        min_q = self.min_Q_50hz * freq_k
+        max_q = self.max_Q_50hz * freq_k
+        p_vec = self.stages_ratio * self.p_vec_50hz * freq_k ** 2
+        n_vec = self.n_vec_50hz * freq_k ** 3
+        eff_vec = self.eff_vec_50hz #sic!
+        zero_head = p_vec[0]
+        last_head = p_vec[-1]
 
-        self.get_eff_1 = lambda x: 5
-        self.get_eff_2 = interp1d(self.q_vec, self.eff_vec, kind="quadratic")
-        self.get_eff_3 = lambda x: 5
+        self.get_pressure_raise_1 = lambda x: zero_head + A_keff * abs(min_q - x) ** B_keff
+        self.get_pressure_raise_2 = interp1d(q_vec, p_vec, kind="quadratic")
+        self.get_pressure_raise_3 = lambda x: last_head - A_keff * (x - max_q) ** B_keff
 
-        self.n_interpolator = interp1d(self.q_vec, self.n_vec, kind="quadratic")
+        self.get_eff_2 = interp1d(q_vec, eff_vec, kind="quadratic")
+        self.n_interpolator = interp1d(q_vec, n_vec, kind="quadratic")
+
+        self.min_q = min_q
+        self.max_q = max_q
+
 
     def changeFrequency(self, new_frequency):
         self.frequency = new_frequency
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
-        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 
     def change_stages_ratio(self, new_ratio):
         self.stages_ratio = new_ratio
-        self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
-        self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
         self.make_extrapolators()
 
