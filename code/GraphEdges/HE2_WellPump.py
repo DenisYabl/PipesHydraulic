@@ -77,8 +77,8 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.p_vec = self.p_vec_50hz * (self.frequency/50)**2 * self.stages_ratio
         self.n_vec = self.n_vec_50hz * (self.frequency/50)**2
 
-        self.min_Q_50hz = self.eff_vec_50hz.min()
-        self.max_Q_50hz = self.eff_vec_50hz.max()
+        self.min_Q_50hz = self.q_vec_50hz.min()
+        self.max_Q_50hz = self.q_vec_50hz.max()
         self.min_q = self.min_Q_50hz
         self.max_q = self.max_Q_50hz
         self.power = 0
