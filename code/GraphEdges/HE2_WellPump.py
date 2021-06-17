@@ -127,7 +127,7 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         liquid_debit = X_kgsec * 86400 / mishenko.CurrentLiquidDensity_kg_m3
         grav_sign, fric_sign, t_sign = self.decode_direction(X_kgsec, calc_direction, unifloc_direction)
         self.power = 0
-        self.eff = 5
+        self.efficiency = 5
         if liquid_debit <= self.min_q:
             get_pressure_raise = self.get_pressure_raise_1
         elif (self.min_q < liquid_debit) and (liquid_debit < self.max_q):
