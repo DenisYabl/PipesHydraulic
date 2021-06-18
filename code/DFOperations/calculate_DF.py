@@ -4,7 +4,7 @@ from Tools.HE2_tools import check_solution, print_solution
 from Tools.HE2_Logger import getLogger
 logger = getLogger(__name__)
 
-def calculate_DF(dataframe):
+def calculate_DF(dataframe, return_graph=False):
 
 
     G, calc_df, df_to_graph_edges_mapping = make_oilpipe_schema_from_OT_dataset(dataframe)
@@ -44,4 +44,4 @@ def calculate_DF(dataframe):
             V = Q / Area
             calc_df.loc[index, 'velocity_m_sec'] = V
 
-    return calc_df
+    return calc_df if not return_graph else calc_df, G

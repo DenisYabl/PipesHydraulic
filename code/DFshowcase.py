@@ -3,7 +3,13 @@ from DFOperations.calculate_DF import calculate_DF
 import pandas as pd
 import logging
 import sys
+
+from GraphNodes.HE2_Vertices import HE2_Boundary_Vertex, HE2_Source_Vertex
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
+import numpy as np
+from pyvis.network import Network
+
+from Visualisation.pyvis_v0 import draw_result_graph
 
 """
 За полный пересчет датафрейма DF => DF отвечает функция DFOperations.calculate_DF.calculate_DF
@@ -51,9 +57,9 @@ volumeoilcoeff' - объемный коэффициент нефти
 Изменять данные поля имеет смысл у источников, при отсутствии полей в датафрейме или отсутствия значения в ячейке свойства жидкости принимаются стандартными
 """
 
-dataset = pd.read_csv("../CommonData/DNS1_no_wells.csv")
+dataset = pd.read_csv("../CommonData/DNS3_real_values.csv")
 start_time = time.time()
-mdf = calculate_DF(dataset)
+mdf, G = calculate_DF(dataset, return_graph=True)
 #mdf = mdf[['juncType', 'pipeline_purpose_id', 'simple_part_id', 'part_id', 'rs_schema_id', 'schema_id',
 #           'pipeline_id', 'node_id_end', 'node_id_start', 'L', 'simple_part_creation_date', 'node_name_start',
 #           'altitude_start',
@@ -64,7 +70,8 @@ mdf = calculate_DF(dataset)
 #           'productivity', 'model', 'frequency', 'perforation', 'pumpDepth', 'wellNum', 'padNum']]
 mdf = mdf.fillna(0)
 print("--- %s seconds ---" % (time.time() - start_time))
-mdf.to_csv("../CommonData/mdf.csv")
+nt = draw_result_graph(mdf, G, use_coordinates=False)
+nt.show('nx.html')
 
 
 """
