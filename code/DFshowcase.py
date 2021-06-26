@@ -3,7 +3,6 @@ from DFOperations.calculate_DF import calculate_DF
 import pandas as pd
 import logging
 import sys
-
 from Tools.HE2_schema_maker import make_oilpipe_schema_from_OT_dataset
 
 """
