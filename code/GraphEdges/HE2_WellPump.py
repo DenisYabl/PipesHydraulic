@@ -1,5 +1,3 @@
-import math
-
 from Tools import HE2_ABC as abc
 from Fluids.HE2_Fluid import gimme_dummy_BlackOil
 import uniflocpy.uTools.uconst as uc
@@ -13,6 +11,20 @@ A_keff = 1
 B_keff = 1.4
 
 pumps_cache = None
+# model_substitute = dict([('ЭЦН5А-125-2600', 'ЭЦН5-125-2600'), ('ЭЦН5-125-2700', 'ЭЦН5-125-2750'), ('ЭЦН5-80-2950', 'ЭЦН5-80-2850'),
+#                     ('ЭЦН5А-35-2500', 'ЭЦН5-30-2500'), ('ЭЦН5-100-2500', 'ЭЦН5-125-2500'), ('ЭЦН5-100-2600', 'ЭЦН5-125-2600'),
+#                     ('ЭЦН5А-60-2500', 'ЭЦН5-60-2500'), ('ЭЦН2А-80-2500(4800)', 'ЭЦН5-80-2500'), ('ЭЦН5А-35-2450', 'ЭЦН5-30-2400')])
+
+model_substitute =  {'ЭЦН5А-125-2600': 'ЭЦН5-125-2600',
+                     'ЭЦН5-125-2700': 'ЭЦН5-125-2750',
+                     'ЭЦН5-80-2950': 'ЭЦН5-80-2850',
+                     'ЭЦН5А-35-2500': 'ЭЦН5-30-2500',
+                     'ЭЦН5-100-2500': 'ЭЦН5-125-2500',
+                     'ЭЦН5-100-2600': 'ЭЦН5-125-2600',
+                     'ЭЦН5А-60-2500': 'ЭЦН5-60-2500',
+                     'ЭЦН2А-80-2500(4800)': 'ЭЦН5-80-2500',
+                     'ЭЦН5А-35-2450': 'ЭЦН5-30-2400'}
+
 
 def split_pumps_dataframe_to_models(full_HPX:pd.DataFrame):
     models = full_HPX.pumpModel.unique()
@@ -30,21 +42,20 @@ def split_pumps_dataframe_to_models(full_HPX:pd.DataFrame):
 
 
 def create_HE2_WellPump_instance_from_dataframe(full_HPX:pd.DataFrame, model = "", fluid = None, frequency = 50):
-    global pumps_cache
+    global pumps_cache, model_substitute
     if pumps_cache is None:
         pumps_cache = split_pumps_dataframe_to_models(full_HPX)
     try:
-        if model == 'ЭЦН5А-125-2600':
-            model = 'ЭЦН5-125-2600'
-        if model == 'ЭЦН5-80-2950':
-            model = 'ЭЦН5-80-2850'
+        if model in model_substitute:
+            model = model_substitute[model]
         if frequency == 0 or np.isnan(frequency):
             frequency = 50
         curves = pumps_cache[model]
         pump = HE2_WellPump(**curves, model=model, fluid=fluid, frequency=frequency)
     except Exception as e:
         logger.error(f'Fail to create HE2_WellPump. Model is {model}')
-        raise e
+        return None
+        # raise e
     return pump
 
 
@@ -64,7 +75,6 @@ class HE2_WellPump(abc.HE2_ABC_Pipeline, abc.HE2_ABC_GraphEdge):
         self.state = 'on'
 
         visc_approx = self.fluid.calc(30, 20, 0).CurrentOilViscosity_Pa_s
-        # pseudo_vec = 1.95 * math.pow(visc_approx, 0.5) * 0.04739 * ((p_vec / 0.3048) ** 0.25739) * (((q_vec / 0.227) ** 0.5) ** 0.5)
         pseudo_vec = 1.95 * 0.04739 * visc_approx**0.5 * (p_vec / 0.3048)**0.25739 * (q_vec / 0.227)**0.25
         Cq_vec = np.polyval([0.9873, 0.009019, -0.0016233, 0.00007233, -0.0000020258, 0.000000021009][::-1], pseudo_vec)
         Cp_vec = np.polyval([1.0045, -0.002664, -0.00068292, 0.000049706, -0.0000016522, 0.000000019172][::-1], pseudo_vec)
