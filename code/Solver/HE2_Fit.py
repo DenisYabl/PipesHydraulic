@@ -522,7 +522,7 @@ class HE2_OilGatheringNetwork_Model():
             solver = self.gimme_solver(i)
             if (0, 0, i) in self.initial_x:
                 solver.initial_edges_x = self.initial_x[(0, 0, i)]
-            solver.solve(threshold=0.25, mix_fluids=False)
+            solver.solve(threshold=0.5, mix_fluids=True)
             validity = check_solution(solver.schema)
             print(validity)
             success[i] = solver.op_result.success
@@ -677,7 +677,7 @@ class HE2_OilGatheringNetwork_Model():
             if (pad, well, i) in self.initial_x:
                 solver.initial_edges_x = self.initial_x[(pad, well, i)]
 
-            solver.solve(mix_fluids=False, threshold=0.2, it_limit=30)
+            solver.solve(mix_fluids=True, threshold=0.5, it_limit=30)
             self.total_target_cnt += solver.op_result.nfev
             if not solver.op_result.success:
                 self.not_solved += 1
@@ -745,7 +745,7 @@ class HE2_OilGatheringNetwork_Model():
         mask = ~self.outlayers['q_well'][(pad, well)]
         hndl3 = ax.plot(xs[mask], self.fact['q_well'][(pad, well)][mask], color=colors[2], label='Fact: debit', **kwargs)
 
-        kwargs = dict(linewidth=1, alpha=0.6)
+        kwargs = dict(linewidth=5, alpha=1)
         mask = ~self.outlayers['freq'][(pad, well)]
         hndl6 = ax.plot(xs[mask], self.fact['freq'][(pad, well)][mask], color=colors[4], label='Fact: freq', **kwargs)
 
@@ -816,7 +816,7 @@ class HE2_OilGatheringNetwork_Model():
                 continue
 
             freq = self.fact['freq'][(pad, well)]
-            mask1 = freq > 60
+            mask1 = freq > 99
             mask2 = freq < 40
             mask3 = np.isnan(freq)
             mask = mask1 | mask2 | mask3
@@ -1042,7 +1042,7 @@ class HE2_OilGatheringNetwork_Model():
 
 
 if __name__ == '__main__':
-    model = HE2_OilGatheringNetwork_Model(commondata_folder="../../CommonData/", wells_folder='../../data/fit 15-06-2021/')
+    model = HE2_OilGatheringNetwork_Model(commondata_folder="../../CommonData/", wells_folder='../../data/fit 22-06-2021/')
     model.fact = model.grab_fact()
     # model.bad_wells = bad_wells
     model.fill_outlayers()
