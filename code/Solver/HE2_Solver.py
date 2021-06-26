@@ -4,11 +4,13 @@ import scipy.optimize as scop
 
 from GraphEdges.HE2_SpecialEdges import HE2_MockEdge
 from GraphNodes import HE2_Vertices as vrtxs
+from GraphNodes.HE2_Vertices import is_source
 from Tools import HE2_ABC as abc
 from Tools.HE2_ABC import Root
 import pandas as pd
 from Tools.HE2_Logger import check_for_nan, getLogger
-import Fluids.HE2_MixFluids as mixer
+import Fluids.HE2_MixFluids2 as mixer
+# import Fluids.HE2_MixFluids as mixer
 import Fluids.HE2_Fluid as fl
 from Tools.HE2_SolverInternalViewer import plot_y_toward_gradient_from_actual_x as plot_y, plot_chord_cycle as plot_chord, plot_all
 from Tools.HE2_SolverInternalViewer import plot_neighbours_subgraph as plot_nghbs, plot_residuals_toward_gradient as plot_resd
@@ -166,11 +168,26 @@ class HE2_Solver():
         self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
 
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        # if self.test_mixer:
+        #     cocktails2, srcs2 = mixer2.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        #     self.compare_cocktails(srcs, cocktails, srcs2, cocktails2)
         self.last_src = srcs
-        src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        # src_fluids = [G.nodes[n]['obj'].fluid for n in srcs]
+        src_fluids = []
+        for n in srcs:
+            if not is_source(G, n):
+                logger.error(f'{n} is not a source node!')
+                raise ValueError
+            src_fluids += [G.nodes[n]['obj'].fluid]
+
+        # fieldlist = ['sat_P_bar', 'plastT_C', 'gasFactor', 'oildensity_kg_m3', 'waterdensity_kg_m3', 'gasdensity_kg_m3',
+        #              'oilviscosity_Pa_s', 'volumewater_percent', 'volumeoilcoeff']
+
+        zf = src_fluids[0].oil_params
+        constants = dict(oil_ro=zf.oildensity_kg_m3, wat_ro=zf.waterdensity_kg_m3, gas_ro=zf.gasdensity_kg_m3, gf=zf.gasFactor)
         fl_vec = fl.make_fluid_vectors(src_fluids)
         for key, cktl in cocktails.items():
-            initial_fluid = fl.dot_product(cktl, src_fluids, fl_vec)
+            initial_fluid = fl.dot_product(cktl, src_fluids, fl_vec, **constants)
             self.last_cocktail[key] = cktl
             self.last_fluidA[key] = initial_fluid
             if key in edgelist:
@@ -549,10 +566,11 @@ class HE2_Solver():
             if self.save_intermediate_results:
                 self.save_edge_func_result(u=u, v=v, x=x, unknown=v, p_kn=p_u, p_unk=p_v)
 
+            p_v2, t_v2 = self.pt_on_tree[v]
             pt_v1[i,0] = p_v
             pt_v1[i,1] = t_v
-            pt_v2[i,0] = self.pt_on_tree[v][0]
-            pt_v2[i,1] = self.pt_on_tree[v][1]
+            pt_v2[i,0] = p_v2
+            pt_v2[i,1] = t_v2
             d[(u, v)] = p_v, t_v
         pt_residual_vec = pt_v1 - pt_v2
         return pt_residual_vec, d
@@ -635,6 +653,9 @@ class HE2_Solver():
         mr = self.fluids_move_rate
         mrates = np.array([1 - mr, mr])
         cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.edges_x)
+        # if self.test_mixer:
+        #     cocktails2, srcs2 = mixer2.evalute_network_fluids_with_root(G, self.edges_x)
+        #     self.compare_cocktails(srcs, cocktails, srcs2, cocktails2)
 
         incorrect_sources = set(srcs) - set(self.sources_fluids.keys())
         if len(incorrect_sources) > 0:
@@ -643,6 +664,8 @@ class HE2_Solver():
 
         sources_are_the_same = (srcs == self.last_src)
         src_fluids = [self.sources_fluids[n] for n in srcs]
+        zf = src_fluids[0].oil_params
+        constants = dict(oil_ro=zf.oildensity_kg_m3, wat_ro=zf.waterdensity_kg_m3, gas_ro=zf.gasdensity_kg_m3, gf=zf.gasFactor)
         fl_vec = fl.make_fluid_vectors(src_fluids)
         for key, cktl in cocktails.items():
             if key in self.node_list:
@@ -657,11 +680,11 @@ class HE2_Solver():
                     if (cktl.shape == cktl2.shape) and (np.linalg.norm(cktl - cktl2) < 1e-6):
                         fluidA = self.last_fluidA[key]
                 if fluidA is None:
-                    fluidA = fl.dot_product(cktl, src_fluids, fl_vec)
+                    fluidA = fl.dot_product(cktl, src_fluids, fl_vec, **constants)
                     self.last_fluidA[key] = fluidA
                 fluidB = obj.fluid
                 if fluidA.oil_params != fluidB.oil_params:
-                    fluidC = fl.dot_product(mrates, [fluidA, fluidB])
+                    fluidC = fl.dot_product(mrates, [fluidA, fluidB], **constants)
                     obj.fluid = fluidC
         self.last_src = srcs
         pass
@@ -685,3 +708,10 @@ class HE2_Solver():
             return step/2
 
         return random_steps.pop()
+
+    def compare_cocktails(self, srcs1, cktls1, srcs2, cktls2):
+        if set(srcs1) != set(srcs2):
+            logger.error('Mixer and mixer2 sources arent equal')
+        if set(cktls1.keys()) != set(cktls1.keys()):
+            logger.error('Mixer and mixer2 solutions arent equal')
+

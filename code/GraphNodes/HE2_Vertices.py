@@ -4,7 +4,7 @@ logger = getLogger(__name__)
 
 def is_junction(G, n):
     try:
-        obj = G[n]['obj']
+        obj = G.nodes[n]['obj']
     except Exception as e:
         logger.error(f'Invalid node {n}')
         raise e
@@ -12,6 +12,18 @@ def is_junction(G, n):
     if type(obj) == HE2_ABC_GraphVertex:
         return True
     return False
+
+def is_source(G, n):
+    try:
+        obj = G.nodes[n]['obj']
+    except Exception as e:
+        logger.error(f'Invalid node {n}')
+        raise e
+
+    if type(obj) == HE2_Source_Vertex:
+        return True
+    return False
+
 
 
 class HE2_Boundary_Vertex(HE2_ABC_GraphVertex):

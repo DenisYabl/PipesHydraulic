@@ -84,8 +84,8 @@ def evalute_network_fluids_wo_root(_G, x_dict):
     return cocktails, srcs
 
 
-# def evalute_network_fluids_with_root(G, x_dict):
-def evalute_network_fluids_with_root_old(G, x_dict):
+def evalute_network_fluids_with_root(G, x_dict):
+# def evalute_network_fluids_with_root_old(G, x_dict):
     edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
     edges2 = []
     x_dict2 = {}
@@ -109,8 +109,8 @@ def evalute_network_fluids_with_root_old(G, x_dict):
             cocktails2[key] = cktl2
     return cocktails2, srcs
 
-# def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
-def evalute_network_fluids_with_root(G, x_dict):
+def evalute_network_fluids_with_root_new_version_with_reduce(G, x_dict):
+# def evalute_network_fluids_with_root(G, x_dict):
     # This is like a nested doll
     # Outer layer - solver call with solver graph and xs (flows)
     # Second layer - we remove root node and zero flows, also reverse negative flows
@@ -145,20 +145,67 @@ def evalute_network_fluids_with_root(G, x_dict):
             cocktails[key] = cktl2
     return cocktails, srcs
 
+# def evalute_network_fluids_with_root(G, x_dict):
+def evalute_network_fluids_with_root_third_version_with_reduce(G, x_dict):
+    # This is like a nested doll
+    # Outer layer - solver call with solver graph and xs (flows)
+    # Second layer - we remove root node and zero flows, also reverse negative flows
+    # Third layer - we reduce graph removing 2-degree nodes and parallel edges, cause it does not affect to solultion
+    # Internal layer - on reduced graph we build mass conservation equation matrix and solve it
+    # Than, from deep to surface, we rebuild solution on each layer
+
+    edges1 = [(u, v) for u, v in G.edges if (u != Root) and (v != Root)]
+    edges2 = []
+    x_dict2 = {}
+    for (u, v) in edges1:
+        e = (u, v)
+        if x_dict[(u, v)] < 0:
+            e = (v, u)
+        x_dict2[e] = abs(x_dict[(u, v)])
+        edges2 += [e]
+
+    G2 = nx.DiGraph(edges2)
+    G3, x_dict3, reducing_stack = reduce_graph2(G2, x_dict2)
+
+    cocktails3, srcs = evalute_network_fluids_wo_root(G3, x_dict3)
+    cocktails2, srcs = restore_cocktail_from_reduced_graph(cocktails3, srcs, reducing_stack)
+
+    cocktails = {}
+    for key, cktl in cocktails2.items():
+        cktl2 = np.around(cktl, 6)
+
+        if (key in edges2) and not (key in edges1):
+            u, v = key
+            cocktails[(v, u)] = cktl2
+        else:
+            cocktails[key] = cktl2
+    return cocktails, srcs
+
+
 NodeMapping = Dict[str, str]
 EdgeMapping = Dict[Tuple[str, str], Tuple[str, str]]
 
 def make_small_graph_for_mixer(src_G: nx.DiGraph) -> Tuple[nx.DiGraph, NodeMapping, EdgeMapping]:
     new_G = nx.MultiDiGraph(src_G)
     nodes_2deg = gimme_junc_nodes_2deg(src_G)
+    node_mapping = dict()
+    edge_mapping = dict()
+    pos_em, neg_em = dict(), dict() # Key - edge in reduced graph. Value - list of edges of original graph
+    for u, v in src_G.edges:
+        pos_em[(u, v, 0)] = [(u, v)]
+        neg_em[(u, v, 0)] = []
 
     i, j = 0, 0
     while True:
         if len(nodes_2deg) > 0:
             i += 1
             n = nodes_2deg.pop(0)
-            e1 = list(new_G.in_edges(n))[0]
-            e2 = list(new_G.out_edges(n))[0]
+            in_edges = list(new_G.in_edges(n))
+            assert len(in_edges) == 1
+            e1 = in_edges[0]
+            out_edges = list(new_G.out_edges(n))
+            assert len(out_edges) == 1
+            e2 = out_edges[0]
             u1, v1 = e1
             u2, v2 = e2
 
@@ -168,7 +215,13 @@ def make_small_graph_for_mixer(src_G: nx.DiGraph) -> Tuple[nx.DiGraph, NodeMappi
             new_G.remove_edge(*e2)
             new_G.remove_node(n)
             k = new_G.add_edge(u, v)
-            continue
+            pel = pos_em.pop((u1, v1, 0))
+            pel += pos_em.pop((u2, v2, 0))
+            nel = neg_em.pop((u1, v1, 0))
+            nel += neg_em.pop((u2, v2, 0))
+            pos_em[(u, v, k)] = pel
+            neg_em[(u, v, k)] = nel
+
 
         e = gimme_any_multiple_edges_bunch(new_G)
         if e is None:
@@ -183,16 +236,26 @@ def make_small_graph_for_mixer(src_G: nx.DiGraph) -> Tuple[nx.DiGraph, NodeMappi
         bunch_uv = [(u, v, _k) for _k in range(k1)]
         bunch_vu = [(v, u, _k) for _k in range(k2)]
         new_G.remove_edges_from(bunch_uv + bunch_vu)
+        pel, nel = [], []
+        for key in bunch_uv:
+            pel += pos_em.pop(key)
+            nel += neg_em.pop(key)
+
+        for key in bunch_vu:
+            pel += neg_em.pop(key) #sic!
+            nel += pos_em.pop(key) #sic!
 
         new_G.add_edge(u, v)
         edge_to_add = u, v, 0
+        pos_em[edge_to_add] = pel
+        neg_em[edge_to_add] = nel
 
     rez_G = nx.DiGraph()
     for u, v, k in new_G.edges:
         assert k == 0
         rez_G.add_edge(u, v)
 
-    return rez_G
+    return rez_G, node_mapping, edge_mapping
 
 
 

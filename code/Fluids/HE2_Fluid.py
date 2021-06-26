@@ -53,10 +53,20 @@ def make_fluid_vectors(fluids):
     gas_ro_vec = np.array([op.gasdensity_kg_m3 for op in ops])
     gf_vec = np.array([op.gasFactor for op in ops])
     wc_vec = np.array([op.volumewater_percent for op in ops])*0.01
-    return oil_ro_vec, wat_ro_vec, gas_ro_vec, gf_vec, wc_vec
+    owg_mix_pseudo_density_vec = oil_ro_vec * (1 - wc_vec) + wat_ro_vec * wc_vec + gas_ro_vec * (1 - wc_vec) * gf_vec
+
+    Q_owg_vec = 1 / owg_mix_pseudo_density_vec
+    Qo_vec = (1 - wc_vec) * Q_owg_vec
+    Qw_vec = wc_vec * Q_owg_vec
+    Qg_vec = (1 - wc_vec) * gf_vec* Q_owg_vec
+    Xo_vec = Qo_vec * oil_ro_vec
+    Xw_vec = Qw_vec * wat_ro_vec
+    Xg_vec = Qg_vec * gas_ro_vec
+
+    return Qo_vec, Qw_vec, Qg_vec, Xo_vec, Xw_vec, Xg_vec
 
 
-def dot_product(xs_vec, fluids, fluid_vectors=None) -> HE2_BlackOil:
+def dot_product(xs_vec, fluids, fluid_vectors=None, oil_ro = None, wat_ro = None, gas_ro = None, wc = None, gf = None) -> HE2_BlackOil:
 
     '''
     :return: new fluid instance, dot product Xs and fluids
@@ -68,14 +78,15 @@ def dot_product(xs_vec, fluids, fluid_vectors=None) -> HE2_BlackOil:
     # xs_vec = np.array([x for x, fl in Xs_and_fluids])
     # ops = [fl.oil_params for x, fl in Xs_and_fluids]
 
-    if np.sum(xs_vec != 0) == 1:
-        op = fluids[np.argmax(xs_vec)].oil_params
+    k = xs_vec.argmax()
+    if xs_vec[k] == 1:
+        op = fluids[k].oil_params
         return HE2_BlackOil(op)
 
     if fluid_vectors is None:
         fluid_vectors = make_fluid_vectors(fluids)
-    oil_ro_vec, wat_ro_vec, gas_ro_vec, gf_vec, wc_vec = fluid_vectors
-
+    # oil_ro_vec, wat_ro_vec, gas_ro_vec, gf_vec, wc_vec, owg_mix_pseudo_density_vec = fluid_vectors
+    _Qo_vec, _Qw_vec, _Qg_vec, _Xo_vec, _Xw_vec, _Xg_vec = fluid_vectors
 
     # sat_P_vec = np.array([op.sat_P_bar for op in ops])
     # sat_P = check_all_are_the_same(sat_P_vec, 'dot product for fluid.saturation_pressure is not implemented')
@@ -88,42 +99,36 @@ def dot_product(xs_vec, fluids, fluid_vectors=None) -> HE2_BlackOil:
     #
     # Volume_keff_vec = np.array([op.volumeoilcoeff for op in ops])
     # Volume_keff = check_all_are_the_same(Volume_keff_vec, 'dot product for fluid.volumeoilcoeff is not implemented')
-
-
-    owg_mix_pseudo_density_vec = oil_ro_vec * (1 - wc_vec) + wat_ro_vec * wc_vec + gas_ro_vec * (1 - wc_vec) * gf_vec
-    Q_owg_vec = xs_vec / owg_mix_pseudo_density_vec
-    Qo_vec = (1 - wc_vec) * Q_owg_vec
-    Qw_vec = wc_vec * Q_owg_vec
-    Qg_vec = (1 - wc_vec) * gf_vec* Q_owg_vec
-    Xo_vec = Qo_vec * oil_ro_vec
-    Xw_vec = Qw_vec * wat_ro_vec
-    Xg_vec = Qg_vec * gas_ro_vec
+    # owg_mix_pseudo_density_vec = oil_ro_vec * (1 - wc_vec) + wat_ro_vec * wc_vec + gas_ro_vec * (1 - wc_vec) * gf_vec
     # np.testing.assert_almost_equal(Xo_vec + Xw_vec + Xg_vec, xs_vec)
 
-    Xo = np.sum(Xo_vec)
-    Xw = np.sum(Xw_vec)
-    Xg = np.sum(Xg_vec)
-    Qo = np.sum(Qo_vec)
-    Qw = np.sum(Qw_vec)
-    Qg = np.sum(Qg_vec)
-    # oil_ro = np.round(Xo / Qo, 5)
-    # wat_ro = np.round(Xw / Qw, 5)
-    # gas_ro = np.round(Xg / Qg, 5)
-    # wc = np.round(Qw / (Qo + Qw), 5)
-    # gf = np.round(Qg / Qo, 5)
-    oil_ro = Xo / Qo
-    wat_ro = Xw / Qw
-    gas_ro = Xg / Qg
-    wc = Qw / (Qo + Qw)
-    gf = Qg / Qo
+    Qo, Qw, Qg = 0, 0, 0
+    if oil_ro is None or wc is None or gf is None:
+        Qo_vec = xs_vec * _Qo_vec
+        Qo = Qo_vec.sum()
+    if wat_ro is None or wc is None:
+        Qw_vec = xs_vec * _Qw_vec
+        Qw = Qw_vec.sum()
+    if gas_ro is None or gf is None:
+        Qg_vec = xs_vec * _Qg_vec
+        Qg = Qg_vec.sum()
 
-    # norm_keff = 1/sum(xs_vec)
-    # oil_ro2 = norm_keff * np.dot(xs_vec, oil_ro_vec)
-    # wat_ro2 = norm_keff * np.dot(xs_vec, wat_ro_vec)
-    # gas_ro2 = norm_keff * np.dot(xs_vec, gas_ro_vec)
-    # np.testing.assert_almost_equal(oil_ro, oil_ro2)
-    # np.testing.assert_almost_equal(wat_ro, wat_ro2)
-    # np.testing.assert_almost_equal(gas_ro, gas_ro2)
+    if oil_ro is None:
+        Xo_vec = xs_vec * _Xo_vec
+        Xo = Xo_vec.sum()
+        oil_ro = Xo / Qo
+    if wat_ro is None:
+        Xw_vec = xs_vec * _Xw_vec
+        Xw = Xw_vec.sum()
+        wat_ro = Xw / Qw
+    if gas_ro is None:
+        Xg_vec = xs_vec * _Xg_vec
+        Xg = Xg_vec.sum()
+        gas_ro = Xg / Qg
+    if wc is None:
+        wc = Qw / (Qo + Qw)
+    if gf is None:
+        gf = Qg / Qo
 
     op0 = fluids[0].oil_params
     sat_P = op0.sat_P_bar

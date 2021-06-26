@@ -245,7 +245,7 @@ class HE2_OilPipeSegment(abc.HE2_ABC_PipeSegment):
         current_mishenko = self.fluid.calc(P_bar, T_C,abs(X_kgsec), self.inner_diam_m)
         #Определяем угол в зависимости от fric_sign
         angle = self.angle_dgr if calc_direction > 0 else -self.angle_dgr
-        P_fric_grad_Pam, P_grav_grad_Pam = mb.calculate(current_mishenko, {"IntDiameter":self.inner_diam_m, "angle":angle, "Roughness":self.roughness_m})
+        P_fric_grad_Pam, P_grav_grad_Pam = mb.calculate(current_mishenko, angle, self.inner_diam_m, self.roughness_m)
         return P_fric_grad_Pam, P_grav_grad_Pam
 
     def calc_T_gradient_Cm(self, P_bar, T_C, X_kgsec):

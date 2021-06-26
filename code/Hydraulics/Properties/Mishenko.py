@@ -1,9 +1,9 @@
-import pandas as pd
-import math
 from Hydraulics.Formulas import get_dens_freegas
 from Tools.HE2_ABC import oil_params
 from Tools.HE2_Logger import check_for_nan, getLogger
 from collections import namedtuple
+from numba import njit
+import numpy as np
 
 # TODO: Диаметр трубы нужен для уточнения вязкости смеси при движении по трубе, больше ни для чего
 # Поэтому надо разделить расчет на две части - когда поток идет по трубе, и когда нет (например через насос)
@@ -58,7 +58,6 @@ Mishenko = namedtuple('Mishenko', field_list)
 # Объемная доля газа в смеси VolumeGas = {mishenko.VolumeGas}""")
 
 
-
 def from_oil_params(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
     SaturationPressure_MPa = calc_params.sat_P_bar * 101325 * 1e-6
     CurrentP = P_bar * 101325 * 1e-6
@@ -66,12 +65,17 @@ def from_oil_params(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
     CurrentT = T_C + 273
     GasFactor = calc_params.gasFactor
     Saturation_pressure = SaturationPressure_MPa - (PlastT - CurrentT) / (GasFactor * (0.91 - 0.09))
+    tubing_IntDiam = 0
+    if tubing:
+        tubing_IntDiam = tubing["IntDiameter"]
     if (CurrentP >= Saturation_pressure) | (calc_params.volumewater_percent == 100):
-        return two_phase_flow(P_bar, T_C, X_kg_sec, calc_params, tubing)
+        return two_phase_flow(P_bar, T_C, X_kg_sec, calc_params, tubing_IntDiam)
     else:
         return three_phase_flow(P_bar, T_C, X_kg_sec, calc_params)
 
-def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
+
+@njit(cache=True, fastmath=True)
+def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing_IntDiam=0):
     """
     :param oil_params: Параметры нефти
     """
@@ -126,7 +130,7 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
 
     vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-    C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+    C = 1 / (1 + 0.00144 * (CurrentT - 293) * np.log(1000 * SepOilDynamicViscosity))
     Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
     A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
@@ -140,7 +144,7 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
 
     # Вспомогательные коэффициенты
     a1 = 1 + 0.0054 * (CurrentT - 303)
-    a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure_MPa), 10)) - 1)  # !!!!!!!!!!!
+    a2 = (1 + np.log10(abs(CurrentP)) / (1 + np.log10(abs(SaturationPressure_MPa))) - 1)  # !!!!!!!!!!!
     a3 = SepOilDensity * GasFactor * 1e-3 - 186
     a4 = (3.083 - 2.638e-3 * GasDensity) * 1e-3
 
@@ -166,10 +170,10 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
 
     #Скорость смеси
     structure = 'emulsion'
-    if tubing:
-        wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
+    if tubing_IntDiam > 0:
+        wm = Q * 4 / (np.pi * tubing_IntDiam ** 2)
         #Критическая скорость смеси
-        wkr = 0.457 * math.sqrt(g * tubing["IntDiameter"])
+        wkr = 0.457 * (g * tubing_IntDiam)**0.5
         if wm < wkr:
             structure = "drop"
 
@@ -180,15 +184,15 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
         else:
             CurrentOilViscosity = CurrentWaterViscosity
 
-    elif structure == 'emulsion' and tubing:
-        wm = Q * 4 / (math.pi * tubing["IntDiameter"] ** 2)
-        shiftvelocity = 8 * wm / tubing["IntDiameter"]
+    elif structure == 'emulsion' and tubing_IntDiam>0:
+        wm = Q * 4 / (np.pi * tubing_IntDiam ** 2)
+        shiftvelocity = 8 * wm / tubing_IntDiam
         A = (1 + 20 * VolumeWater ** 2) / shiftvelocity ** (0.48 * VolumeWater)
         B = CurrentWaterViscosity if A <= 1 else A * CurrentWaterViscosity
         if VolumeWater > 0.5:
             CurrentOilViscosity = B * (1 + 2.9 * VolumeWater) / (1 - VolumeWater)
     else:
-        assert tubing is None
+        assert tubing_IntDiam == 0
 
     CurrentOilViscosity = CurrentWaterViscosity if VolumeWater == 1 else CurrentOilViscosity
 
@@ -205,6 +209,7 @@ def two_phase_flow(P_bar, T_C, X_kg_sec, calc_params:oil_params, tubing=None):
                     TensionWaterGas=TensionWaterGas, TensionOilWater=TensionOilWater, Q_gas_m3_s=0, Q_liq_and_gas_m3_s=Q,
                     VolumeGas_fraction=0)
 
+@njit(cache=True, fastmath=True)
 def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     """
     :param oil_params: Параметры нефти
@@ -238,7 +243,8 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     OilVolumeCoeff = calc_params.volumeoilcoeff
 
     g = 9.81
-    we_know_gas_amount = (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount))
+#    we_know_gas_amount = (pd.notnull(CarbGasAmount) & pd.notnull(NonCarbGasAmount))
+    we_know_gas_amount = True
 
     # Давление насыщения при данной температуре
     if we_know_gas_amount:
@@ -261,7 +267,7 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
     # Относительная плотность выделившегося из нефти свободного газа
     # Вспомогательные коэффициенты
     a1 = 1 + 0.0054 * (CurrentT - 303)
-    a2 = (1 + math.log(abs(CurrentP), 10) / (1 + math.log(abs(SaturationPressure_MPa), 10)) - 1)  # !!!!!!!!!!!
+    a2 = (1 + np.log10(abs(CurrentP)) / (1 + np.log10(abs(SaturationPressure_MPa))) - 1)  # !!!!!!!!!!!
     a3 = SepOilDensity * GasFactor * 1e-3 - 186
     a4 = (3.083 - 2.638e-3 * GasDensity) * 1e-3
 
@@ -288,7 +294,7 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
 
     vzgr = 0.001055 * (1 + 5 * an) * SepOilDynamicViscosity * SepOilDensity
 
-    C = 1 / (1 + 0.00144 * (CurrentT - 293) * math.log(1000 * SepOilDynamicViscosity))
+    C = 1 / (1 + 0.00144 * (CurrentT - 293) * np.log(1000 * SepOilDynamicViscosity))
     Amnt = 1e-3 * (1000 * SepOilDynamicViscosity) ** C
 
     A = 1 + 0.0129 * vzgr - 0.0364 * vzgr ** 0.85
@@ -335,9 +341,9 @@ def three_phase_flow(P_bar, T_C, X_kg_sec, calc_params):
         E = (CurrentT / T0) ** (1 / 6) * (P0 / CurrentP) ** (2 / 3) * Mg ** -0.5
     except:
         E = 0.025
-    mu0 = 0.0101 * abs(CurrentT - 273) ** 1.8 - 1.07e-1 * math.sqrt(abs(Mg))  # !!!!!!!!!!!!!
+    mu0 = 0.0101 * abs(CurrentT - 273) ** 1.8 - 1.07e-1 * (abs(Mg))**0.5  # !!!!!!!!!!!!!
     if CurrentP >= 5:
-        CurrentFreeGasViscosity = (mu0 + 1.08e-4 / E * (math.exp(1.44 * r) - math.exp(-1.11 * r ** 1.86))) * 1e-6
+        CurrentFreeGasViscosity = (mu0 + 1.08e-4 / E * (np.exp(1.44 * r) - np.exp(-1.11 * r ** 1.86))) * 1e-6
     else:
         CurrentFreeGasViscosity = (mu0 + 1.08e-4 / E + (
                 0.1023 + 0.23 * r + 0.0585 * r ** 2 - 0.0408 * r ** 3) / E) * 1e-6
