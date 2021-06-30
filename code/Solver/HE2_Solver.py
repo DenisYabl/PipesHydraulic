@@ -45,7 +45,7 @@ class HE2_Solver():
         # self.imd_rez_df = None
         self.edge_func_last_results = dict()
         self.save_intermediate_results = False
-        self.initial_edges_x = None
+        self.initial_edges_x = dict()
         self.ready_for_solve = False
 
         self.derivatives = None
@@ -329,9 +329,10 @@ class HE2_Solver():
             logger.info(f'Solution is found, cause threshold {threshold} is touched')
         if self.it_num > it_limit:
             logger.error(f'Solution is NOT found, iterations limit {it_limit} is exceed. y_best = {y_best} threshold = {threshold}')
-        self.initial_edges_x = self.edges_x.copy()
 
         self.op_result = scop.OptimizeResult(success=y_best < threshold, fun=y_best, x=x_best, nfev=self.it_num)
+        if self.op_result.success:
+            self.initial_edges_x = self.edges_x.copy()
         logger.info(f'Gradient descent result is {self.op_result}')
 
 
