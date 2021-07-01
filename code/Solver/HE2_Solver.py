@@ -3,6 +3,7 @@ import networkx as nx
 import scipy.optimize as scop
 
 from GraphEdges.HE2_SpecialEdges import HE2_MockEdge
+from GraphEdges.HE2_WellPump import HE2_WellPump
 from GraphNodes import HE2_Vertices as vrtxs
 from GraphNodes.HE2_Vertices import is_source
 from Tools import HE2_ABC as abc
@@ -605,6 +606,8 @@ class HE2_Solver():
                 _u, _v = self.result_edges_mapping[(u, v, k)]
                 x = self.edges_x[(_u, _v)]
                 obj.result = dict(x=x, WC=obj.fluid.oil_params.volumewater_percent, liquid_density=obj.fluid.CurrentLiquidDensity_kg_m3)
+                if type(obj) == HE2_WellPump:
+                    obj.result.update(power=obj.power)
         logger.debug('is finished')
 
 
