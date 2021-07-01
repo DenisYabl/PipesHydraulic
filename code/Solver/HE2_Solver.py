@@ -167,7 +167,7 @@ class HE2_Solver():
         xs = np.matmul(A_inv, q_vec)
         self.initial_edges_x = dict(zip(edgelist, xs.flatten()))
 
-        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x)
+        cocktails, srcs = mixer.evalute_network_fluids_with_root(G, self.initial_edges_x, have_to_reduce=True)
         # if self.test_mixer:
         #     cocktails2, srcs2 = mixer2.evalute_network_fluids_with_root(G, self.initial_edges_x)
         #     self.compare_cocktails(srcs, cocktails, srcs2, cocktails2)
